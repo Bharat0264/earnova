@@ -1,0 +1,3 @@
+import Wallet from "../models/Wallet.js"; import Payment from "../models/Payment.js";
+export const getWallet=async(req,res)=>{const wallet=await Wallet.findOne({user:req.user._id}); const transactions=await Payment.find({user:req.user._id}).sort({createdAt:-1}).limit(30);res.json({success:true,wallet,transactions});};
+export const requestWithdrawal=async(req,res)=>{const {amount}=req.body;const wallet=await Wallet.findOne({user:req.user._id});if(!wallet||amount<=0||wallet.balance<amount) return res.status(400).json({success:false,message:"Invalid withdrawal amount"});wallet.balance-=amount;wallet.pendingWithdrawal+=amount;await wallet.save();res.json({success:true,message:"Withdrawal request submitted",wallet});};

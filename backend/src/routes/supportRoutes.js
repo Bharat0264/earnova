@@ -1,0 +1,2 @@
+import express from "express"; import { createTicket,myTickets,adminTickets,replyTicket } from "../controllers/supportController.js"; import { protect,adminOnly } from "../middleware/authMiddleware.js";
+const r=express.Router(); r.post("/",protect,createTicket); r.get("/mine",protect,myTickets); r.get("/admin",protect,adminOnly,adminTickets); r.patch("/:id/reply",protect,adminOnly,replyTicket); export default r;
