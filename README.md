@@ -83,18 +83,6 @@ cd client && npm run dev
 
 Visit **http://localhost:5173**
 
----
-
-## Build Phases
-
-| Phase | Status | Description |
-|-------|--------|-------------|
-| **1** | ✅ Done | Project scaffold, Home page, routes, server setup |
-| **2** | 🔜 Next | Product catalogue, cart, product detail, Cloudinary |
-| **3** | ⏳      | Auth, checkout, Razorpay payments, order tracking |
-| **4** | ⏳      | Referral engine, earnings wallet, Razorpay Payouts |
-| **5** | ⏳      | B2B bulk quotes, solar subsidy checker & guidance |
-| **6** | ⏳      | Admin dashboard, Docker deployment, CI/CD |
 
 ---
 
