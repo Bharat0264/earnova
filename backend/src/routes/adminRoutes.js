@@ -1,2 +1,0 @@
-import express from "express"; import { dashboardStats,getUsers,blockUser,removeListing } from "../controllers/adminController.js"; import { protect,adminOnly } from "../middleware/authMiddleware.js";
-const r=express.Router(); r.get("/stats",protect,adminOnly,dashboardStats); r.get("/users",protect,adminOnly,getUsers); r.patch("/users/:id/block",protect,adminOnly,blockUser); r.patch("/listings/:type/:id/remove",protect,adminOnly,removeListing); export default r;

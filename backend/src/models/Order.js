@@ -1,3 +1,0 @@
-import mongoose from "mongoose";
-const orderSchema=new mongoose.Schema({buyer:{type:mongoose.Schema.Types.ObjectId,ref:"User",required:true},seller:{type:mongoose.Schema.Types.ObjectId,ref:"User",required:true},listingType:{type:String,enum:["product","service"],required:true},listingId:{type:mongoose.Schema.Types.ObjectId,required:true},totalAmount:{type:Number,required:true},advanceAmount:{type:Number,default:0},status:{type:String,enum:["pending","paid","in_progress","completed","cancelled"],default:"pending"},paymentStatus:{type:String,enum:["unpaid","partial","paid"],default:"unpaid"}},{timestamps:true});
-export default mongoose.model("Order",orderSchema);

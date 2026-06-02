@@ -1,0 +1,106 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  *, *::before, *::after { box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    color: #111827;
+    background-color: #ffffff;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Sora', sans-serif;
+  }
+
+  ::selection {
+    background-color: #ddd6fe;
+    color: #4c1d95;
+  }
+}
+
+@layer components {
+  /* ——— Navigation ——— */
+  .nav-link {
+    @apply relative text-gray-600 font-medium text-sm transition-colors duration-200 hover:text-primary-700 py-1;
+  }
+  .nav-link::after {
+    content: '';
+    @apply absolute -bottom-0.5 left-0 h-0.5 w-0 bg-primary-600 transition-all duration-300 rounded-full;
+  }
+  .nav-link:hover::after,
+  .nav-link.active::after { @apply w-full; }
+
+  /* ——— Buttons ——— */
+  .btn-base {
+    @apply inline-flex items-center justify-center gap-2 font-semibold transition-all duration-200 select-none;
+    @apply hover:scale-[1.03] active:scale-[0.97] disabled:opacity-50 disabled:cursor-not-allowed disabled:!scale-100;
+  }
+  .btn-primary {
+    @apply btn-base bg-primary-800 hover:bg-primary-900 text-white px-6 py-3 rounded-xl shadow-btn;
+  }
+  .btn-secondary {
+    @apply btn-base border-2 border-primary-700 text-primary-700 hover:bg-primary-50 px-6 py-3 rounded-xl;
+  }
+  .btn-eco {
+    @apply btn-base bg-eco-600 hover:bg-eco-700 text-white px-6 py-3 rounded-xl shadow-eco-btn;
+  }
+  .btn-ghost {
+    @apply btn-base text-primary-700 hover:bg-primary-50 px-4 py-2 rounded-xl;
+  }
+
+  /* ——— Cards ——— */
+  .card {
+    @apply bg-white border border-gray-100 rounded-2xl shadow-card transition-all duration-300;
+  }
+  .card-hover { @apply hover:shadow-card-hover hover:-translate-y-0.5; }
+
+  .category-card {
+    @apply card card-hover p-6 text-center cursor-pointer group;
+  }
+
+  /* ——— Section typography ——— */
+  .section-title   { @apply font-display font-bold text-3xl md:text-4xl text-gray-900; }
+  .section-sub     { @apply text-gray-500 text-lg mt-3; }
+  .section-wrapper { @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8; }
+
+  /* ——— Feature badge ——— */
+  .feature-pill {
+    @apply flex items-center gap-2 text-sm font-medium text-gray-600;
+  }
+
+  /* ——— Inputs ——— */
+  .input-base {
+    @apply w-full border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-800 outline-none
+           focus:border-primary-400 focus:ring-2 focus:ring-primary-100 transition-all placeholder:text-gray-400;
+  }
+}
+
+@layer utilities {
+  /* Text gradient — purple to green */
+  .text-gradient {
+    @apply bg-gradient-to-r from-primary-700 via-primary-600 to-eco-600 bg-clip-text text-transparent;
+  }
+
+  /* Hero section background */
+  .bg-hero {
+    background: linear-gradient(135deg, #f5f3ff 0%, #faf5ff 45%, #ecfdf5 100%);
+  }
+
+  /* Dot grid background */
+  .bg-dots {
+    background-image: radial-gradient(circle, #c4b5fd 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+
+  /* Subtle scrollbar */
+  .scrollbar-thin::-webkit-scrollbar { width: 4px; }
+  .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
+  .scrollbar-thin::-webkit-scrollbar-thumb { @apply bg-gray-200 rounded-full; }
+}
