@@ -1,4 +1,6 @@
-const BASE = '/api'
+const BASE = import.meta.env.PROD
+  ? 'https://earnova-xi9n.onrender.com/api'
+  : 'http://localhost:5000/api'
 
 const getToken = () => localStorage.getItem('earnova_token')
 

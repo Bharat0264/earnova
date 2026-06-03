@@ -12,7 +12,11 @@ const PORT = process.env.PORT || 5000
 
 /* ── Middleware ── */
 app.use(cors({
-  origin:      process.env.CLIENT_URL || 'http://localhost:5173',
+  origin: [
+    'http://localhost:5173',
+    'https://earnova.in',
+    'https://www.earnova.in'
+  ],
   credentials: true,
 }))
 app.use(express.json({ limit: '10mb' }))
