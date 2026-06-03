@@ -8,7 +8,19 @@ const normalizeApiBase = (value) => {
   return `https://${base}`
 }
 
-export const API_BASE = normalizeApiBase(import.meta.env.VITE_API_BASE)
+const getApiBase = () => {
+  if (
+    import.meta.env.PROD &&
+    typeof window !== 'undefined' &&
+    ['earnova.in', 'www.earnova.in'].includes(window.location.hostname)
+  ) {
+    return '/api'
+  }
+
+  return normalizeApiBase(import.meta.env.VITE_API_BASE)
+}
+
+export const API_BASE = getApiBase()
 
 export const apiUrl = (endpoint) => `${API_BASE}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`
 
