@@ -9,11 +9,9 @@ const normalizeApiBase = (value) => {
 }
 
 const getApiBase = () => {
-  if (
-    import.meta.env.PROD &&
-    typeof window !== 'undefined' &&
-    ['earnova.in', 'www.earnova.in'].includes(window.location.hostname)
-  ) {
+  const hostname = globalThis.location?.hostname
+
+  if (hostname === 'earnova.in' || hostname === 'www.earnova.in') {
     return '/api'
   }
 
