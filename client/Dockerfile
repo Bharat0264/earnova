@@ -2,8 +2,8 @@
 FROM node:20-alpine AS builder
 WORKDIR /app
 
-ARG VITE_API_URL=/api
-ENV VITE_API_URL=$VITE_API_URL
+ARG VITE_API_BASE=/api
+ENV VITE_API_BASE=$VITE_API_BASE
 
 COPY package*.json ./
 RUN npm ci && npm cache clean --force

@@ -1,6 +1,6 @@
-const BASE = import.meta.env.PROD
-  ? 'https://earnova-xi9n.onrender.com/api'
-  : 'http://localhost:5000/api'
+export const API_BASE = (import.meta.env.VITE_API_BASE || '/api').replace(/\/+$/, '')
+
+export const apiUrl = (endpoint) => `${API_BASE}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`
 
 const getToken = () => localStorage.getItem('earnova_token')
 
@@ -12,7 +12,7 @@ async function request(endpoint, opts = {}) {
     ...(opts.headers ?? {}),
   }
 
-  const res  = await fetch(`${BASE}${endpoint}`, { ...opts, headers })
+  const res  = await fetch(apiUrl(endpoint), { ...opts, headers })
   const data = await res.json().catch(() => ({ message: `Server error (${res.status})` }))
 
   if (!res.ok) {

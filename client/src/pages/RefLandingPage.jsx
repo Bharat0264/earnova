@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Loader2, Zap, Leaf } from 'lucide-react'
+import { apiUrl } from '../utils/api'
 
 export default function RefLandingPage() {
   const { code }    = useParams()
@@ -12,7 +13,7 @@ export default function RefLandingPage() {
 
     const track = async () => {
       try {
-        const res  = await fetch(`/api/referral/track/${code}`)
+        const res  = await fetch(apiUrl(`/referral/track/${code}`))
         const data = await res.json()
 
         if (data.success) {

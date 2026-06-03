@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { MOCK_PRODUCTS } from '../data/mockProducts'
+import { apiUrl } from '../utils/api'
 
 /* ── Apply all filters + sort to the mock array ── */
 function applyMockFilters(params) {
@@ -38,7 +39,7 @@ function applyMockFilters(params) {
 
 /**
  * Fetch a list of products.
- * Tries /api/products first; falls back to MOCK_PRODUCTS if API is offline / returns empty.
+ * Tries the products API first; falls back to MOCK_PRODUCTS if API is offline / returns empty.
  */
 export function useProducts(params = {}) {
   const [products, setProducts] = useState([])
@@ -54,7 +55,7 @@ export function useProducts(params = {}) {
     setError(null)
     try {
       const qs  = new URLSearchParams(params).toString()
-      const res = await fetch(`/api/products${qs ? '?' + qs : ''}`)
+      const res = await fetch(apiUrl(`/products${qs ? '?' + qs : ''}`))
 
       if (res.ok) {
         const data = await res.json()
@@ -83,7 +84,7 @@ export function useProducts(params = {}) {
 
 /**
  * Fetch a single product by id or slug.
- * Tries /api/products/:id; falls back to MOCK_PRODUCTS.
+ * Tries the products API; falls back to MOCK_PRODUCTS.
  */
 export function useProduct(idOrSlug) {
   const [product,  setProduct]  = useState(null)
@@ -101,7 +102,7 @@ export function useProduct(idOrSlug) {
 
       /* Try API */
       try {
-        const res = await fetch(`/api/products/${idOrSlug}`)
+        const res = await fetch(apiUrl(`/products/${idOrSlug}`))
         if (res.ok) {
           const data = await res.json()
           if (!cancelled && data.product) {
