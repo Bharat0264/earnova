@@ -4,10 +4,33 @@ import Order    from '../models/Order.js'
 import User     from '../models/User.js'
 import { sendOrderConfirmation } from '../utils/email.js'
 
-const getRazorpay = () => new Razorpay({
-  key_id:     process.env.RAZORPAY_KEY_ID,
-  key_secret: process.env.RAZORPAY_KEY_SECRET,
-})
+const requireRazorpayConfig = () => {
+  const keyId = process.env.RAZORPAY_KEY_ID?.trim()
+  const keySecret = process.env.RAZORPAY_KEY_SECRET?.trim()
+
+  if (!keyId || !keySecret) {
+    const err = new Error('Razorpay keys are missing. Set RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET in server/.env.')
+    err.status = 500
+    throw err
+  }
+
+  return { keyId, keySecret }
+}
+
+const getRazorpay = () => {
+  const { keyId, keySecret } = requireRazorpayConfig()
+  return new Razorpay({
+    key_id:     keyId,
+    key_secret: keySecret,
+  })
+}
+
+const paymentSetupMessage = (err) => {
+  if (err?.statusCode === 401 || err?.status === 401) {
+    return 'Razorpay authentication failed. Check RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET in server/.env.'
+  }
+  return err.message || 'Could not initiate payment. Please try again.'
+}
 
 /* ── Pricing helpers ── */
 const calcAmounts = (cartItems) => {
@@ -29,6 +52,7 @@ export const createRazorpayOrder = async (req, res) => {
     }
 
     const { total } = calcAmounts(cartItems)
+    const { keyId } = requireRazorpayConfig()
     const instance  = getRazorpay()
 
     const rzpOrder = await instance.orders.create({
@@ -42,11 +66,12 @@ export const createRazorpayOrder = async (req, res) => {
       orderId:  rzpOrder.id,
       amount:   rzpOrder.amount,
       currency: rzpOrder.currency,
-      keyId:    process.env.RAZORPAY_KEY_ID,
+      keyId,
     })
   } catch (err) {
-    console.error('[Payment] create-order failed:', err.message)
-    res.status(500).json({ success: false, message: 'Could not initiate payment. Please try again.' })
+    const message = paymentSetupMessage(err)
+    console.error('[Payment] create-order failed:', message)
+    res.status(err.status || err.statusCode || 500).json({ success: false, message })
   }
 }
 

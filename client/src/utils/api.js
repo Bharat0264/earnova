@@ -14,6 +14,11 @@ async function request(endpoint, opts = {}) {
   const data = await res.json().catch(() => ({ message: `Server error (${res.status})` }))
 
   if (!res.ok) {
+    if (res.status === 401) {
+      localStorage.removeItem('earnova_token')
+      window.dispatchEvent(new Event('earnova:auth-expired'))
+    }
+
     const err = new Error(data.message || `Request failed with status ${res.status}`)
     err.status = res.status
     err.data   = data

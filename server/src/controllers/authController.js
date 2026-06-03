@@ -11,7 +11,8 @@ const respond = (res, user, statusCode = 200) => {
 /* ── POST /api/auth/register ── */
 export const register = async (req, res) => {
   try {
-    const { name, email, phone, password, referralCode } = req.body
+    const { name, phone, password, referralCode } = req.body
+    const email = req.body.email?.trim().toLowerCase()
 
     if (await User.findOne({ email })) {
       return res.status(409).json({ success: false, message: 'An account with this email already exists.' })
@@ -42,7 +43,8 @@ export const register = async (req, res) => {
 /* ── POST /api/auth/login ── */
 export const login = async (req, res) => {
   try {
-    const { email, password } = req.body
+    const email = req.body.email?.trim().toLowerCase()
+    const { password } = req.body
     if (!email || !password) {
       return res.status(400).json({ success: false, message: 'Email and password are required.' })
     }

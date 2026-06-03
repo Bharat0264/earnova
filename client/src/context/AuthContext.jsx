@@ -60,6 +60,11 @@ export function AuthProvider({ children }) {
     localStorage.removeItem('earnova_token')
   }
 
+  useEffect(() => {
+    window.addEventListener('earnova:auth-expired', logout)
+    return () => window.removeEventListener('earnova:auth-expired', logout)
+  }, [])
+
   const updateUser = (updates) =>
     setUser(prev => prev ? { ...prev, ...updates } : null)
 
