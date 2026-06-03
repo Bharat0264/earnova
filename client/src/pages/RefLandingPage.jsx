@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Loader2, Zap, Leaf } from 'lucide-react'
-import { apiUrl } from '../utils/api'
+import { apiUrl, parseJsonResponse } from '../utils/api'
 
 export default function RefLandingPage() {
   const { code }    = useParams()
@@ -14,9 +14,9 @@ export default function RefLandingPage() {
     const track = async () => {
       try {
         const res  = await fetch(apiUrl(`/referral/track/${code}`))
-        const data = await res.json()
+        const data = await parseJsonResponse(res)
 
-        if (data.success) {
+        if (data?.success) {
           /* Store referral code in localStorage for 7 days */
           const expiry = Date.now() + 7 * 24 * 60 * 60 * 1000
           localStorage.setItem('earnova_ref', JSON.stringify({ code, expiry }))

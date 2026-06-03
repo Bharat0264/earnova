@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { MOCK_PRODUCTS } from '../data/mockProducts'
-import { apiUrl } from '../utils/api'
+import { apiUrl, parseJsonResponse } from '../utils/api'
 
 /* ── Apply all filters + sort to the mock array ── */
 function applyMockFilters(params) {
@@ -58,8 +58,8 @@ export function useProducts(params = {}) {
       const res = await fetch(apiUrl(`/products${qs ? '?' + qs : ''}`))
 
       if (res.ok) {
-        const data = await res.json()
-        if (Array.isArray(data.products) && data.products.length > 0) {
+        const data = await parseJsonResponse(res)
+        if (Array.isArray(data?.products) && data.products.length > 0) {
           setProducts(data.products)
           setTotal(data.total   ?? data.products.length)
           setPages(data.pages   ?? 1)
@@ -104,8 +104,8 @@ export function useProduct(idOrSlug) {
       try {
         const res = await fetch(apiUrl(`/products/${idOrSlug}`))
         if (res.ok) {
-          const data = await res.json()
-          if (!cancelled && data.product) {
+          const data = await parseJsonResponse(res)
+          if (!cancelled && data?.product) {
             setProduct(data.product)
             setRelated(
               MOCK_PRODUCTS

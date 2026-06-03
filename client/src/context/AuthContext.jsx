@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react'
-import { apiUrl } from '../utils/api'
+import { apiUrl, parseJsonResponse } from '../utils/api'
 
 const AuthContext = createContext(null)
 
@@ -13,7 +13,7 @@ export function AuthProvider({ children }) {
     if (!token) { setLoading(false); return }
     let cancelled = false
     fetch(apiUrl('/auth/me'), { headers: { Authorization: `Bearer ${token}` } })
-      .then(r => r.ok ? r.json() : null)
+      .then(r => r.ok ? parseJsonResponse(r) : null)
       .then(data => {
         if (!cancelled) {
           if (data?.user) setUser(data.user)
@@ -37,8 +37,9 @@ export function AuthProvider({ children }) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password }),
     })
-    const data = await res.json()
-    if (!res.ok) throw new Error(data.message || 'Login failed')
+    const data = await parseJsonResponse(res)
+    if (!res.ok) throw new Error(data?.message || 'Login failed')
+    if (!data?.token || !data?.user) throw new Error('Login failed')
     saveSession(data.token, data.user)
     return data
   }
@@ -49,8 +50,9 @@ export function AuthProvider({ children }) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     })
-    const data = await res.json()
-    if (!res.ok) throw new Error(data.message || 'Registration failed')
+    const data = await parseJsonResponse(res)
+    if (!res.ok) throw new Error(data?.message || 'Registration failed')
+    if (!data?.token || !data?.user) throw new Error('Registration failed')
     saveSession(data.token, data.user)
     return data
   }

@@ -1,6 +1,28 @@
-export const API_BASE = (import.meta.env.VITE_API_BASE || '/api').replace(/\/+$/, '')
+const normalizeApiBase = (value) => {
+  const base = (value || '/api').trim().replace(/\/+$/, '')
+
+  if (base.startsWith('/') || /^https?:\/\//i.test(base)) {
+    return base
+  }
+
+  return `https://${base}`
+}
+
+export const API_BASE = normalizeApiBase(import.meta.env.VITE_API_BASE)
 
 export const apiUrl = (endpoint) => `${API_BASE}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`
+
+export async function parseJsonResponse(res) {
+  const text = await res.text()
+
+  if (!text) return null
+
+  try {
+    return JSON.parse(text)
+  } catch {
+    return { message: `Invalid server response (${res.status})` }
+  }
+}
 
 const getToken = () => localStorage.getItem('earnova_token')
 
@@ -13,7 +35,7 @@ async function request(endpoint, opts = {}) {
   }
 
   const res  = await fetch(apiUrl(endpoint), { ...opts, headers })
-  const data = await res.json().catch(() => ({ message: `Server error (${res.status})` }))
+  const data = await parseJsonResponse(res)
 
   if (!res.ok) {
     if (res.status === 401) {
@@ -21,7 +43,7 @@ async function request(endpoint, opts = {}) {
       window.dispatchEvent(new Event('earnova:auth-expired'))
     }
 
-    const err = new Error(data.message || `Request failed with status ${res.status}`)
+    const err = new Error(data?.message || `Request failed with status ${res.status}`)
     err.status = res.status
     err.data   = data
     throw err
