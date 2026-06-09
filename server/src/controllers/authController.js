@@ -9,35 +9,12 @@ const respond = (res, user, statusCode = 200) => {
 }
 
 /* ── POST /api/auth/register ── */
-export const register = async (req, res) => {
-  try {
-    const { name, phone, password, referralCode } = req.body
-    const email = req.body.email?.trim().toLowerCase()
-
-    if (await User.findOne({ email })) {
-      return res.status(409).json({ success: false, message: 'An account with this email already exists.' })
-    }
-
-    let referredBy = null
-    if (referralCode) {
-      const referrer = await User.findOne({ referralCode: referralCode.toUpperCase() })
-      if (referrer) referredBy = referrer._id
-    }
-
-    const user = await User.create({ name, email, phone, password, referredBy })
-
-    /* Send welcome email (non-blocking) */
-    sendWelcomeEmail(user).catch(err => console.warn('[Email] welcome failed:', err.message))
-
-    /* Update referrer count */
-    if (referredBy) {
-      await User.findByIdAndUpdate(referredBy, { $inc: { referralCount: 1 } })
-    }
-
-    respond(res, user, 201)
-  } catch (err) {
-    res.status(400).json({ success: false, message: err.message })
-  }
+/* ── POST /api/auth/register ── */
+export const register = async (_req, res) => {
+  return res.status(403).json({
+    success: false,
+    message: 'Account creation is disabled. Contact the administrator.'
+  })
 }
 
 /* ── POST /api/auth/login ── */
