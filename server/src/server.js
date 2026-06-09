@@ -51,6 +51,15 @@ app.get('/api/health', (_req, res) => {
   })
 })
 
+app.get('/api/env-check', (_req, res) => {
+  res.json({
+    keyIdExists: !!process.env.RAZORPAY_KEY_ID,
+    keySecretExists: !!process.env.RAZORPAY_KEY_SECRET,
+    webhookExists: !!process.env.RAZORPAY_WEBHOOK_SECRET,
+    nodeEnv: process.env.NODE_ENV,
+  })
+})
+
 /* ── 404 ── */
 app.use((_req, res) => {
   res.status(404).json({ success: false, message: 'Route not found' })
