@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from 'react'
-import { MOCK_PRODUCTS } from '../data/mockProducts'
 import { apiUrl, parseJsonResponse } from '../utils/api'
 
 /* ── Apply all filters + sort to the mock array ── */
@@ -51,36 +50,35 @@ export function useProducts(params = {}) {
   const key = JSON.stringify(params)
 
   const load = useCallback(async () => {
-    setLoading(true)
-    setError(null)
-    try {
-      const qs  = new URLSearchParams(params).toString()
-      const res = await fetch(apiUrl(`/products${qs ? '?' + qs : ''}`))
+  setLoading(true)
+  setError(null)
 
-      if (res.ok) {
-        const data = await parseJsonResponse(res)
-        if (Array.isArray(data?.products) && data.products.length > 0) {
-          setProducts(data.products)
-          setTotal(data.total   ?? data.products.length)
-          setPages(data.pages   ?? 1)
-          setLoading(false)
-          return
-        }
-      }
-    } catch { /* API offline — fall through to mock */ }
+  try {
+    const qs = new URLSearchParams(params).toString()
+    const res = await fetch(apiUrl(`/products${qs ? '?' + qs : ''}`))
 
-    /* ── Mock fallback ── */
-    const { items, total: t, pages: pg } = applyMockFilters(params)
-    setProducts(items)
-    setTotal(t)
-    setPages(pg)
+    if (!res.ok) {
+      throw new Error('Failed to load products')
+    }
+
+    const data = await parseJsonResponse(res)
+
+    setProducts(data.products || [])
+    setTotal(data.total || 0)
+    setPages(data.pages || 1)
+
     setLoading(false)
-  }, [key]) // eslint-disable-line react-hooks/exhaustive-deps
+    return
+  } catch (err) {
+    console.error(err)
 
-  useEffect(() => { load() }, [load])
-
-  return { products, loading, error, total, pages, reload: load }
-}
+    setProducts([])
+    setTotal(0)
+    setPages(1)
+    setError(err.message)
+    setLoading(false)
+  }
+}, [key])
 
 /**
  * Fetch a single product by id or slug.
@@ -118,28 +116,10 @@ export function useProduct(idOrSlug) {
         }
       } catch { /* fall through */ }
 
-      /* Mock fallback */
-      const found = MOCK_PRODUCTS.find(
-        p => p._id === idOrSlug || p.slug === idOrSlug
-      )
-      if (!cancelled) {
-        if (found) {
-          setProduct(found)
-          setRelated(
-            MOCK_PRODUCTS
-              .filter(p => p.category === found.category && p._id !== found._id)
-              .slice(0, 4)
-          )
-        } else {
-          setNotFound(true)
-        }
-        setLoading(false)
-      }
-    }
-
-    load()
-    return () => { cancelled = true }
-  }, [idOrSlug])
-
-  return { product, related, loading, notFound }
+      /* No mock fallback */
+if (!cancelled) {
+  setProduct(null)
+  setRelated([])
+  setNotFound(true)
+  setLoading(false)
 }
