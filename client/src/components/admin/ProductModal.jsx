@@ -10,13 +10,14 @@ export default function ProductModal({ product, onClose, onSaved }) {
     name: product?.name || '',
     category: product?.category || 'solar-panels',
     brand: product?.brand || '',
+    description: product?.description || '',
+    shortDesc: product?.shortDesc || '',
     price: product?.price || '',
     mrp: product?.mrp || '',
     gstRate: product?.gstRate || 18,
     stock: product?.stock || '',
     starRating: product?.starRating || 5,
     energySaving: product?.energySaving || '',
-    shortDesc: product?.shortDesc || '',
     referralCommission: product?.referralCommission || 5,
     isFeatured: product?.isFeatured || false,
   })
@@ -27,19 +28,35 @@ export default function ProductModal({ product, onClose, onSaved }) {
   const [error, setError] = useState('')
 
   const save = async () => {
-    if (!form.name || !form.brand || !form.price) {
-      setError('Name, brand and price are required.')
+    if (
+      !form.name ||
+      !form.brand ||
+      !form.price ||
+      !form.description
+    ) {
+      setError('Name, Brand, Description and Price are required.')
       return
     }
 
     setSaving(true)
+    setError('')
 
     try {
       const payload = {
         ...form,
+
+        description:
+          form.description ||
+          form.shortDesc ||
+          form.name,
+
         price: Number(form.price),
         mrp: Number(form.mrp) || Number(form.price),
         stock: Number(form.stock) || 0,
+        gstRate: Number(form.gstRate) || 18,
+        starRating: Number(form.starRating) || 5,
+        referralCommission: Number(form.referralCommission) || 5,
+
         highlights: highlights.filter(h => h.trim()),
         specs: specs.filter(s => s.key.trim()),
       }
@@ -90,6 +107,14 @@ export default function ProductModal({ product, onClose, onSaved }) {
             value={form.name}
             onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
             placeholder="Product Name"
+            className="input-base col-span-2"
+          />
+
+          <textarea
+            value={form.description}
+            onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+            placeholder="Full Product Description"
+            rows={4}
             className="input-base col-span-2"
           />
 
