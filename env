@@ -19,21 +19,21 @@ JWT_EXPIRES_IN=7d
 
 # Razorpay Checkout
 # Use matching test or live keys from the same Razorpay account.
-RAZORPAY_KEY_ID=rzp_test_SwpUXboXSN8DqL
-RAZORPAY_KEY_SECRET=jibrQZDh1IyW5ruYyg50EPvs
+RAZORPAY_KEY_ID=rzp_live_SzR2NltIRwswY1
+RAZORPAY_KEY_SECRET=90uHgM6Th69SBJ0hTUH7SBmp
 RAZORPAY_WEBHOOK_SECRET=replace_with_webhook_secret
 
 # Email / Nodemailer
 EMAIL_HOST=smtp.gmail.com
 EMAIL_PORT=587
-EMAIL_USER=your_gmail@gmail.com
-EMAIL_PASS=your_gmail_app_password
-EMAIL_FROM=Earnova <noreply@earnova.in>
+EMAIL_USER=earnova.fam@gmail.com
+EMAIL_PASS=flgm hmzk wtoj zfzf
+EMAIL_FROM=Earnova <earnova.fam@gmail.com>
 
 # Cloudinary
-CLOUDINARY_CLOUD_NAME=your_cloud_name
-CLOUDINARY_API_KEY=your_api_key
-CLOUDINARY_API_SECRET=your_api_secret
+CLOUDINARY_CLOUD_NAME=djbpznxoo
+CLOUDINARY_API_KEY=224122585576465
+CLOUDINARY_API_SECRET=EZc3bTg9HFHgywY6cHRCCSb9F_Y
 
 # Razorpay Payouts (Referral withdrawals)
-RAZORPAY_ACCOUNT_NUMBER=your_razorpay_account_number
+RAZORPAY_ACCOUNT_NUMBER=39127359297

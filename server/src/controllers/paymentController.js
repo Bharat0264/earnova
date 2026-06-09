@@ -5,6 +5,9 @@ import User     from '../models/User.js'
 import { sendOrderConfirmation } from '../utils/email.js'
 
 const requireRazorpayConfig = () => {
+  console.log("KEY_ID =", process.env.RAZORPAY_KEY_ID)
+  console.log("KEY_SECRET EXISTS =", !!process.env.RAZORPAY_KEY_SECRET)
+
   const keyId = process.env.RAZORPAY_KEY_ID?.trim()
   const keySecret = process.env.RAZORPAY_KEY_SECRET?.trim()
 
