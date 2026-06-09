@@ -1,13 +1,24 @@
 import { Router } from 'express'
-import { getDashboardStats, getAdminUsers, updateAdminUser } from '../controllers/adminController.js'
+import {
+  getDashboardStats,
+  getAdminUsers,
+  updateAdminUser,
+  createAdminUser
+} from '../controllers/adminController.js'
+
 import { protect, adminOnly } from '../middleware/auth.js'
 
 const router = Router()
 
-router.use(protect, adminOnly)   /* all admin routes require auth + admin role */
+/* All admin routes require admin login */
+router.use(protect, adminOnly)
 
-router.get('/stats',          getDashboardStats)
-router.get('/users',          getAdminUsers)
-router.patch('/users/:id',    updateAdminUser)
+/* Dashboard */
+router.get('/stats', getDashboardStats)
+
+/* Users */
+router.get('/users', getAdminUsers)
+router.post('/users', createAdminUser)
+router.patch('/users/:id', updateAdminUser)
 
 export default router
