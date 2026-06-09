@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Search, ShieldCheck, User, Store, Plus } from 'lucide-react'
+import ProductModal from './ProductModal'
 import { formatPrice, formatDate } from '../../utils/formatters'
 import { api } from '../../utils/api'
 
