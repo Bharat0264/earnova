@@ -5,14 +5,19 @@ import User     from '../models/User.js'
 import { sendOrderConfirmation } from '../utils/email.js'
 
 const requireRazorpayConfig = () => {
-  console.log("KEY_ID =", process.env.RAZORPAY_KEY_ID)
+  console.log("KEY_ID EXISTS =", !!process.env.RAZORPAY_KEY_ID)
   console.log("KEY_SECRET EXISTS =", !!process.env.RAZORPAY_KEY_SECRET)
 
   const keyId = process.env.RAZORPAY_KEY_ID?.trim()
   const keySecret = process.env.RAZORPAY_KEY_SECRET?.trim()
 
+  console.log("KEY_ID VALUE =", keyId)
+  console.log("KEY_SECRET LENGTH =", keySecret?.length)
+
   if (!keyId || !keySecret) {
-    const err = new Error('Razorpay keys are missing. Set RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET in server/.env.')
+    const err = new Error(
+      'Razorpay keys are missing. Set RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET in Render Environment Variables.'
+    )
     err.status = 500
     throw err
   }
