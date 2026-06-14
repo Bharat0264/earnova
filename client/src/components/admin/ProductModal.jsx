@@ -21,6 +21,8 @@ export default function ProductModal({ product, onClose, onSaved }) {
     referralName: product?.referralName || '',
     referralIncome: product?.referralIncome || '',
     referralCommission: product?.referralCommission || 5,
+    thumbnail: product?.thumbnail || '',
+    imagesText: product?.images?.join('\n') || '',
     isFeatured: product?.isFeatured || false,
   })
 
@@ -46,6 +48,11 @@ export default function ProductModal({ product, onClose, onSaved }) {
     setError('')
 
     try {
+      const imageUrls = form.imagesText
+        .split(/[\n,]+/)
+        .map(url => url.trim())
+        .filter(Boolean)
+
       const payload = {
         ...form,
 
@@ -62,10 +69,14 @@ export default function ProductModal({ product, onClose, onSaved }) {
         referralName: form.referralName,
         referralIncome: Number(form.referralIncome) || 0,
         referralCommission: Number(form.referralCommission) || 5,
+        thumbnail: form.thumbnail.trim() || undefined,
+        images: imageUrls,
 
         highlights: highlights.filter(h => h.trim()),
         specs: specs.filter(s => s.key.trim()),
       }
+
+      delete payload.imagesText
 
       let savedProduct
       if (editing) {
@@ -187,12 +198,12 @@ export default function ProductModal({ product, onClose, onSaved }) {
             type="number"
             value={form.referralIncome}
             onChange={e => setForm(f => ({ ...f, referralIncome: e.target.value }))}
-            placeholder="Referral Income"
+            placeholder="Member Earnings"
             className="input-base"
           />
 
           <div className="col-span-2">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Product Image</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Product Image Upload (optional)</label>
             <input
               type="file"
               accept="image/*"
@@ -213,6 +224,25 @@ export default function ProductModal({ product, onClose, onSaved }) {
               />
             )}
           </div>
+
+          <input
+            value={form.thumbnail}
+            onChange={e => {
+              const value = e.target.value
+              setForm(f => ({ ...f, thumbnail: value }))
+              setImagePreview(value)
+            }}
+            placeholder="Thumbnail Image URL (optional)"
+            className="input-base col-span-2"
+          />
+
+          <textarea
+            value={form.imagesText}
+            onChange={e => setForm(f => ({ ...f, imagesText: e.target.value }))}
+            placeholder="Image URLs (optional, one per line)"
+            rows={3}
+            className="input-base col-span-2"
+          />
 
           <textarea
             value={form.shortDesc}

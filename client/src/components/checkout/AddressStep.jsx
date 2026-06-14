@@ -19,6 +19,16 @@ const EMPTY_FORM = {
   line1: '', line2: '', city: '', state: '', pincode: '', isDefault: false,
 }
 
+function AddressField({ error, label, children }) {
+  return (
+    <div>
+      <label className="block text-xs font-semibold text-gray-600 mb-1">{label}</label>
+      {children}
+      {error && <p className="text-xs text-red-500 mt-0.5">{error}</p>}
+    </div>
+  )
+}
+
 function AddressCard({ address, selected, onSelect }) {
   const Icon = TYPE_ICON[address.type] || Home
   return (
@@ -84,18 +94,6 @@ function AddressForm({ onSave, onCancel, loading }) {
     onSave(form)
   }
 
-  const F = ({ k, label, placeholder, type = 'text', children }) => (
-    <div>
-      <label className="block text-xs font-semibold text-gray-600 mb-1">{label}</label>
-      {children || (
-        <input type={type} value={form[k]} onChange={set(k)}
-               placeholder={placeholder}
-               className={`input-base ${errors[k] ? 'border-red-300 focus:border-red-400' : ''}`} />
-      )}
-      {errors[k] && <p className="text-xs text-red-500 mt-0.5">{errors[k]}</p>}
-    </div>
-  )
-
   return (
     <div className="bg-gray-50 border border-gray-100 rounded-2xl p-5 space-y-4">
       <h3 className="font-display font-semibold text-gray-900 text-sm">Add New Address</h3>
@@ -116,25 +114,73 @@ function AddressForm({ onSave, onCancel, loading }) {
       </div>
 
       <div className="grid grid-cols-2 gap-3">
-        <F k="name"  label="Full Name *"    placeholder="Raju Sharma" />
-        <F k="phone" label="Mobile Number *" placeholder="9876543210" type="tel" />
+        <AddressField label="Full Name *" error={errors.name}>
+          <input
+            type="text"
+            value={form.name}
+            onChange={set('name')}
+            autoComplete="off"
+            className={`input-base ${errors.name ? 'border-red-300 focus:border-red-400' : ''}`}
+          />
+        </AddressField>
+        <AddressField label="Mobile Number *" error={errors.phone}>
+          <input
+            type="tel"
+            value={form.phone}
+            onChange={set('phone')}
+            autoComplete="off"
+            className={`input-base ${errors.phone ? 'border-red-300 focus:border-red-400' : ''}`}
+          />
+        </AddressField>
       </div>
 
-      <F k="line1" label="Address Line 1 *" placeholder="Flat / House No, Street" />
-      <F k="line2" label="Address Line 2"   placeholder="Area, Landmark (optional)" />
+      <AddressField label="Address Line 1 *" error={errors.line1}>
+        <input
+          type="text"
+          value={form.line1}
+          onChange={set('line1')}
+          autoComplete="off"
+          className={`input-base ${errors.line1 ? 'border-red-300 focus:border-red-400' : ''}`}
+        />
+      </AddressField>
+      <AddressField label="Address Line 2" error={errors.line2}>
+        <input
+          type="text"
+          value={form.line2}
+          onChange={set('line2')}
+          autoComplete="off"
+          className={`input-base ${errors.line2 ? 'border-red-300 focus:border-red-400' : ''}`}
+        />
+      </AddressField>
 
       <div className="grid grid-cols-2 gap-3">
-        <F k="city" label="City *" placeholder="Chennai" />
-        <F k="pincode" label="Pincode *" placeholder="600001" type="tel" />
+        <AddressField label="City *" error={errors.city}>
+          <input
+            type="text"
+            value={form.city}
+            onChange={set('city')}
+            autoComplete="off"
+            className={`input-base ${errors.city ? 'border-red-300 focus:border-red-400' : ''}`}
+          />
+        </AddressField>
+        <AddressField label="Pincode *" error={errors.pincode}>
+          <input
+            type="tel"
+            value={form.pincode}
+            onChange={set('pincode')}
+            autoComplete="off"
+            className={`input-base ${errors.pincode ? 'border-red-300 focus:border-red-400' : ''}`}
+          />
+        </AddressField>
       </div>
 
-      <F k="state" label="State *">
+      <AddressField label="State *" error={errors.state}>
         <select value={form.state} onChange={set('state')}
                 className={`input-base ${errors.state ? 'border-red-300' : ''}`}>
           <option value="">Select state</option>
           {STATES.map(s => <option key={s} value={s}>{s}</option>)}
         </select>
-      </F>
+      </AddressField>
 
       <label className="flex items-center gap-2 cursor-pointer">
         <input type="checkbox" checked={form.isDefault}
