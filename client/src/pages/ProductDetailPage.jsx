@@ -103,14 +103,7 @@ export default function ProductDetailPage() {
                   </span>
                 )}
               </div>
-              {saved > 0 && (
-                <p className="text-sm text-eco-600 font-semibold">
-                  You save {formatPrice(saved)} on this product
-                </p>
-              )}
-              <p className="text-xs text-gray-400">
-                + {gstRate}% GST ({formatPrice(gstOnItem)}) · Total: {formatPrice(lineTotal)}
-              </p>
+
             </div>
 
             {/* Energy saving */}
@@ -180,19 +173,6 @@ export default function ProductDetailPage() {
               >
                 <Heart className={`w-5 h-5 ${wishlisted ? 'fill-red-500' : ''}`} />
               </button>
-            </div>
-
-            {/* Referral note */}
-            <div className="bg-primary-50 border border-primary-100 rounded-xl p-3 flex items-start gap-2">
-              <Zap className="w-4 h-4 text-primary-600 mt-0.5 shrink-0" />
-              <div>
-                <p className="text-sm font-semibold text-primary-700">
-                  Earn {referralCommission || 5}% when someone buys via your link
-                </p>
-                <Link to="/referral" className="text-xs text-primary-600 hover:underline">
-                  Join the Referral Program →
-                </Link>
-              </div>
             </div>
 
             {/* Description */}

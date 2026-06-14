@@ -147,11 +147,6 @@ export default function ProductCard({ product, compact = false }) {
               <span className="text-xs text-gray-400 line-through">{formatPrice(mrp)}</span>
             )}
           </div>
-          {saved > 0 && (
-            <p className="text-[11px] text-eco-600 font-semibold mt-0.5">
-              You save {formatPrice(saved)}
-            </p>
-          )}
         </div>
 
         {/* Add to cart button */}
