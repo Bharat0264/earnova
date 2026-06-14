@@ -37,10 +37,7 @@ const paymentSetupMessage = (err) => {
 /* ── Pricing helpers ── */
 const calcAmounts = (cartItems) => {
   const subtotal = cartItems.reduce((s, i) => s + i.price * i.quantity, 0)
-  const gst      = cartItems.reduce((s, i) =>
-    s + Math.round((i.price * i.quantity * (i.gstRate ?? 18)) / 100), 0)
-  const shipping = subtotal >= 5000 ? 0 : 150
-  return { subtotal, gst, shipping, total: subtotal + gst + shipping }
+  return { subtotal, gst: 0, shipping: 0, total: subtotal }
 }
 
 /* ────────────────────────────────────────
