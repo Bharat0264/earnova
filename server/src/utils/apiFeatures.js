@@ -22,6 +22,11 @@ export class APIFeatures {
     const exclude = ['page', 'limit', 'sort', 'fields', 'search']
     exclude.forEach(k => delete obj[k])
 
+    /* Remove empty string values */
+    Object.keys(obj).forEach(k => {
+      if (obj[k] === '') delete obj[k]
+    })
+
     /* Convert gte|gt|lte|lt to $gte|$gt|$lte|$lt */
     let str = JSON.stringify(obj)
     str = str.replace(/\b(gte|gt|lte|lt)\b/g, m => `$${m}`)
