@@ -37,14 +37,10 @@ export default function Footer() {
 
           {/* ── Brand column ── */}
           <div>
-            <Link to="/" className="inline-flex items-center gap-2 mb-4 group">
-              <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center
-                              group-hover:bg-primary-500 transition-colors">
-                <Zap className="w-4 h-4 text-white" strokeWidth={2.5} />
-              </div>
-              <span className="font-display font-bold text-xl text-white">Earnova</span>
+            <Link to="/" className="inline-flex items-center gap-3 mb-4 group">
+              <img src="/earnova-logo.png" alt="Earnova" className="w-[220px] h-auto object-contain" />
             </Link>
-            <p className="text-gray-400 text-sm leading-relaxed mb-5 max-w-[220px]">
+            <p className="text-gray-400 text-sm leading-relaxed mb-5 max-w-[240px]">
               Pioneering a sustainable future through smart energy products and green initiatives.
             </p>
 

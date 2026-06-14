@@ -18,12 +18,16 @@ export default function ProductModal({ product, onClose, onSaved }) {
     stock: product?.stock || '',
     starRating: product?.starRating || 5,
     energySaving: product?.energySaving || '',
+    referralName: product?.referralName || '',
+    referralIncome: product?.referralIncome || '',
     referralCommission: product?.referralCommission || 5,
     isFeatured: product?.isFeatured || false,
   })
 
   const [highlights, setHighlights] = useState(product?.highlights || [''])
   const [specs, setSpecs] = useState(product?.specs || [{ key: '', value: '' }])
+  const [imageFile, setImageFile] = useState(null)
+  const [imagePreview, setImagePreview] = useState(product?.thumbnail || '')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
@@ -55,16 +59,27 @@ export default function ProductModal({ product, onClose, onSaved }) {
         stock: Number(form.stock) || 0,
         gstRate: Number(form.gstRate) || 18,
         starRating: Number(form.starRating) || 5,
+        referralName: form.referralName,
+        referralIncome: Number(form.referralIncome) || 0,
         referralCommission: Number(form.referralCommission) || 5,
 
         highlights: highlights.filter(h => h.trim()),
         specs: specs.filter(s => s.key.trim()),
       }
 
+      let savedProduct
       if (editing) {
-        await api.patch(`/products/${product._id}`, payload)
+        const data = await api.patch(`/products/${product._id}`, payload)
+        savedProduct = data.product
       } else {
-        await api.post('/products', payload)
+        const data = await api.post('/products', payload)
+        savedProduct = data.product
+      }
+
+      if (imageFile && savedProduct?._id) {
+        const formData = new FormData()
+        formData.append('image', imageFile)
+        await api.post(`/products/${savedProduct._id}/upload-image`, formData)
       }
 
       onSaved?.()
@@ -160,6 +175,44 @@ export default function ProductModal({ product, onClose, onSaved }) {
             placeholder="Stock"
             className="input-base"
           />
+
+          <input
+            value={form.referralName}
+            onChange={e => setForm(f => ({ ...f, referralName: e.target.value }))}
+            placeholder="Referral Name"
+            className="input-base"
+          />
+
+          <input
+            type="number"
+            value={form.referralIncome}
+            onChange={e => setForm(f => ({ ...f, referralIncome: e.target.value }))}
+            placeholder="Referral Income"
+            className="input-base"
+          />
+
+          <div className="col-span-2">
+            <label className="block text-sm font-medium text-gray-700 mb-1">Product Image</label>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={e => {
+                const file = e.target.files?.[0]
+                if (file) {
+                  setImageFile(file)
+                  setImagePreview(URL.createObjectURL(file))
+                }
+              }}
+              className="input-base"
+            />
+            {imagePreview && (
+              <img
+                src={imagePreview}
+                alt="Product preview"
+                className="mt-2 h-28 w-full object-cover rounded-lg border"
+              />
+            )}
+          </div>
 
           <textarea
             value={form.shortDesc}

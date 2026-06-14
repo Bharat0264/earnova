@@ -51,6 +51,8 @@ const productSchema = new mongoose.Schema({
   energySaving: String, // e.g. "60% vs non-inverter"
 
   /* Referral */
+  referralName:   { type: String, trim: true },
+  referralIncome: { type: Number, default: 0, min: 0 },
   referralCommission: { type: Number, default: 5 }, // % of sale price
 
   /* Visibility */

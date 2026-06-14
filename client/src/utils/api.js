@@ -38,13 +38,24 @@ const getToken = () => localStorage.getItem('earnova_token')
 
 async function request(endpoint, opts = {}) {
   const token = getToken()
+  const isFormData = opts.body instanceof FormData
+
   const headers = {
-    'Content-Type': 'application/json',
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
     ...(opts.headers ?? {}),
   }
 
-  const res  = await fetch(apiUrl(endpoint), { ...opts, headers })
+  if (!isFormData) {
+    headers['Content-Type'] = 'application/json'
+  }
+
+  const body = opts.body === undefined
+    ? undefined
+    : isFormData
+      ? opts.body
+      : JSON.stringify(opts.body)
+
+  const res  = await fetch(apiUrl(endpoint), { ...opts, headers, body })
   const data = await parseJsonResponse(res)
 
   if (!res.ok) {
@@ -64,8 +75,8 @@ async function request(endpoint, opts = {}) {
 
 export const api = {
   get:    (url)       => request(url),
-  post:   (url, body) => request(url, { method: 'POST',   body: JSON.stringify(body) }),
-  patch:  (url, body) => request(url, { method: 'PATCH',  body: JSON.stringify(body) }),
-  put:    (url, body) => request(url, { method: 'PUT',    body: JSON.stringify(body) }),
+  post:   (url, body) => request(url, { method: 'POST',   body }),
+  patch:  (url, body) => request(url, { method: 'PATCH',  body }),
+  put:    (url, body) => request(url, { method: 'PUT',    body }),
   delete: (url)       => request(url, { method: 'DELETE' }),
 }

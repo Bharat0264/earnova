@@ -75,13 +75,10 @@ export default function AdminPage() {
       {/* ── Sidebar ── */}
       <aside className="hidden lg:flex w-56 xl:w-60 shrink-0 flex-col bg-white border-r border-gray-100 shadow-sm fixed h-screen top-0 left-0 z-30">
         {/* Logo */}
-        <div className="flex items-center gap-2 px-5 h-16 border-b border-gray-100">
-          <div className="w-7 h-7 bg-primary-800 rounded-lg flex items-center justify-center">
-            <Zap className="w-3.5 h-3.5 text-white" strokeWidth={2.5} />
-          </div>
+        <div className="flex items-center gap-3 px-5 h-20 border-b border-gray-100">
+          <img src="/earnova-logo.png" alt="Earnova" className="w-[200px] h-auto object-contain" />
           <div>
-            <p className="font-display font-bold text-sm text-primary-900">Earnova</p>
-            <p className="text-[10px] text-gray-400 -mt-0.5">Admin Panel</p>
+            <p className="font-display font-bold text-sm text-primary-900">Admin Panel</p>
           </div>
         </div>
 

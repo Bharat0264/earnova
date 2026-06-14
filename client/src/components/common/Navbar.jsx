@@ -69,14 +69,8 @@ export default function Navbar() {
           <div className="flex items-center justify-between h-16">
 
             {/* Logo */}
-            <Link to="/" className="flex items-center gap-2 group shrink-0">
-              <div className="w-8 h-8 bg-primary-800 rounded-lg flex items-center justify-center
-                              group-hover:bg-primary-900 transition-colors">
-                <Zap className="w-4 h-4 text-white" strokeWidth={2.5} />
-              </div>
-              <span className="font-display font-bold text-xl text-primary-900 tracking-tight">
-                Earnova
-              </span>
+            <Link to="/" className="flex items-center gap-3 group shrink-0">
+              <img src="/earnova-logo.png" alt="Earnova" className="w-[210px] h-auto object-contain" />
             </Link>
 
             {/* Desktop nav */}

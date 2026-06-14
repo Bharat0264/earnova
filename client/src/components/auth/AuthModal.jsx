@@ -254,14 +254,11 @@ export default function AuthModal({ isOpen, onClose, initialTab = 'login', onSuc
         </button>
 
         {/* Brand strip */}
-        <div className="bg-gradient-to-r from-primary-800 to-primary-700 px-6 py-5">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
-              <Zap className="w-4 h-4 text-white" strokeWidth={2.5} />
-            </div>
-            <span className="font-display font-bold text-xl text-white">Earnova</span>
+        <div className="bg-gradient-to-r from-primary-800 to-primary-700 px-6 py-6">
+          <div className="flex items-center gap-3">
+            <img src="/earnova-logo.png" alt="Earnova" className="w-[250px] h-auto object-contain" />
           </div>
-          <p className="text-primary-200 text-xs mt-1.5">
+          <p className="text-primary-200 text-xs mt-2">
             Shop smart energy products, earn through referrals
           </p>
         </div>
