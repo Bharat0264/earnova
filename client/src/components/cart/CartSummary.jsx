@@ -1,12 +1,10 @@
 import { Link } from 'react-router-dom'
-import { Shield, Tag, Truck, ArrowRight, Zap } from 'lucide-react'
-import { formatPrice, shippingCost } from '../../utils/formatters'
+import { Shield, Tag, ArrowRight, Zap } from 'lucide-react'
+import { formatPrice } from '../../utils/formatters'
 import { useCart } from '../../context/CartContext'
 
 export default function CartSummary() {
-  const { cartItems, cartSubtotal, gstAmount, cartTotal } = useCart()
-  const shipping = shippingCost(cartSubtotal)
-  const payable  = cartTotal + shipping
+  const { cartItems, cartSubtotal } = useCart()
 
   const itemCount = cartItems.reduce((s, i) => s + i.quantity, 0)
 
@@ -19,38 +17,9 @@ export default function CartSummary() {
         <Row label={`Subtotal (${itemCount} item${itemCount !== 1 ? 's' : ''})`}
              value={formatPrice(cartSubtotal)} />
 
-        {/* Per-category GST breakdown */}
-        {Object.entries(
-          cartItems.reduce((acc, item) => {
-            const rate = item.gstRate ?? 18
-            acc[rate] = (acc[rate] || 0) + Math.round((item.price * item.quantity * rate) / 100)
-            return acc
-          }, {})
-        ).map(([rate, amt]) => (
-          <Row key={rate} label={`GST ${rate}%`} value={formatPrice(amt)}
-               muted className="text-gray-400" />
-        ))}
-
-        <Row
-          label={<span className="flex items-center gap-1.5">
-            <Truck className="w-3.5 h-3.5 text-eco-600" /> Shipping
-          </span>}
-          value={
-            shipping === 0
-              ? <span className="text-eco-600 font-semibold">Free</span>
-              : formatPrice(shipping)
-          }
-        />
-
-        {shipping > 0 && (
-          <p className="text-[11px] text-gray-400 -mt-2 pl-1">
-            Add {formatPrice(5000 - cartSubtotal)} more for free shipping
-          </p>
-        )}
-
         <div className="h-px bg-gray-100 my-1" />
 
-        <Row label="Total Payable" value={formatPrice(payable)} bold />
+        <Row label="Total Payable" value={formatPrice(cartSubtotal)} bold />
       </div>
 
       {/* Checkout CTA */}

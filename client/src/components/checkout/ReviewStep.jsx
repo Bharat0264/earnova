@@ -1,5 +1,5 @@
 import { MapPin, ShoppingBag, Loader2, Shield } from 'lucide-react'
-import { formatPrice, calcGST, shippingCost } from '../../utils/formatters'
+import { formatPrice } from '../../utils/formatters'
 import { useCart } from '../../context/CartContext'
 
 /* ── Razorpay script loader ── */
@@ -21,10 +21,7 @@ export function loadRazorpayScript() {
 export default function ReviewStep({ address, onBack, onPay, loading, error }) {
   const { cartItems } = useCart()
 
-  const subtotal  = cartItems.reduce((s, i) => s + i.price * i.quantity, 0)
-  const gstTotal  = cartItems.reduce((s, i) => s + calcGST(i.price * i.quantity, i.gstRate ?? 18), 0)
-  const shipping  = shippingCost(subtotal)
-  const total     = subtotal + gstTotal + shipping
+  const total = cartItems.reduce((s, i) => s + i.price * i.quantity, 0)
 
   return (
     <div className="space-y-5">
@@ -46,7 +43,7 @@ export default function ReviewStep({ address, onBack, onPay, loading, error }) {
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-gray-900 line-clamp-1">{item.name}</p>
-              <p className="text-xs text-gray-400">Qty: {item.quantity} · {item.gstRate ?? 18}% GST</p>
+              <p className="text-xs text-gray-400">Qty: {item.quantity}</p>
             </div>
             <p className="text-sm font-bold text-gray-900 shrink-0">
               {formatPrice(item.price * item.quantity)}
@@ -77,18 +74,11 @@ export default function ReviewStep({ address, onBack, onPay, loading, error }) {
         </div>
       </div>
 
-      {/* Price breakdown */}
+      {/* Price summary */}
       <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-card space-y-2.5">
-        <h3 className="font-display font-semibold text-sm text-gray-900 mb-3">Price Breakdown</h3>
-        <Row label={`Subtotal (${cartItems.length} item${cartItems.length !== 1 ? 's' : ''})`}
-             value={formatPrice(subtotal)} />
-        <Row label={`GST (avg ${Math.round(gstTotal / (subtotal || 1) * 100)}%)`}
-             value={formatPrice(gstTotal)} muted />
-        <Row label="Shipping" value={shipping === 0
-             ? <span className="text-eco-600 font-semibold">Free</span>
-             : formatPrice(shipping)} muted />
-        <div className="h-px bg-gray-100 my-1" />
-        <Row label="Total Payable" value={formatPrice(total)} bold />
+        <h3 className="font-display font-semibold text-sm text-gray-900 mb-3">Total Amount</h3>
+        <Row label={`Amount (${cartItems.length} item${cartItems.length !== 1 ? 's' : ''})`}
+             value={formatPrice(total)} bold />
       </div>
 
       {/* Error */}
