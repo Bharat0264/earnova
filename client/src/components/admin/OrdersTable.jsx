@@ -1,17 +1,24 @@
-import { useState } from 'react'
+import { Fragment, useState } from 'react'
 import { Search, ChevronDown, ChevronUp } from 'lucide-react'
 import { formatPrice, formatDate } from '../../utils/formatters'
 import { api } from '../../utils/api'
 
 const STATUS_STYLE = {
   placed:     'bg-blue-50   text-blue-700',
+  received:   'bg-cyan-50   text-cyan-700',
   processing: 'bg-amber-50  text-amber-700',
   shipped:    'bg-indigo-50 text-indigo-700',
   delivered:  'bg-eco-50    text-eco-700',
   cancelled:  'bg-red-50    text-red-600',
   returned:   'bg-gray-100  text-gray-600',
 }
-const STATUSES = ['all','placed','processing','shipped','delivered','cancelled']
+const STATUSES = ['all','placed','received','shipped','delivered','cancelled']
+const FLOW = [
+  { key: 'placed', label: 'Ordered' },
+  { key: 'received', label: 'Order Received' },
+  { key: 'shipped', label: 'Shipped' },
+  { key: 'delivered', label: 'Delivered' },
+]
 
 function StatusBadge({ status }) {
   return (
@@ -82,8 +89,8 @@ export default function OrdersTable({ data, loading, reload }) {
                   </tr>
                 ))
               : filtered.map(order => (
-                  <>
-                    <tr key={order._id} className="hover:bg-gray-50/50 transition-colors cursor-pointer"
+                  <Fragment key={order._id}>
+                    <tr className="hover:bg-gray-50/50 transition-colors cursor-pointer"
                         onClick={() => setExpanded(expanded === order._id ? null : order._id)}>
                       <td className="px-4 py-3">
                         <p className="font-bold text-gray-900 text-xs">{order.orderId}</p>
@@ -104,7 +111,7 @@ export default function OrdersTable({ data, loading, reload }) {
                             disabled={updating === order._id}
                             className="text-xs border border-gray-200 rounded-lg px-2 py-1 bg-white focus:outline-none focus:border-primary-400 cursor-pointer"
                           >
-                            {['placed','processing','shipped','delivered','cancelled'].map(s => (
+                            {['placed','received','shipped','delivered','cancelled'].map(s => (
                               <option key={s} value={s} className="capitalize">{s}</option>
                             ))}
                           </select>
@@ -133,10 +140,26 @@ export default function OrdersTable({ data, loading, reload }) {
                               </div>
                             )}
                           </div>
+                          {!['cancelled','returned'].includes(order.status) && (
+                            <div className="grid grid-cols-4 gap-2 mt-4">
+                              {FLOW.map((step, i) => {
+                                const activeIndex = order.status === 'processing'
+                                  ? 1
+                                  : FLOW.findIndex(s => s.key === order.status)
+                                const done = i <= activeIndex
+                                return (
+                                  <div key={step.key}>
+                                    <div className={`h-1.5 rounded-full mb-2 ${done ? 'bg-eco-500' : 'bg-gray-200'}`} />
+                                    <p className={`text-[11px] font-semibold ${done ? 'text-gray-800' : 'text-gray-400'}`}>{step.label}</p>
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          )}
                         </td>
                       </tr>
                     )}
-                  </>
+                  </Fragment>
                 ))
             }
           </tbody>

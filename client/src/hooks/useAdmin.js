@@ -56,7 +56,7 @@ function makeTableHook(apiPath, mockData) {
 }
 
 export const useAdminOrders     = makeTableHook('/orders/admin/all',  MOCK_ORDERS)
-export const useAdminProducts   = makeTableHook('/products',          MOCK_PRODUCTS)
+export const useAdminProducts   = makeTableHook('/products/admin/all', MOCK_PRODUCTS)
 export const useAdminUsers      = makeTableHook('/admin/users',       MOCK_USERS)
 export const useAdminB2B        = makeTableHook('/b2b/quotes',        MOCK_B2B_QUOTES)
 export const useAdminSubsidy    = makeTableHook('/subsidy/requests',  MOCK_SUBSIDY_REQUESTS)

@@ -171,7 +171,7 @@ export const getDashboardStats = async (_req, res) => {
         },
         orders: {
           total: Object.values(statusMap).reduce((a, b) => a + b, 0),
-          pending: (statusMap.placed || 0) + (statusMap.processing || 0),
+          pending: (statusMap.placed || 0) + (statusMap.received || 0) + (statusMap.processing || 0),
           shipped: statusMap.shipped || 0,
           delivered: statusMap.delivered || 0,
           cancelled: statusMap.cancelled || 0,

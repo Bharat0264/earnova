@@ -52,7 +52,7 @@ const productSchema = new mongoose.Schema({
 
   /* Referral */
   referralName:   { type: String, trim: true },
-  referralIncome: { type: Number, default: 0, min: 0 },
+  referralIncome: { type: Number, required: true, default: 0, min: 0 },
   referralCommission: { type: Number, default: 5 }, // % of sale price
 
   /* Visibility */

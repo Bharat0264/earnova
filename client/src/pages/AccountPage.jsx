@@ -77,10 +77,17 @@ export default function AccountPage() {
               <p className="font-display font-bold text-2xl text-gray-900">
                 ₹{(user?.walletBalance || 0).toLocaleString('en-IN')}
               </p>
-              <Link to="/referral"
-                    className="text-xs text-primary-600 font-semibold hover:underline mt-1 inline-block">
-                View Referral Program →
-              </Link>
+              {user?.walletBalance >= 100 ? (
+                <Link to="/referral"
+                      className="btn-primary text-xs mt-3 w-full flex items-center justify-center">
+                  Withdraw
+                </Link>
+              ) : (
+                <Link to="/referral"
+                      className="text-xs text-primary-600 font-semibold hover:underline mt-1 inline-block">
+                  View Referral Program →
+                </Link>
+              )}
             </div>
 
             {/* Nav tabs */}

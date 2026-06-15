@@ -76,6 +76,10 @@ export class APIFeatures {
 
   /** Paginate results */
   paginate() {
+    if (this.queryString.limit === 'all') {
+      return this
+    }
+
     const page  = Math.max(parseInt(this.queryString.page,  10) || 1,  1)
     const limit = Math.min(parseInt(this.queryString.limit, 10) || 12, 100)
     this.query  = this.query.skip((page - 1) * limit).limit(limit)

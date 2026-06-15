@@ -1,4 +1,4 @@
-import { MapPin, ShoppingBag, Loader2, Shield } from 'lucide-react'
+import { MapPin, ShoppingBag, Loader2, Shield, Truck } from 'lucide-react'
 import { formatPrice } from '../../utils/formatters'
 import { useCart } from '../../context/CartContext'
 
@@ -22,6 +22,7 @@ export default function ReviewStep({ address, onBack, onPay, loading, error }) {
   const { cartItems } = useCart()
 
   const total = cartItems.reduce((s, i) => s + i.price * i.quantity, 0)
+  const solarOnly = cartItems.length > 0 && cartItems.every(i => i.category === 'solar-panels')
 
   return (
     <div className="space-y-5">
@@ -88,9 +89,9 @@ export default function ReviewStep({ address, onBack, onPay, loading, error }) {
         </div>
       )}
 
-      {/* Pay button */}
+      {/* Payment buttons */}
       <button
-        onClick={() => onPay(total)}
+        onClick={() => onPay('razorpay')}
         disabled={loading}
         className="btn-primary w-full py-4 text-base flex items-center justify-center gap-3"
       >
@@ -101,8 +102,24 @@ export default function ReviewStep({ address, onBack, onPay, loading, error }) {
         )}
       </button>
 
+      {solarOnly && (
+        <button
+          onClick={() => onPay('cod')}
+          disabled={loading}
+          className="btn-secondary w-full py-4 text-base flex items-center justify-center gap-3"
+        >
+          {loading ? (
+            <><Loader2 className="w-5 h-5 animate-spin" /> Creating order...</>
+          ) : (
+            <><Truck className="w-5 h-5" /> Pay on Delivery</>
+          )}
+        </button>
+      )}
+
       <p className="text-center text-xs text-gray-400">
-        Secured by Razorpay · UPI · Cards · Net Banking · Wallets · EMI
+        {solarOnly
+          ? 'Solar products support Razorpay or pay on delivery'
+          : 'Secured prepaid checkout by Razorpay for this category'}
       </p>
     </div>
   )

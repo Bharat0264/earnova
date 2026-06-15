@@ -1,9 +1,14 @@
-import { useState } from 'react'
-import { CheckCircle2, XCircle, Loader2 } from 'lucide-react'
+import { Fragment, useState } from 'react'
+import { CheckCircle2, XCircle, Loader2, Wallet } from 'lucide-react'
 import { formatPrice, formatDate } from '../../utils/formatters'
 import { api } from '../../utils/api'
 
 const ST_STYLE = { pending:'bg-amber-50 text-amber-700', processing:'bg-blue-50 text-blue-700', completed:'bg-eco-50 text-eco-700', failed:'bg-red-50 text-red-600' }
+const FLOW = [
+  { key: 'pending', label: 'Withdraw Requested' },
+  { key: 'processing', label: 'Admin Approved' },
+  { key: 'completed', label: 'Member Paid' },
+]
 
 export default function WithdrawalQueue({ data, loading, reload }) {
   const [filter,   setFilter]   = useState('all')
@@ -59,7 +64,8 @@ export default function WithdrawalQueue({ data, loading, reload }) {
                   ))}</tr>
                 ))
               : filtered.map(w => (
-                  <tr key={w._id} className="hover:bg-gray-50/50 transition-colors">
+                <Fragment key={w._id}>
+                  <tr className="hover:bg-gray-50/50 transition-colors">
                     <td className="px-4 py-3">
                       <p className="font-semibold text-gray-900 text-xs">{w.user?.name}</p>
                       <p className="text-[11px] text-gray-400">{w.user?.email}</p>
@@ -73,8 +79,8 @@ export default function WithdrawalQueue({ data, loading, reload }) {
                     <td className="px-4 py-3">
                       {w.status === 'pending' && (
                         <div className="flex gap-2">
-                          <button onClick={() => update(w._id, 'completed')} disabled={updating === w._id}
-                                  className="flex items-center gap-1 text-[11px] font-bold text-eco-700 bg-eco-50 hover:bg-eco-100 px-2.5 py-1.5 rounded-lg transition-colors">
+                          <button onClick={() => update(w._id, 'processing')} disabled={updating === w._id}
+                                  className="flex items-center gap-1 text-[11px] font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 px-2.5 py-1.5 rounded-lg transition-colors">
                             {updating === w._id ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle2 className="w-3 h-3" />}
                             Approve
                           </button>
@@ -86,8 +92,8 @@ export default function WithdrawalQueue({ data, loading, reload }) {
                       )}
                       {w.status === 'processing' && (
                         <button onClick={() => update(w._id, 'completed')} disabled={updating === w._id}
-                                className="text-[11px] font-bold text-eco-700 bg-eco-50 hover:bg-eco-100 px-2.5 py-1.5 rounded-lg transition-colors">
-                          Mark Complete
+                                className="flex items-center gap-1 text-[11px] font-bold text-eco-700 bg-eco-50 hover:bg-eco-100 px-2.5 py-1.5 rounded-lg transition-colors">
+                          <Wallet className="w-3 h-3" /> Pay Member
                         </button>
                       )}
                       {(w.status === 'completed' || w.status === 'failed') && (
@@ -95,6 +101,23 @@ export default function WithdrawalQueue({ data, loading, reload }) {
                       )}
                     </td>
                   </tr>
+                  <tr className="bg-gray-50/60">
+                    <td colSpan={6} className="px-4 pb-3">
+                      <div className="grid grid-cols-3 gap-2">
+                        {FLOW.map((step, i) => {
+                          const activeIndex = Math.max(FLOW.findIndex(s => s.key === w.status), 0)
+                          const done = w.status === 'failed' ? i === 0 : i <= activeIndex
+                          return (
+                            <div key={step.key}>
+                              <div className={`h-1.5 rounded-full mb-1.5 ${done ? 'bg-eco-500' : 'bg-gray-200'}`} />
+                              <p className={`text-[11px] font-semibold ${done ? 'text-gray-800' : 'text-gray-400'}`}>{step.label}</p>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </td>
+                  </tr>
+                </Fragment>
                 ))
             }
           </tbody>

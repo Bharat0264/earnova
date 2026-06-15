@@ -2,6 +2,58 @@ import Order from '../models/Order.js'
 import User  from '../models/User.js'
 import { sendOrderStatusUpdate } from '../utils/email.js'
 
+const reverseMemberIncome = async (order) => {
+  if (!order.memberIncomePaid || order.memberIncomeAmount <= 0) return false
+
+  const userId = order.user?._id || order.user
+  await User.findByIdAndUpdate(userId, {
+    $inc: {
+      referralEarnings: -order.memberIncomeAmount,
+      walletBalance: -order.memberIncomeAmount,
+    },
+  })
+
+  order.memberIncomePaid = false
+  return true
+}
+
+const creditMemberIncome = async (order) => {
+  if (order.memberIncomePaid) return false
+
+  const memberIncome = order.items.reduce(
+    (sum, item) => sum + ((item.memberIncome || 0) * item.quantity),
+    0
+  )
+
+  if (memberIncome <= 0) return false
+
+  const userId = order.user?._id || order.user
+  await User.findByIdAndUpdate(userId, {
+    $inc: {
+      referralEarnings: memberIncome,
+      walletBalance: memberIncome,
+    },
+  })
+
+  order.memberIncomeAmount = memberIncome
+  order.memberIncomePaid = true
+  return true
+}
+
+const reverseReferralCommission = async (order) => {
+  if (!order.commissionPaid || !order.referredBy || order.commissionAmount <= 0) return false
+
+  await User.findByIdAndUpdate(order.referredBy, {
+    $inc: {
+      referralEarnings: -order.commissionAmount,
+      walletBalance: -order.commissionAmount,
+    },
+  })
+
+  order.commissionPaid = false
+  return true
+}
+
 /* ── GET /api/orders  (my orders) ── */
 export const getMyOrders = async (req, res) => {
   try {
@@ -66,7 +118,7 @@ export const cancelOrder = async (req, res) => {
 
     if (!order) return res.status(404).json({ success: false, message: 'Order not found.' })
 
-    if (!['placed', 'processing'].includes(order.status)) {
+    if (!['placed', 'received', 'processing'].includes(order.status)) {
       return res.status(400).json({
         success: false,
         message: `Cannot cancel an order with status "${order.status}".`,
@@ -79,19 +131,9 @@ export const cancelOrder = async (req, res) => {
       status: 'cancelled',
       note:   req.body.reason || 'Cancelled by customer',
     })
+    await reverseReferralCommission(order)
+    await reverseMemberIncome(order)
     await order.save()
-
-    /* Reverse referral commission if applied */
-    if (order.commissionPaid && order.referredBy && order.commissionAmount > 0) {
-      await User.findByIdAndUpdate(order.referredBy, {
-        $inc: {
-          referralEarnings: -order.commissionAmount,
-          walletBalance:    -order.commissionAmount,
-        },
-      })
-      order.commissionPaid = false
-      await order.save()
-    }
 
     res.json({ success: true, order, message: 'Order cancelled. Refund will be processed in 5–7 business days.' })
   } catch (err) {
@@ -109,11 +151,12 @@ export const updateOrderStatus = async (req, res) => {
 
     if (!order) return res.status(404).json({ success: false, message: 'Order not found.' })
 
-    const VALID = ['placed', 'processing', 'shipped', 'delivered', 'cancelled', 'returned']
+    const VALID = ['placed', 'received', 'processing', 'shipped', 'delivered', 'cancelled', 'returned']
     if (!VALID.includes(status)) {
       return res.status(400).json({ success: false, message: `Invalid status: ${status}` })
     }
 
+    const previousStatus = order.status
     order.status = status
     order.statusHistory.push({ status, note: note || `Status updated to ${status}` })
 
@@ -122,6 +165,15 @@ export const updateOrderStatus = async (req, res) => {
     if (status === 'shipped')   order.shippedAt   = new Date()
     if (status === 'delivered') order.deliveredAt = new Date()
     if (status === 'cancelled') order.cancelledAt = new Date()
+
+    if (status === 'delivered' && previousStatus !== 'delivered') {
+      await creditMemberIncome(order)
+    }
+
+    if (status === 'cancelled' && previousStatus !== 'cancelled') {
+      await reverseReferralCommission(order)
+      await reverseMemberIncome(order)
+    }
 
     await order.save()
 

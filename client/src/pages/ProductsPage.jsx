@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Search, SlidersHorizontal, X, ChevronLeft, ChevronRight, Grid2X2, List } from 'lucide-react'
+import { Search, SlidersHorizontal, X, Grid2X2, List } from 'lucide-react'
 import ProductCard, { ProductCardSkeleton } from '../components/products/ProductCard'
 import ProductFilters from '../components/products/ProductFilters'
 import { useProducts } from '../hooks/useProducts'
@@ -14,7 +14,7 @@ const SORT_OPTIONS = [
   { label: 'Highest Rated',      value: 'rating'     },
   { label: 'Biggest Discount',   value: 'discount'   },
 ]
-const LIMIT = 12
+const SKELETON_COUNT = 12
 
 export default function ProductsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -30,13 +30,11 @@ export default function ProductsPage() {
     rating:   searchParams.get('rating')   || '',
     inStock:  searchParams.get('inStock')  || '',
     sort:     searchParams.get('sort')     || 'newest',
-    page:     searchParams.get('page')     || '1',
     search:   searchParams.get('search')   || '',
-    limit:    String(LIMIT),
+    limit:    'all',
   }), [searchParams])
 
-  const { products, loading, total, pages } = useProducts(filters)
-  const page = Number(filters.page)
+  const { products, loading, total } = useProducts(filters)
 
   useEffect(() => {
     const t = setTimeout(() => updateFilter('search', searchInput), 400)
@@ -48,7 +46,6 @@ export default function ProductsPage() {
     setSearchParams(prev => {
       const p = new URLSearchParams(prev)
       value ? p.set(key, value) : p.delete(key)
-      if (key !== 'page') p.delete('page')
       return p
     })
   }, [setSearchParams])
@@ -66,18 +63,6 @@ export default function ProductsPage() {
   const pageTitle = filters.category
     ? CATEGORY_LABELS[filters.category] || filters.category
     : 'All Products'
-
-  const goPage = (p) => updateFilter('page', String(p))
-
-  const pageNums = useMemo(() => {
-    const total = Math.min(pages, 7)
-    return Array.from({ length: total }, (_, i) => {
-      if (pages <= 7) return i + 1
-      if (page <= 4) return i + 1
-      if (page >= pages - 3) return pages - 6 + i
-      return page - 3 + i
-    })
-  }, [pages, page])
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -173,7 +158,7 @@ export default function ProductsPage() {
             {/* Grid */}
             {loading ? (
               <div className={`grid grid-cols-2 md:grid-cols-3 ${gridCols === 4 ? 'xl:grid-cols-4' : 'xl:grid-cols-3'} gap-4`}>
-                {Array.from({ length: LIMIT }).map((_, i) => <ProductCardSkeleton key={i} />)}
+                {Array.from({ length: SKELETON_COUNT }).map((_, i) => <ProductCardSkeleton key={i} />)}
               </div>
             ) : products.length === 0 ? (
               <EmptyState onClear={clearFilters} hasFilters={activeCount > 0 || !!filters.search} />
@@ -182,15 +167,6 @@ export default function ProductsPage() {
                 <div className={`grid grid-cols-2 md:grid-cols-3 ${gridCols === 4 ? 'xl:grid-cols-4' : 'xl:grid-cols-3'} gap-4`}>
                   {products.map(p => <ProductCard key={p._id} product={p} />)}
                 </div>
-                {pages > 1 && (
-                  <div className="flex items-center justify-center gap-1.5 mt-10">
-                    <PaginBtn onClick={() => goPage(page - 1)} disabled={page <= 1}><ChevronLeft className="w-4 h-4" /></PaginBtn>
-                    {page > 4 && pages > 7 && <><PaginBtn onClick={() => goPage(1)}>1</PaginBtn><span className="text-gray-400 px-1">...</span></>}
-                    {pageNums.map(n => <PaginBtn key={n} onClick={() => goPage(n)} active={n === page}>{n}</PaginBtn>)}
-                    {page < pages - 3 && pages > 7 && <><span className="text-gray-400 px-1">...</span><PaginBtn onClick={() => goPage(pages)}>{pages}</PaginBtn></>}
-                    <PaginBtn onClick={() => goPage(page + 1)} disabled={page >= pages}><ChevronRight className="w-4 h-4" /></PaginBtn>
-                  </div>
-                )}
               </>
             )}
           </div>
@@ -216,17 +192,6 @@ function FilterChip({ label, onRemove }) {
       {label}
       <button onClick={onRemove}><X className="w-3 h-3" /></button>
     </span>
-  )
-}
-
-function PaginBtn({ children, onClick, disabled, active }) {
-  return (
-    <button onClick={onClick} disabled={disabled}
-            className={`w-9 h-9 rounded-xl text-sm font-semibold flex items-center justify-center
-                        transition-all disabled:opacity-30 disabled:cursor-not-allowed
-                        ${active ? 'bg-primary-800 text-white shadow-btn' : 'text-gray-600 border border-gray-200 hover:bg-gray-50'}`}>
-      {children}
-    </button>
   )
 }
 

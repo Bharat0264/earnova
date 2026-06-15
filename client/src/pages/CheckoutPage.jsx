@@ -85,9 +85,20 @@ export default function CheckoutPage() {
   }
 
   /* ── Razorpay payment handler ── */
-  const handlePay = async (totalAmount) => {
+  const handlePay = async (method = 'razorpay') => {
     setPaying(true); setPayError('')
     try {
+      if (method === 'cod') {
+        const data = await api.post('/payment/cod-order', {
+          shippingAddress: address,
+          cartItems,
+        })
+        clearCart()
+        setOrder(data.order)
+        setStep(4)
+        return
+      }
+
       const loaded = await loadRazorpayScript()
       if (!loaded) throw new Error('Razorpay failed to load. Check your internet connection.')
 
@@ -160,8 +171,8 @@ export default function CheckoutPage() {
             </p>
             <div className="bg-white border border-gray-100 rounded-2xl shadow-card p-5 mb-6 text-left space-y-3">
               <Row label="Order ID"   value={order.orderId} bold />
-              <Row label="Amount Paid" value={formatPrice(order.total)} />
-              <Row label="Payment"    value="Razorpay · Paid" />
+              <Row label={order.paymentMethod === 'cod' ? 'Amount Due' : 'Amount Paid'} value={formatPrice(order.total)} />
+              <Row label="Payment"    value={order.paymentMethod === 'cod' ? 'Pay on Delivery' : 'Razorpay · Paid'} />
               <Row label="Estimated Delivery" value="5–7 business days" />
             </div>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">

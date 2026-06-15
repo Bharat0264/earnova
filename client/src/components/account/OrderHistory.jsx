@@ -10,11 +10,43 @@ import { api } from '../../utils/api'
 ══════════════════════════════════════ */
 const STATUS_STYLE = {
   placed:     'bg-blue-50   text-blue-700',
+  received:   'bg-cyan-50   text-cyan-700',
   processing: 'bg-amber-50  text-amber-700',
   shipped:    'bg-indigo-50 text-indigo-700',
   delivered:  'bg-eco-50    text-eco-700',
   cancelled:  'bg-red-50    text-red-600',
   returned:   'bg-gray-100  text-gray-600',
+}
+
+const FLOW = [
+  { key: 'placed', label: 'Ordered' },
+  { key: 'received', label: 'Order Received' },
+  { key: 'shipped', label: 'Shipped' },
+  { key: 'delivered', label: 'Delivered' },
+]
+
+function OrderFlow({ status }) {
+  const index = status === 'processing'
+    ? 1
+    : FLOW.findIndex(step => step.key === status)
+
+  if (['cancelled', 'returned'].includes(status)) return null
+
+  return (
+    <div className="grid grid-cols-4 gap-2">
+      {FLOW.map((step, i) => {
+        const done = i <= index
+        return (
+          <div key={step.key} className="min-w-0">
+            <div className={`h-1.5 rounded-full mb-2 ${done ? 'bg-eco-500' : 'bg-gray-200'}`} />
+            <p className={`text-[11px] font-semibold leading-tight ${done ? 'text-gray-800' : 'text-gray-400'}`}>
+              {step.label}
+            </p>
+          </div>
+        )
+      })}
+    </div>
+  )
 }
 
 function StatusChip({ status }) {
@@ -80,6 +112,9 @@ function OrderCard({ order }) {
           </div>
 
           {/* Pricing */}
+          <OrderFlow status={order.status} />
+
+          {/* Pricing */}
           <div className="bg-gray-50 rounded-xl p-3 space-y-1.5 text-sm">
             <div className="flex justify-between text-gray-500"><span>Subtotal</span><span>{formatPrice(order.subtotal)}</span></div>
             <div className="flex justify-between text-gray-500"><span>GST</span><span>{formatPrice(order.gstAmount)}</span></div>
@@ -90,6 +125,10 @@ function OrderCard({ order }) {
             </div>
             <div className="flex justify-between font-bold text-gray-900 border-t border-gray-200 pt-1.5">
               <span>Total</span><span>{formatPrice(order.total)}</span>
+            </div>
+            <div className="flex justify-between text-gray-500">
+              <span>Payment</span>
+              <span>{order.paymentMethod === 'cod' ? 'Pay on Delivery' : order.paymentStatus}</span>
             </div>
           </div>
 

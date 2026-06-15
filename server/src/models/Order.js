@@ -7,6 +7,8 @@ const itemSchema = new mongoose.Schema({
   price:    { type: Number, required: true },
   quantity: { type: Number, required: true, min: 1 },
   gstRate:  { type: Number, default: 18 },
+  category: String,
+  memberIncome: { type: Number, default: 0 },
 }, { _id: false })
 
 const addressSnapshot = new mongoose.Schema({
@@ -59,7 +61,7 @@ const orderSchema = new mongoose.Schema({
   /* Order status */
   status: {
     type: String,
-    enum: ['placed', 'processing', 'shipped', 'delivered', 'cancelled', 'returned'],
+    enum: ['placed', 'received', 'processing', 'shipped', 'delivered', 'cancelled', 'returned'],
     default: 'placed',
     index: true,
   },
@@ -74,6 +76,8 @@ const orderSchema = new mongoose.Schema({
   commissionRate:   { type: Number, default: 0 },   // %
   commissionAmount: { type: Number, default: 0 },   // ₹
   commissionPaid:   { type: Boolean, default: false },
+  memberIncomeAmount: { type: Number, default: 0 },
+  memberIncomePaid:   { type: Boolean, default: false },
 
   /* Key timestamps */
   processedAt: Date,

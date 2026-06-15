@@ -1,228 +1,136 @@
 import { Link } from 'react-router-dom'
-import { ArrowRight, Shield, Sun, TrendingUp, Package, Leaf, Zap, Wind } from 'lucide-react'
+import {
+  ArrowRight,
+  BadgeCheck,
+  Building2,
+  Leaf,
+  PackageCheck,
+  ShieldCheck,
+  Sun,
+  TrendingUp,
+  Zap,
+} from 'lucide-react'
 
-/* ── Inline SVG product cards ── */
-function SolarPanel() {
+const PARTNERS = ['Havells', 'Prestige']
+
+const METRICS = [
+  { label: 'Active products', value: '680+' },
+  { label: 'Mission year', value: '2030' },
+  { label: 'Member income', value: 'Wallet ready' },
+]
+
+const CATALOG = [
+  { name: 'Solar Rooftop', detail: 'Pay on delivery enabled', Icon: Sun, color: 'text-yellow-600', bg: 'bg-yellow-50' },
+  { name: 'Efficient Fans', detail: 'Low power consumption', Icon: Zap, color: 'text-blue-600', bg: 'bg-blue-50' },
+  { name: 'Home Appliances', detail: 'Partner brand catalog', Icon: PackageCheck, color: 'text-eco-600', bg: 'bg-eco-50' },
+]
+
+function CatalogPanel() {
   return (
-    <svg width="148" height="108" viewBox="0 0 148 108" fill="none">
-      {/* Frame */}
-      <rect width="148" height="102" rx="5" fill="#1E293B" />
-      <rect width="148" height="102" rx="5" fill="none" stroke="#64748B" strokeWidth="1.5" />
-      {/* Horizontal dividers */}
-      <line x1="0" y1="34" x2="148" y2="34" stroke="#334155" strokeWidth="1" />
-      <line x1="0" y1="68" x2="148" y2="68" stroke="#334155" strokeWidth="1" />
-      {/* Vertical dividers */}
-      {[37, 74, 111].map(x => (
-        <line key={x} x1={x} y1="0" x2={x} y2="102" stroke="#334155" strokeWidth="1" />
-      ))}
-      {/* Solar cells */}
-      {[4, 41, 78, 115].map(x =>
-        [4, 38, 72].map(y => (
-          <rect key={`${x}-${y}`} x={x} y={y} width="29" height="26" rx="2" fill="#1C3A54" />
-        ))
-      )}
-      {/* Shine highlight */}
-      <rect x="6" y="4" width="48" height="18" rx="2" fill="white" opacity="0.04" />
-      {/* Mount pole */}
-      <rect x="62" y="100" width="24" height="8" rx="3" fill="#475569" />
-      {/* Sun badge */}
-      <circle cx="140" cy="8" r="11" fill="#FCD34D" stroke="white" strokeWidth="1.5" />
-      <circle cx="140" cy="8" r="5"  fill="#F59E0B" />
-    </svg>
-  )
-}
-
-function CeilingFan() {
-  return (
-    <svg width="118" height="118" viewBox="0 0 118 118" fill="none">
-      {/* Rod */}
-      <rect x="56" y="0" width="6" height="30" rx="3" fill="#9CA3AF" />
-      {/* Ceiling cap */}
-      <ellipse cx="59" cy="4" rx="12" ry="6" fill="#6B7280" />
-      {/* Blade 1 — upward */}
-      <ellipse cx="59" cy="25" rx="11" ry="30" fill="#92400E" opacity="0.92" />
-      {/* Blade 2 — rotated 120° */}
-      <g transform="rotate(120 59 59)">
-        <ellipse cx="59" cy="25" rx="11" ry="30" fill="#78350F" opacity="0.92" />
-      </g>
-      {/* Blade 3 — rotated 240° */}
-      <g transform="rotate(240 59 59)">
-        <ellipse cx="59" cy="25" rx="11" ry="30" fill="#92400E" opacity="0.92" />
-      </g>
-      {/* Motor housing */}
-      <circle cx="59" cy="59" r="17" fill="#374151" />
-      <circle cx="59" cy="59" r="11" fill="#4B5563" />
-      <circle cx="59" cy="59" r="5"  fill="#6B7280" />
-      {/* Center screw */}
-      <circle cx="59" cy="59" r="2"  fill="#9CA3AF" />
-    </svg>
-  )
-}
-
-function ACUnit() {
-  return (
-    <svg width="116" height="68" viewBox="0 0 116 68" fill="none">
-      {/* Body */}
-      <rect width="116" height="66" rx="10" fill="#F8FAFC" />
-      <rect width="116" height="66" rx="10" fill="none" stroke="#E2E8F0" strokeWidth="1.5" />
-      {/* Top accent stripe */}
-      <rect x="0" y="0" width="116" height="7" rx="10" fill="#6366F1" opacity="0.25" />
-      {/* Vents */}
-      {[14, 24, 34, 44, 54].map(y => (
-        <rect key={y} x="10" y={y} width="78" height="4" rx="2" fill="#94A3B8" />
-      ))}
-      {/* Right control panel */}
-      <rect x="96" y="8" width="14" height="50" rx="6" fill="#E2E8F0" />
-      {/* LED power indicator */}
-      <circle cx="103" cy="22" r="4.5" fill="#10B981" />
-      <circle cx="103" cy="22" r="4.5" fill="#10B981" opacity="0.3" />
-      {/* Mode button */}
-      <circle cx="103" cy="40" r="4"   fill="#818CF8" />
-      {/* Leaf eco badge */}
-      <circle cx="10" cy="0"  r="9"   fill="#10B981" stroke="white" strokeWidth="1.5" />
-    </svg>
-  )
-}
-
-/* ── Product showcase card ── */
-function ProductShowcase() {
-  return (
-    <div className="relative">
-      {/* Main card */}
-      <div
-        className="relative rounded-3xl overflow-hidden aspect-[4/3.5]
-                   bg-gradient-to-br from-cyan-100 via-sky-50 to-emerald-100
-                   shadow-[0_20px_60px_rgba(91,33,182,0.18)] max-w-[420px] mx-auto"
-      >
-        {/* Ambient blobs */}
-        <div className="absolute -top-8 -right-8 w-40 h-40 bg-violet-300/20 rounded-full blur-2xl" />
-        <div className="absolute -bottom-8 -left-8 w-40 h-40 bg-emerald-300/20 rounded-full blur-2xl" />
-
-        {/* Solar panel — top left */}
-        <div className="absolute top-7 left-5 animate-float drop-shadow-lg">
-          <SolarPanel />
+    <div className="relative mx-auto w-full max-w-[520px]">
+      <div className="rounded-3xl bg-white border border-gray-100 shadow-card-hover overflow-hidden">
+        <div className="bg-gray-950 px-5 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <img src="/earnova-logo-cropped.png" alt="Earnova" className="h-8 w-auto bg-white rounded-md px-1.5 py-1" />
+            <div>
+              <p className="text-white text-sm font-bold">Earnova Storefront</p>
+              <p className="text-gray-400 text-xs">Renewable commerce dashboard</p>
+            </div>
+          </div>
+          <span className="text-[11px] font-bold text-eco-200 bg-eco-500/15 border border-eco-400/20 px-2.5 py-1 rounded-full">
+            Live
+          </span>
         </div>
 
-        {/* Ceiling fan — center */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-[52%] animate-float-delay drop-shadow-lg">
-          <CeilingFan />
-        </div>
+        <div className="p-5 space-y-4">
+          <div className="grid grid-cols-3 gap-3">
+            {METRICS.map(metric => (
+              <div key={metric.label} className="rounded-2xl border border-gray-100 bg-gray-50 px-3 py-3">
+                <p className="text-gray-950 font-display font-extrabold text-lg leading-tight">{metric.value}</p>
+                <p className="text-gray-500 text-[11px] leading-tight mt-1">{metric.label}</p>
+              </div>
+            ))}
+          </div>
 
-        {/* AC unit — bottom right */}
-        <div className="absolute bottom-10 right-4 animate-float-slow drop-shadow-lg">
-          <ACUnit />
-        </div>
+          <div className="space-y-3">
+            {CATALOG.map(({ name, detail, Icon, color, bg }) => (
+              <div key={name} className="flex items-center gap-3 rounded-2xl border border-gray-100 bg-white p-3">
+                <div className={`w-11 h-11 rounded-xl ${bg} flex items-center justify-center shrink-0`}>
+                  <Icon className={`w-5 h-5 ${color}`} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-bold text-gray-950 text-sm">{name}</p>
+                  <p className="text-gray-500 text-xs mt-0.5">{detail}</p>
+                </div>
+                <div className="w-16 h-2 rounded-full bg-gray-100 overflow-hidden">
+                  <div className="h-full w-3/4 bg-eco-500" />
+                </div>
+              </div>
+            ))}
+          </div>
 
-        {/* Energy badge */}
-        <div className="absolute bottom-4 left-4 flex items-center gap-1.5
-                        bg-white/75 backdrop-blur-sm border border-white/60
-                        px-2.5 py-1.5 rounded-full text-xs font-semibold text-eco-700 shadow-sm">
-          <Zap className="w-3 h-3 text-eco-600" />
-          Energy Saved: 40%
+          <div className="rounded-2xl bg-eco-50 border border-eco-100 p-4 flex items-start gap-3">
+            <Leaf className="w-5 h-5 text-eco-700 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-bold text-eco-900">Mission 2030 Green India</p>
+              <p className="text-xs text-eco-700 mt-1 leading-relaxed">
+                Make clean energy products easier to discover, buy, track, and earn from.
+              </p>
+            </div>
+          </div>
         </div>
-
-        {/* Razorpay trust badge */}
-        <div className="absolute top-4 right-4 flex items-center gap-1.5
-                        bg-white/75 backdrop-blur-sm border border-white/60
-                        px-2.5 py-1.5 rounded-full text-xs font-semibold text-gray-600 shadow-sm">
-          <Shield className="w-3 h-3 text-blue-600" />
-          Razorpay
-        </div>
-      </div>
-
-      {/* Floating stat cards */}
-      <div className="absolute -left-6 top-1/3 bg-white rounded-2xl shadow-card-hover px-4 py-3 hidden lg:block">
-        <div className="font-display font-bold text-xl text-primary-800">5,200+</div>
-        <div className="text-gray-500 text-xs">Active Referrers</div>
-      </div>
-      <div className="absolute -right-6 bottom-1/4 bg-white rounded-2xl shadow-card-hover px-4 py-3 hidden lg:block">
-        <div className="font-display font-bold text-xl text-eco-700">₹8 Cr+</div>
-        <div className="text-gray-500 text-xs">Total Savings</div>
       </div>
     </div>
   )
 }
 
-/* ── Feature pills below hero CTA ── */
-const PILLS = [
-  { Icon: Shield,     label: 'Razorpay Secure',   color: 'text-blue-600'    },
-  { Icon: Sun,        label: 'Solar Subsidy',      color: 'text-yellow-600'  },
-  { Icon: TrendingUp, label: 'Referral Earnings',  color: 'text-primary-600' },
-  { Icon: Package,    label: 'Bulk Quotes',        color: 'text-orange-600'  },
-  { Icon: Leaf,       label: 'Green India',        color: 'text-eco-600'     },
-]
-
-/* ═══════════════ HERO ═══════════════ */
 export default function HeroSection() {
   return (
-    <section className="relative overflow-hidden bg-hero">
-      {/* Dot grid overlay */}
-      <div className="absolute inset-0 bg-dots opacity-[0.35] pointer-events-none" />
+    <section className="relative overflow-hidden bg-[#f7fbf8] border-b border-gray-100">
+      <div className="absolute inset-0 bg-dots opacity-[0.28] pointer-events-none" />
 
-      {/* Large ambient orbs */}
-      <div className="absolute -top-32 -right-32 w-[520px] h-[520px]
-                      bg-primary-200/50 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute -bottom-32 -left-32 w-[480px] h-[480px]
-                      bg-eco-200/40 rounded-full blur-3xl pointer-events-none" />
-
-      <div className="relative section-wrapper pt-10 pb-16 lg:pt-14 lg:pb-24">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-8 xl:gap-16 items-center">
-
-          {/* ── Left content ── */}
-          <div className="order-2 lg:order-1 text-center lg:text-left">
-
-            {/* Eyebrow */}
-            <div className="inline-flex items-center gap-2 bg-primary-100 text-primary-800
-                            text-xs font-bold px-3 py-1.5 rounded-full mb-5">
-              <Leaf className="w-3 h-3" />
-              Green India Mission 2026
+      <div className="relative section-wrapper py-12 lg:py-20">
+        <div className="grid grid-cols-1 lg:grid-cols-[0.95fr_1.05fr] gap-10 xl:gap-16 items-center">
+          <div className="text-center lg:text-left">
+            <div className="inline-flex items-center gap-2 bg-white border border-eco-100 text-eco-800 text-xs font-bold px-3 py-1.5 rounded-full mb-5 shadow-sm">
+              <BadgeCheck className="w-3.5 h-3.5" />
+              Partner brands: {PARTNERS.join(' + ')}
             </div>
 
-            {/* Headline */}
-            <h1 className="font-display font-extrabold text-4xl sm:text-5xl xl:text-[3.4rem]
-                           text-gray-900 leading-[1.13] mb-5">
-              Smart Energy Products
-              <span className="block text-gradient mt-1">
-                for Homes, Businesses
-              </span>
-              <span className="block text-gray-900 mt-0.5 text-3xl sm:text-4xl xl:text-5xl">
-                & Future India
-              </span>
+            <h1 className="font-display font-extrabold text-4xl sm:text-5xl xl:text-[3.6rem] text-gray-950 leading-[1.05] mb-5">
+              Clean energy products for modern India.
             </h1>
 
-            {/* Sub-headline */}
-            <p className="text-gray-500 text-base sm:text-lg leading-relaxed mb-8 max-w-lg mx-auto lg:mx-0">
-              Shop solar panels, fans, ACs, and energy-saving products.
-              Earn through referrals, request bulk quotations, and get
-              solar subsidy support — all in one place.
+            <p className="text-gray-600 text-base sm:text-lg leading-relaxed max-w-xl mx-auto lg:mx-0 mb-8">
+              Shop verified solar and efficient home products, earn member income on eligible orders, and support Mission 2030 Green India from one simple storefront.
             </p>
 
-            {/* CTAs */}
-            <div className="flex flex-wrap justify-center lg:justify-start gap-3 mb-9">
+            <div className="flex flex-wrap justify-center lg:justify-start gap-3 mb-8">
               <Link to="/products" className="btn-primary flex items-center gap-2 text-base">
                 Shop Products
                 <ArrowRight className="w-4 h-4" />
               </Link>
-              <Link to="/referral" className="btn-secondary text-base">
-                Start Earning
+              <Link to="/subsidy" className="btn-secondary text-base flex items-center gap-2">
+                Solar Support
               </Link>
             </div>
 
-            {/* Feature pills */}
-            <div className="flex flex-wrap justify-center lg:justify-start gap-x-5 gap-y-3">
-              {PILLS.map(({ Icon, label, color }) => (
-                <div key={label} className="feature-pill">
-                  <Icon className={`w-4 h-4 ${color} shrink-0`} />
-                  <span>{label}</span>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 max-w-2xl mx-auto lg:mx-0">
+              {[
+                { Icon: ShieldCheck, label: 'Secure checkout' },
+                { Icon: TrendingUp, label: 'Member earnings' },
+                { Icon: Building2, label: 'Bulk quotes' },
+                { Icon: Leaf, label: 'Green mission' },
+              ].map(({ Icon, label }) => (
+                <div key={label} className="rounded-2xl bg-white border border-gray-100 p-3 text-left shadow-sm">
+                  <Icon className="w-4 h-4 text-primary-700 mb-2" />
+                  <p className="text-xs font-bold text-gray-700 leading-tight">{label}</p>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* ── Right: product showcase ── */}
-          <div className="order-1 lg:order-2">
-            <ProductShowcase />
-          </div>
+          <CatalogPanel />
         </div>
       </div>
     </section>

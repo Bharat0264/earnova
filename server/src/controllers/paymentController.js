@@ -2,6 +2,7 @@ import crypto   from 'crypto'
 import Razorpay from 'razorpay'
 import Order    from '../models/Order.js'
 import User     from '../models/User.js'
+import Product  from '../models/Product.js'
 import { sendOrderConfirmation } from '../utils/email.js'
 
 const requireRazorpayConfig = () => {
@@ -40,6 +41,29 @@ const calcAmounts = (cartItems) => {
   return { subtotal, gst: 0, shipping: 0, total: subtotal }
 }
 
+const hydrateCartItems = async (cartItems) => {
+  const ids = cartItems.map(i => i._id || i.product).filter(Boolean)
+  const products = await Product.find({ _id: { $in: ids }, isActive: true }).lean()
+  const byId = new Map(products.map(p => [p._id.toString(), p]))
+
+  return cartItems.map(item => {
+    const product = byId.get(String(item._id || item.product))
+    if (!product) throw new Error(`Product unavailable: ${item.name || item._id}`)
+    const quantity = Math.max(Number(item.quantity) || 1, 1)
+    return {
+      product: product._id,
+      name: product.name,
+      image: product.thumbnail || product.images?.[0] || '',
+      price: product.price,
+      quantity,
+      gstRate: product.gstRate ?? 18,
+      category: product.category,
+      memberIncome: product.referralIncome || 0,
+      referralCommission: product.referralCommission ?? 5,
+    }
+  })
+}
+
 /* ────────────────────────────────────────
    POST /api/payment/create-order
 ────────────────────────────────────────── */
@@ -50,7 +74,8 @@ export const createRazorpayOrder = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Cart is empty.' })
     }
 
-    const { total } = calcAmounts(cartItems)
+    const dbCartItems = await hydrateCartItems(cartItems)
+    const { total } = calcAmounts(dbCartItems)
     const { keyId } = requireRazorpayConfig()
     const instance  = getRazorpay()
 
@@ -104,7 +129,8 @@ export const verifyPayment = async (req, res) => {
     }
 
     /* 3. Calculate amounts */
-    const { subtotal, gst, shipping, total } = calcAmounts(cartItems)
+    const dbCartItems = await hydrateCartItems(cartItems)
+    const { subtotal, gst, shipping, total } = calcAmounts(dbCartItems)
 
     /* 4. Determine referral info */
     const fullUser = await User.findById(req.user._id)
@@ -112,13 +138,15 @@ export const verifyPayment = async (req, res) => {
     /* 5. Create DB order */
     const order = await Order.create({
       user:    req.user._id,
-      items:   cartItems.map(item => ({
-        product:  item._id,
+      items:   dbCartItems.map(item => ({
+        product:  item.product,
         name:     item.name,
-        image:    item.thumbnail || item.images?.[0] || '',
+        image:    item.image,
         price:    item.price,
         quantity: item.quantity,
         gstRate:  item.gstRate ?? 18,
+        category: item.category,
+        memberIncome: item.memberIncome,
       })),
       subtotal,
       gstAmount:      gst,
@@ -137,7 +165,7 @@ export const verifyPayment = async (req, res) => {
 
     /* 6. Credit referral commission */
     if (fullUser.referredBy) {
-      const avgCommission = cartItems.reduce(
+      const avgCommission = dbCartItems.reduce(
         (s, i) => s + ((i.referralCommission ?? 5) * i.price * i.quantity) / 100, 0
       )
       const commission = Math.round(avgCommission)
@@ -157,6 +185,59 @@ export const verifyPayment = async (req, res) => {
     res.status(201).json({ success: true, order })
   } catch (err) {
     console.error('[Payment] verify failed:', err.message)
+    res.status(500).json({ success: false, message: 'Order creation failed: ' + err.message })
+  }
+}
+
+export const createCodOrder = async (req, res) => {
+  try {
+    const { shippingAddress, cartItems } = req.body
+    if (!cartItems?.length) {
+      return res.status(400).json({ success: false, message: 'Cart is empty.' })
+    }
+
+    const dbCartItems = await hydrateCartItems(cartItems)
+    const nonSolar = dbCartItems.find(item => item.category !== 'solar-panels')
+    if (nonSolar) {
+      return res.status(400).json({
+        success: false,
+        message: 'Pay on delivery is available only for solar products. Please use prepaid payment for other items.',
+      })
+    }
+
+    const { subtotal, gst, shipping, total } = calcAmounts(dbCartItems)
+    const fullUser = await User.findById(req.user._id)
+
+    const order = await Order.create({
+      user: req.user._id,
+      items: dbCartItems.map(item => ({
+        product: item.product,
+        name: item.name,
+        image: item.image,
+        price: item.price,
+        quantity: item.quantity,
+        gstRate: item.gstRate ?? 18,
+        category: item.category,
+        memberIncome: item.memberIncome,
+      })),
+      subtotal,
+      gstAmount: gst,
+      shippingCharge: shipping,
+      total,
+      shippingAddress,
+      paymentMethod: 'cod',
+      paymentStatus: 'pending',
+      status: 'placed',
+      statusHistory: [{ status: 'placed', note: 'Pay on delivery order received' }],
+      referredBy: fullUser.referredBy || null,
+    })
+
+    sendOrderConfirmation(order, fullUser)
+      .catch(err => console.warn('[Email] order-confirm failed:', err.message))
+
+    res.status(201).json({ success: true, order })
+  } catch (err) {
+    console.error('[Payment] cod-order failed:', err.message)
     res.status(500).json({ success: false, message: 'Order creation failed: ' + err.message })
   }
 }

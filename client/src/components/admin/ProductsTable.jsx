@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus, Pencil, ToggleLeft, ToggleRight, Search, Loader2, Zap } from 'lucide-react'
+import { Plus, Pencil, ToggleLeft, ToggleRight, Search, Loader2, Zap, Upload, Download } from 'lucide-react'
 import { formatPrice, CATEGORY_LABELS, CATEGORY_PLACEHOLDER_BG } from '../../utils/formatters'
 import { api } from '../../utils/api'
 import ProductModal from './ProductModal'
@@ -11,6 +11,7 @@ export default function ProductsTable({ data, loading, reload }) {
   const [cat,     setCat]     = useState('all')
   const [modal,   setModal]   = useState(null)  // null | 'new' | product object
   const [toggling,setToggling]= useState(null)
+  const [importing, setImporting] = useState(false)
 
   const filtered = data.filter(p => {
     const matchCat = cat === 'all' || p.category === cat
@@ -23,6 +24,52 @@ export default function ProductsTable({ data, loading, reload }) {
     try { await api.patch(`/products/${p._id}`, { isActive: !p.isActive }); reload?.() }
     catch (e) { alert(e.message) }
     finally { setToggling(null) }
+  }
+
+  const downloadTemplate = () => {
+    const headers = [
+      'name','category','brand','model','description','shortDesc','price','mrp',
+      'gstRate','stock','sku','thumbnail','images','highlights','energySaving',
+      'specs','starRating','referralName','referralIncome','referralCommission','isFeatured'
+    ]
+    const sample = [
+      'Havells Solar Panel 540W','solar-panels','Havells','540W Mono',
+      'High efficiency rooftop solar panel','Mono PERC solar panel','18500','21000',
+      '18','25','HAV-SOL-540','','','High efficiency|25 year warranty',
+      'Up to 70% grid saving','Peak Power:540W|Warranty:25 years','5','Member Income','500','5','true'
+    ]
+    const csv = `${headers.join(',')}\n${sample.map(v => `"${String(v).replaceAll('"', '""')}"`).join(',')}\n`
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'earnova-product-import-template.csv'
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  const importProducts = async (file) => {
+    if (!file) return
+    setImporting(true)
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      const data = await api.post('/products/import', formData)
+      const { created, updated, failed, errors = [] } = data.results || {}
+      const sampleErrors = errors
+        .slice(0, 8)
+        .map(err => `Row ${err.row}: ${err.message}`)
+        .join('\n')
+      alert(
+        `Import complete. Created: ${created || 0}, Updated: ${updated || 0}, Failed: ${failed || 0}` +
+        (sampleErrors ? `\n\nFirst errors:\n${sampleErrors}` : '')
+      )
+      reload?.()
+    } catch (e) {
+      alert(e.message)
+    } finally {
+      setImporting(false)
+    }
   }
 
   return (
@@ -41,6 +88,9 @@ export default function ProductsTable({ data, loading, reload }) {
                 {c === 'all' ? 'All' : CATEGORY_LABELS[c]}
               </button>
             ))}
+            <span className="px-3 py-1.5 text-xs font-semibold text-gray-500">
+              Showing {filtered.length} of {data.length}
+            </span>
           </div>
           <div className="flex gap-2">
             <div className="relative">
@@ -51,6 +101,20 @@ export default function ProductsTable({ data, loading, reload }) {
             <button onClick={() => setModal('new')} className="btn-primary text-sm flex items-center gap-1.5 py-2">
               <Plus className="w-4 h-4" /> Add Product
             </button>
+            <button onClick={downloadTemplate} className="btn-secondary text-sm flex items-center gap-1.5 py-2">
+              <Download className="w-4 h-4" /> Template
+            </button>
+            <label className="btn-secondary text-sm flex items-center gap-1.5 py-2 cursor-pointer">
+              {importing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+              Import
+              <input
+                type="file"
+                accept=".csv,.tsv,text/csv,text/tab-separated-values"
+                className="hidden"
+                disabled={importing}
+                onChange={e => importProducts(e.target.files?.[0])}
+              />
+            </label>
           </div>
         </div>
 

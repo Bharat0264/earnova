@@ -38,9 +38,10 @@ export default function ProductModal({ product, onClose, onSaved }) {
       !form.name ||
       !form.brand ||
       !form.price ||
-      !form.description
+      !form.description ||
+      form.referralIncome === ''
     ) {
-      setError('Name, Brand, Description and Price are required.')
+      setError('Name, Brand, Description, Price and Member Earnings are required.')
       return
     }
 
@@ -196,9 +197,10 @@ export default function ProductModal({ product, onClose, onSaved }) {
 
           <input
             type="number"
+            required
             value={form.referralIncome}
             onChange={e => setForm(f => ({ ...f, referralIncome: e.target.value }))}
-            placeholder="Member Earnings"
+            placeholder="Member Earnings *"
             className="input-base"
           />
 

@@ -203,10 +203,16 @@ export const requestWithdrawal = async (req, res) => {
 ────────────────────────────────────────── */
 export const getWithdrawals = async (req, res) => {
   try {
-    const withdrawals = await Withdrawal.find({ user: req.user._id })
+    const filter = req.user.role === 'admin' ? {} : { user: req.user._id }
+    const query = Withdrawal.find(filter)
       .sort('-createdAt')
       .limit(50)
-      .lean()
+
+    if (req.user.role === 'admin') {
+      query.populate('user', 'name email phone walletBalance referralEarnings')
+    }
+
+    const withdrawals = await query.lean()
 
     res.json({ success: true, withdrawals })
   } catch (err) {
