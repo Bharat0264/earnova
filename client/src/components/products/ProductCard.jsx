@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { Heart, ShoppingCart, Zap, CheckCircle2 } from 'lucide-react'
+import { Heart, ShoppingCart, Zap, CheckCircle2, Wallet } from 'lucide-react'
 import StarRating from './StarRating'
 import { formatPrice, discountPercent, savedAmount, CATEGORY_PLACEHOLDER_BG } from '../../utils/formatters'
 import { useCart } from '../../context/CartContext'
@@ -34,11 +34,12 @@ export default function ProductCard({ product, compact = false }) {
 
   const {
     _id, name, slug, brand, price, mrp, category,
-    images, thumbnail, rating, reviewCount, stock, energySaving,
+    images, thumbnail, rating, reviewCount, stock, energySaving, referralIncome,
   } = product
 
   const discount = discountPercent(price, mrp)
   const saved    = savedAmount(price, mrp)
+  const memberEarnings = Number(referralIncome) || 0
   const inCart   = isInCart(_id)
   const wishlisted = isInWishlist(_id)
   const outOfStock = stock === 0
@@ -133,6 +134,16 @@ export default function ProductCard({ product, compact = false }) {
           <div className="flex items-center gap-1 mb-2">
             <Zap className="w-3 h-3 text-eco-600 shrink-0" />
             <span className="text-[10px] text-eco-700 font-medium line-clamp-1">{energySaving}</span>
+          </div>
+        )}
+
+        {/* Member earnings */}
+        {memberEarnings > 0 && (
+          <div className="flex items-center gap-1.5 mb-2 text-eco-700">
+            <Wallet className="w-3.5 h-3.5 shrink-0" />
+            <span className="text-[11px] font-semibold line-clamp-1">
+              Member earnings {formatPrice(memberEarnings)}
+            </span>
           </div>
         )}
 

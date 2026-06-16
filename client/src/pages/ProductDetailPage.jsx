@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { ShoppingCart, Heart, Zap, Minus, Plus, CheckCircle2, ArrowLeft, Share2 } from 'lucide-react'
+import { ShoppingCart, Heart, Zap, Minus, Plus, CheckCircle2, ArrowLeft, Share2, Wallet } from 'lucide-react'
 import ImageGallery from '../components/products/ImageGallery'
 import StarRating from '../components/products/StarRating'
 import { SpecsTable, ProductFAQ } from '../components/products/SpecsTable'
@@ -26,11 +26,12 @@ export default function ProductDetailPage() {
   const {
     _id, name, brand, category, price, mrp, gstRate = 18,
     images, rating, reviewCount, stock, energySaving,
-    description, highlights, specs, referralCommission,
+    description, highlights, specs, referralIncome,
   } = product
 
   const discount    = discountPercent(price, mrp)
   const saved       = savedAmount(price, mrp)
+  const memberEarnings = Number(referralIncome) || 0
   const inCart      = isInCart(_id)
   const wishlisted  = isInWishlist(_id)
   const outOfStock  = stock === 0
@@ -103,6 +104,15 @@ export default function ProductDetailPage() {
                   </span>
                 )}
               </div>
+
+              {memberEarnings > 0 && (
+                <div className="flex items-center gap-2 text-eco-700">
+                  <Wallet className="w-4 h-4 shrink-0" />
+                  <span className="text-sm font-semibold">
+                    Member earnings {formatPrice(memberEarnings)}
+                  </span>
+                </div>
+              )}
 
             </div>
 
