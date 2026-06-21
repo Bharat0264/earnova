@@ -31,6 +31,27 @@ const INITIAL = {
   budget: '', timeline: '', message: '', heardFrom: '', referralCode: '',
 }
 
+function Field({ label, type = 'text', placeholder, req, value, onChange, error, children }) {
+  return (
+    <div>
+      <label className="block text-xs font-semibold text-gray-600 mb-1">
+        {label}{req && <span className="text-red-400 ml-0.5">*</span>}
+      </label>
+      {children || (
+        <input
+          type={type}
+          value={value}
+          onChange={onChange}
+          placeholder={placeholder}
+          autoComplete="off"
+          className={`input-base ${error ? 'border-red-300' : ''}`}
+        />
+      )}
+      {error && <p className="text-xs text-red-500 mt-0.5">{error}</p>}
+    </div>
+  )
+}
+
 export default function QuoteForm() {
   const [step,    setStep]    = useState(1)
   const [form,    setForm]    = useState(INITIAL)
@@ -99,19 +120,6 @@ export default function QuoteForm() {
     }
   }
 
-  const F = ({ k, label, type = 'text', placeholder, req, children }) => (
-    <div>
-      <label className="block text-xs font-semibold text-gray-600 mb-1">
-        {label}{req && <span className="text-red-400 ml-0.5">*</span>}
-      </label>
-      {children || (
-        <input type={type} value={form[k]} onChange={set(k)} placeholder={placeholder}
-               className={`input-base ${errors[k] ? 'border-red-300' : ''}`} />
-      )}
-      {errors[k] && <p className="text-xs text-red-500 mt-0.5">{errors[k]}</p>}
-    </div>
-  )
-
   if (success) return (
     <div className="bg-white border border-gray-100 rounded-3xl shadow-card p-8 text-center">
       <div className="w-16 h-16 bg-eco-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -164,8 +172,8 @@ export default function QuoteForm() {
         {step === 1 && (
           <>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <F k="organization" label="Organization Name" placeholder="Sunshine Apartments" req />
-              <F k="businessType" label="Business Type" req>
+              <Field label="Organization Name" value={form.organization} onChange={set('organization')} error={errors.organization} placeholder="Sunshine Apartments" req />
+              <Field label="Business Type" error={errors.businessType} req>
                 <select value={form.businessType} onChange={set('businessType')}
                         className={`input-base ${errors.businessType ? 'border-red-300' : ''}`}>
                   <option value="">Select type…</option>
@@ -173,19 +181,19 @@ export default function QuoteForm() {
                     <option key={bt.value} value={bt.value}>{bt.label}</option>
                   ))}
                 </select>
-              </F>
-              <F k="name" label="Your Name" placeholder="Raju Sharma" req />
-              <F k="designation" label="Designation" placeholder="Facility Manager" />
-              <F k="email" label="Email Address" type="email" placeholder="raju@apartments.com" req />
-              <F k="phone" label="Mobile Number" type="tel" placeholder="9876543210" req />
-              <F k="city" label="City" placeholder="Mumbai" req />
-              <F k="state" label="State" req>
+              </Field>
+              <Field label="Your Name" value={form.name} onChange={set('name')} error={errors.name} placeholder="Raju Sharma" req />
+              <Field label="Designation" value={form.designation} onChange={set('designation')} error={errors.designation} placeholder="Facility Manager" />
+              <Field label="Email Address" type="email" value={form.email} onChange={set('email')} error={errors.email} placeholder="raju@apartments.com" req />
+              <Field label="Mobile Number" type="tel" value={form.phone} onChange={set('phone')} error={errors.phone} placeholder="9876543210" req />
+              <Field label="City" value={form.city} onChange={set('city')} error={errors.city} placeholder="Mumbai" req />
+              <Field label="State" error={errors.state} req>
                 <select value={form.state} onChange={set('state')}
                         className={`input-base ${errors.state ? 'border-red-300' : ''}`}>
                   <option value="">Select state…</option>
                   {STATES.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
-              </F>
+              </Field>
             </div>
           </>
         )}
@@ -229,22 +237,22 @@ export default function QuoteForm() {
               {errors.products && <p className="text-xs text-red-500 mt-1">{errors.products}</p>}
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <F k="timeline" label="Project Timeline">
+              <Field label="Project Timeline">
                 <select value={form.timeline} onChange={set('timeline')} className="input-base">
                   <option value="">Select…</option>
                   {['Immediate (within 1 month)','1–3 months','3–6 months','6–12 months','Planning stage'].map(t => (
                     <option key={t} value={t}>{t}</option>
                   ))}
                 </select>
-              </F>
-              <F k="budget" label="Approximate Budget">
+              </Field>
+              <Field label="Approximate Budget">
                 <select value={form.budget} onChange={set('budget')} className="input-base">
                   <option value="">Select range…</option>
                   {['Under ₹5 Lakh','₹5–20 Lakh','₹20–50 Lakh','₹50 Lakh – 1 Cr','Above ₹1 Cr'].map(b => (
                     <option key={b} value={b}>{b}</option>
                   ))}
                 </select>
-              </F>
+              </Field>
             </div>
           </div>
         )}
@@ -252,20 +260,20 @@ export default function QuoteForm() {
         {/* ── Step 3: Confirm ── */}
         {step === 3 && (
           <div className="space-y-4">
-            <F k="message" label="Additional Requirements or Notes">
+            <Field label="Additional Requirements or Notes">
               <textarea value={form.message} onChange={set('message')} rows={3}
                         placeholder="Specific brands, warranty requirements, installation support needed…"
                         className="input-base resize-none" />
-            </F>
-            <F k="heardFrom" label="How did you hear about Earnova?">
+            </Field>
+            <Field label="How did you hear about Earnova?">
               <select value={form.heardFrom} onChange={set('heardFrom')} className="input-base">
                 <option value="">Select…</option>
                 {['Google Search','WhatsApp/Social Media','Referral from colleague','Advertisement','Already a customer','Other'].map(h => (
                   <option key={h} value={h}>{h}</option>
                 ))}
               </select>
-            </F>
-            <F k="referralCode" label="Referral Code (optional)" placeholder="e.g. RAJU7X2K" />
+            </Field>
+            <Field label="Referral Code (optional)" value={form.referralCode} onChange={set('referralCode')} error={errors.referralCode} placeholder="e.g. RAJU7X2K" />
 
             {/* Summary */}
             <div className="bg-gray-50 rounded-xl p-4 text-sm space-y-1.5 text-gray-600">

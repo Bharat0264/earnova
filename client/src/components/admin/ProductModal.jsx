@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { X, Loader2, CheckCircle2 } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { X, Loader2, CheckCircle2, Clipboard } from 'lucide-react'
 import { api } from '../../utils/api'
 import { CATEGORY_LABELS } from '../../utils/formatters'
 
@@ -30,8 +30,57 @@ export default function ProductModal({ product, onClose, onSaved }) {
   const [specs, setSpecs] = useState(product?.specs || [{ key: '', value: '' }])
   const [imageFile, setImageFile] = useState(null)
   const [imagePreview, setImagePreview] = useState(product?.thumbnail || '')
+  const [pasteStatus, setPasteStatus] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+
+  const setProductImageFile = (file) => {
+    setImageFile(file)
+    setImagePreview(URL.createObjectURL(file))
+    setPasteStatus(file.name ? `Selected ${file.name}` : 'Image ready to upload')
+    setError('')
+  }
+
+  const handleImagePaste = (event) => {
+    const items = Array.from(event.clipboardData?.items || [])
+    const imageItem = items.find(item => item.type.startsWith('image/'))
+    const blob = imageItem?.getAsFile()
+
+    if (!blob) return
+
+    event.preventDefault()
+    const ext = blob.type.split('/')[1] || 'png'
+    const file = new File([blob], `pasted-product-image.${ext}`, { type: blob.type })
+    setProductImageFile(file)
+  }
+
+  const pasteImageFromClipboard = async () => {
+    if (!navigator.clipboard?.read) {
+      setPasteStatus('Press Ctrl+V here after copying an image.')
+      return
+    }
+
+    try {
+      const clipboardItems = await navigator.clipboard.read()
+      for (const clipboardItem of clipboardItems) {
+        const imageType = clipboardItem.types.find(type => type.startsWith('image/'))
+        if (!imageType) continue
+
+        const blob = await clipboardItem.getType(imageType)
+        const ext = imageType.split('/')[1] || 'png'
+        setProductImageFile(new File([blob], `pasted-product-image.${ext}`, { type: imageType }))
+        return
+      }
+      setPasteStatus('Clipboard has no copied image.')
+    } catch {
+      setPasteStatus('Press Ctrl+V here after copying an image.')
+    }
+  }
+
+  useEffect(() => {
+    document.addEventListener('paste', handleImagePaste)
+    return () => document.removeEventListener('paste', handleImagePaste)
+  }, [])
 
   const save = async () => {
     if (
@@ -212,12 +261,29 @@ export default function ProductModal({ product, onClose, onSaved }) {
               onChange={e => {
                 const file = e.target.files?.[0]
                 if (file) {
-                  setImageFile(file)
-                  setImagePreview(URL.createObjectURL(file))
+                  setProductImageFile(file)
                 }
               }}
               className="input-base"
             />
+            <div
+              onPaste={handleImagePaste}
+              tabIndex={0}
+              className="mt-2 rounded-lg border border-dashed border-gray-300 bg-gray-50 px-3 py-3 text-sm text-gray-500 focus:border-primary-400 focus:outline-none"
+            >
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <span>Copy an image, then paste it here with Ctrl+V.</span>
+                <button
+                  type="button"
+                  onClick={pasteImageFromClipboard}
+                  className="btn-secondary inline-flex items-center justify-center gap-2 px-3 py-2 text-xs"
+                >
+                  <Clipboard className="h-4 w-4" />
+                  Paste image
+                </button>
+              </div>
+              {pasteStatus && <p className="mt-2 text-xs text-primary-700">{pasteStatus}</p>}
+            </div>
             {imagePreview && (
               <img
                 src={imagePreview}
