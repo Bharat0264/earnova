@@ -3,6 +3,7 @@ import { Heart, ShoppingCart, Zap, CheckCircle2, Wallet } from 'lucide-react'
 import StarRating from './StarRating'
 import { formatPrice, discountPercent, savedAmount, CATEGORY_PLACEHOLDER_BG } from '../../utils/formatters'
 import { useCart } from '../../context/CartContext'
+import { useAuth } from '../../context/AuthContext'
 
 /* Category icon colors for the placeholder */
 const ICON_COLOR = {
@@ -31,6 +32,7 @@ function ImagePlaceholder({ category }) {
  */
 export default function ProductCard({ product, compact = false }) {
   const { addToCart, isInCart, toggleWishlist, isInWishlist } = useCart()
+  const { hasFeature } = useAuth()
 
   const {
     _id, name, slug, brand, price, mrp, category,
@@ -138,7 +140,7 @@ export default function ProductCard({ product, compact = false }) {
         )}
 
         {/* Member earnings */}
-        {memberEarnings > 0 && (
+        {hasFeature('ecommerce') && memberEarnings > 0 && (
           <div className="flex items-center gap-1.5 mb-2 text-eco-700">
             <Wallet className="w-3.5 h-3.5 shrink-0" />
             <span className="text-[11px] font-semibold line-clamp-1">

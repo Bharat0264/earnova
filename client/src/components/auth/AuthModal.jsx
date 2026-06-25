@@ -259,7 +259,7 @@ export default function AuthModal({ isOpen, onClose, initialTab = 'login', onSuc
             <img src="/earnova-logo.png" alt="Earnova" className="w-[250px] h-auto object-contain" />
           </div>
           <p className="text-primary-200 text-xs mt-2">
-            Shop smart energy products, earn through referrals
+            Hire talent, find work, shop products, and grow with Earnova
           </p>
         </div>
 

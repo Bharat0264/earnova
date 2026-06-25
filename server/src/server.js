@@ -56,6 +56,26 @@ connectDB()
 app.use('/api', router)
 
 /* ── Health check ── */
+app.get('/', (_req, res) => {
+  res.json({
+    success: true,
+    service: 'Earnova Backend API',
+    status: 'running',
+    frontend: process.env.CLIENT_URL || 'http://127.0.0.1:5173',
+    health: '/api/health',
+    message: 'Earnova backend is running. Open the frontend URL to use the application.',
+  })
+})
+
+app.get('/api', (_req, res) => {
+  res.json({
+    success: true,
+    service: 'Earnova API',
+    status: 'running',
+    health: '/api/health',
+  })
+})
+
 app.get('/api/health', (_req, res) => {
   res.json({
     status:    'OK',

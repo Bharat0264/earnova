@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react'
 import { apiUrl, parseJsonResponse } from '../utils/api'
+import { DEFAULT_PUBLIC_ACCESS } from '../config/features'
 
 const AuthContext = createContext(null)
 
@@ -71,12 +72,17 @@ export function AuthProvider({ children }) {
   const updateUser = (updates) =>
     setUser(prev => prev ? { ...prev, ...updates } : null)
 
+  const hasFeature = (feature) => {
+    if (user?.role === 'admin') return true
+    return user?.featureAccess?.[feature] ?? DEFAULT_PUBLIC_ACCESS[feature] ?? false
+  }
+
   return (
     <AuthContext.Provider value={{
       user, loading, token,
       isAuthenticated: !!user,
       isAdmin: user?.role === 'admin',
-      login, register, logout, updateUser,
+      login, register, logout, updateUser, hasFeature,
     }}>
       {children}
     </AuthContext.Provider>

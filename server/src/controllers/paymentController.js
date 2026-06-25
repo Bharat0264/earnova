@@ -64,6 +64,12 @@ const hydrateCartItems = async (cartItems) => {
   })
 }
 
+const hasEcommerceMemberBenefits = (user) => {
+  if (user?.role === 'admin') return true
+  const access = user?.featureAccess
+  return access instanceof Map ? access.get('ecommerce') === true : access?.ecommerce === true
+}
+
 /* ────────────────────────────────────────
    POST /api/payment/create-order
 ────────────────────────────────────────── */
@@ -134,6 +140,7 @@ export const verifyPayment = async (req, res) => {
 
     /* 4. Determine referral info */
     const fullUser = await User.findById(req.user._id)
+    const memberIncomeRecipient = hasEcommerceMemberBenefits(fullUser) ? 'member' : 'admin'
 
     /* 5. Create DB order */
     const order = await Order.create({
@@ -161,6 +168,7 @@ export const verifyPayment = async (req, res) => {
       status:        'placed',
       statusHistory: [{ status: 'placed', note: 'Paid via Razorpay' }],
       referredBy:    fullUser.referredBy || null,
+      memberIncomeRecipient,
     })
 
     /* 6. Credit referral commission */
@@ -207,6 +215,7 @@ export const createCodOrder = async (req, res) => {
 
     const { subtotal, gst, shipping, total } = calcAmounts(dbCartItems)
     const fullUser = await User.findById(req.user._id)
+    const memberIncomeRecipient = hasEcommerceMemberBenefits(fullUser) ? 'member' : 'admin'
 
     const order = await Order.create({
       user: req.user._id,
@@ -230,6 +239,7 @@ export const createCodOrder = async (req, res) => {
       status: 'placed',
       statusHistory: [{ status: 'placed', note: 'Pay on delivery order received' }],
       referredBy: fullUser.referredBy || null,
+      memberIncomeRecipient,
     })
 
     sendOrderConfirmation(order, fullUser)

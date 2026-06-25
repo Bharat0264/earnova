@@ -8,6 +8,7 @@ import ProductCard, { ProductCardSkeleton } from '../components/products/Product
 import { useProduct } from '../hooks/useProducts'
 import { useCart } from '../context/CartContext'
 import { formatPrice, discountPercent, savedAmount, CATEGORY_LABELS } from '../utils/formatters'
+import { useAuth } from '../context/AuthContext'
 
 const TABS = ['Specifications', 'Reviews', 'FAQ']
 
@@ -15,6 +16,7 @@ export default function ProductDetailPage() {
   const { id }  = useParams()
   const { product, related, loading, notFound } = useProduct(id)
   const { addToCart, isInCart, toggleWishlist, isInWishlist } = useCart()
+  const { hasFeature } = useAuth()
 
   const [qty,       setQty]       = useState(1)
   const [activeTab, setActiveTab] = useState('Specifications')
@@ -105,7 +107,7 @@ export default function ProductDetailPage() {
                 )}
               </div>
 
-              {memberEarnings > 0 && (
+              {hasFeature('ecommerce') && memberEarnings > 0 && (
                 <div className="flex items-center gap-2 text-eco-700">
                   <Wallet className="w-4 h-4 shrink-0" />
                   <span className="text-sm font-semibold">

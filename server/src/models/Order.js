@@ -78,6 +78,13 @@ const orderSchema = new mongoose.Schema({
   commissionPaid:   { type: Boolean, default: false },
   memberIncomeAmount: { type: Number, default: 0 },
   memberIncomePaid:   { type: Boolean, default: false },
+  memberIncomeRecipient: {
+    type: String,
+    enum: ['member', 'admin'],
+    default: 'admin',
+  },
+  adminEarningsAmount: { type: Number, default: 0 },
+  adminEarningsRecognized: { type: Boolean, default: false },
 
   /* Key timestamps */
   processedAt: Date,

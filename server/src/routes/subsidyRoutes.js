@@ -1,8 +1,9 @@
 import { Router } from 'express'
 import { checkEligibility, submitRequest, getRequests, updateRequest } from '../controllers/subsidyController.js'
-import { protect, adminOnly } from '../middleware/auth.js'
+import { protect, adminOnly, requireFeature } from '../middleware/auth.js'
 
 const router = Router()
+router.use(protect, requireFeature('ecommerce'))
 
 router.post('/check-eligibility', checkEligibility)                     /* Public */
 router.post('/request',           submitRequest)                        /* Public */

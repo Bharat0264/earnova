@@ -1,5 +1,6 @@
 import jwt   from 'jsonwebtoken'
 import User  from '../models/User.js'
+import { DEFAULT_PUBLIC_ACCESS } from '../config/features.js'
 
 /**
  * Protect — verifies JWT and attaches req.user
@@ -37,6 +38,24 @@ export const adminOnly = (req, res, next) => {
   if (req.user?.role !== 'admin') {
     return res.status(403).json({ success: false, message: 'Admin access required.' })
   }
+  next()
+}
+
+export const requireFeature = (feature) => (req, res, next) => {
+  if (req.user?.role === 'admin') return next()
+
+  const access = req.user?.featureAccess
+  const storedValue = access instanceof Map ? access.get(feature) : access?.[feature]
+  const allowed = storedValue ?? DEFAULT_PUBLIC_ACCESS[feature] ?? false
+  if (!allowed) {
+    return res.status(403).json({
+      success: false,
+      code: 'FEATURE_ACCESS_REQUIRED',
+      feature,
+      message: `Your account does not have ${feature} access. Please contact an administrator.`,
+    })
+  }
+
   next()
 }
 

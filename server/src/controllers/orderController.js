@@ -3,6 +3,12 @@ import User  from '../models/User.js'
 import { sendOrderStatusUpdate } from '../utils/email.js'
 
 const reverseMemberIncome = async (order) => {
+  if (order.memberIncomeRecipient === 'admin') {
+    if (!order.adminEarningsRecognized || order.adminEarningsAmount <= 0) return false
+    order.adminEarningsRecognized = false
+    return true
+  }
+
   if (!order.memberIncomePaid || order.memberIncomeAmount <= 0) return false
 
   const userId = order.user?._id || order.user
@@ -18,14 +24,21 @@ const reverseMemberIncome = async (order) => {
 }
 
 const creditMemberIncome = async (order) => {
-  if (order.memberIncomePaid) return false
-
   const memberIncome = order.items.reduce(
     (sum, item) => sum + ((item.memberIncome || 0) * item.quantity),
     0
   )
 
   if (memberIncome <= 0) return false
+
+  if (order.memberIncomeRecipient === 'admin') {
+    if (order.adminEarningsRecognized) return false
+    order.adminEarningsAmount = memberIncome
+    order.adminEarningsRecognized = true
+    return true
+  }
+
+  if (order.memberIncomePaid) return false
 
   const userId = order.user?._id || order.user
   await User.findByIdAndUpdate(userId, {

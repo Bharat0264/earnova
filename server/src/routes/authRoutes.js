@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import {
-  login, getMe, updateProfile, updatePassword,
+  register, login, getMe, updateProfile, updatePassword,
   addAddress, updateAddress, deleteAddress,
   forgotPassword, resetPassword,
 } from '../controllers/authController.js'
@@ -9,12 +9,7 @@ import { protect } from '../middleware/auth.js'
 const router = Router()
 
 /* Public */
-router.post('/register', (_req, res) => {
-  res.status(403).json({
-    success: false,
-    message: 'Registration is disabled.'
-  })
-})
+router.post('/register', register)
 
 router.post('/login', login)
 router.post('/forgot-password', forgotPassword)

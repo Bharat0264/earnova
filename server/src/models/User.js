@@ -1,5 +1,6 @@
 import mongoose from 'mongoose'
 import bcrypt   from 'bcryptjs'
+import { DEFAULT_PUBLIC_ACCESS } from '../config/features.js'
 
 /* ── Sub-schemas ── */
 const addressSchema = new mongoose.Schema({
@@ -22,6 +23,11 @@ const userSchema = new mongoose.Schema({
   password: { type: String, required: true, minlength: 6 },
   avatar:   String,
   role:     { type: String, enum: ['customer', 'admin', 'dealer'], default: 'customer' },
+  featureAccess: {
+    type: Map,
+    of: Boolean,
+    default: () => ({ ...DEFAULT_PUBLIC_ACCESS }),
+  },
 
   /* Referral */
   referralCode:      { type: String, unique: true, sparse: true },
@@ -67,7 +73,7 @@ userSchema.methods.comparePassword = function (candidate) {
 }
 
 userSchema.methods.toPublicJSON = function () {
-  const obj = this.toObject()
+  const obj = this.toObject({ flattenMaps: true })
   delete obj.password
   delete obj.resetPasswordToken
   delete obj.resetPasswordExpires

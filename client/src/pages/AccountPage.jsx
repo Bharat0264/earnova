@@ -9,18 +9,21 @@ import { useAuth } from '../context/AuthContext'
 import { useCart } from '../context/CartContext'
 
 const TABS = [
-  { key: 'orders',    label: 'My Orders',  Icon: Package  },
+  { key: 'orders',    label: 'My Orders',  Icon: Package },
   { key: 'profile',   label: 'Profile',    Icon: User     },
-  { key: 'addresses', label: 'Addresses',  Icon: MapPin   },
-  { key: 'wishlist',  label: 'Wishlist',   Icon: Heart    },
+  { key: 'addresses', label: 'Addresses',  Icon: MapPin },
+  { key: 'wishlist',  label: 'Wishlist',   Icon: Heart },
 ]
 
 export default function AccountPage() {
   const [searchParams, setSearchParams] = useSearchParams()
-  const tab = searchParams.get('tab') || 'orders'
-
-  const { user, isAuthenticated, loading: authLoading, logout } = useAuth()
+  const { user, isAuthenticated, loading: authLoading, logout, hasFeature } = useAuth()
   const { wishlist } = useCart()
+  const allowedTabs = TABS.filter(item => !item.feature || hasFeature(item.feature))
+  const requestedTab = searchParams.get('tab')
+  const tab = allowedTabs.some(item => item.key === requestedTab)
+    ? requestedTab
+    : 'orders'
 
   if (authLoading) {
     return (
@@ -92,7 +95,7 @@ export default function AccountPage() {
 
             {/* Nav tabs */}
             <nav className="bg-white border border-gray-100 rounded-2xl shadow-card overflow-hidden">
-              {TABS.map(({ key, label, Icon }) => (
+              {allowedTabs.map(({ key, label, Icon }) => (
                 <button
                   key={key}
                   onClick={() => switchTab(key)}

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { apiUrl, parseJsonResponse } from '../utils/api'
+import { api } from '../utils/api'
 
 export function useProducts(params = {}) {
   const [products, setProducts] = useState([])
@@ -16,13 +16,7 @@ export function useProducts(params = {}) {
 
     try {
       const qs = new URLSearchParams(params).toString()
-      const res = await fetch(apiUrl(`/products${qs ? '?' + qs : ''}`))
-
-      if (!res.ok) {
-        throw new Error('Failed to load products')
-      }
-
-      const data = await parseJsonResponse(res)
+      const data = await api.get(`/products${qs ? '?' + qs : ''}`)
 
       setProducts(data.products || [])
       setTotal(data.total || 0)
@@ -68,17 +62,13 @@ export function useProduct(idOrSlug) {
       setNotFound(false)
 
       try {
-        const res = await fetch(apiUrl(`/products/${idOrSlug}`))
+        const data = await api.get(`/products/${idOrSlug}`)
 
-        if (res.ok) {
-          const data = await parseJsonResponse(res)
-
-          if (!cancelled && data?.product) {
-            setProduct(data.product)
-            setRelated([])
-            setLoading(false)
-            return
-          }
+        if (!cancelled && data?.product) {
+          setProduct(data.product)
+          setRelated([])
+          setLoading(false)
+          return
         }
       } catch (err) {
         console.error(err)

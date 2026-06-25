@@ -4,6 +4,7 @@ import Product from '../models/Product.js'
 import Withdrawal from '../models/Withdrawal.js'
 import B2BQuote from '../models/B2BQuote.js'
 import SubsidyRequest from '../models/SubsidyRequest.js'
+import { DEFAULT_PUBLIC_ACCESS, normalizeFeatureAccess } from '../config/features.js'
 
 /* ────────────────────────────────────────
    GET /api/admin/stats
@@ -28,6 +29,7 @@ export const getDashboardStats = async (_req, res) => {
       b2bPending,
       subsidyPending,
       monthlyRevenueAgg,
+      adminMemberEarningsAgg,
     ] = await Promise.all([
       Order.aggregate([
         { $match: { paymentStatus: 'paid' } },
@@ -123,6 +125,11 @@ export const getDashboardStats = async (_req, res) => {
             '_id.month': 1
           }
         }
+      ]),
+
+      Order.aggregate([
+        { $match: { adminEarningsRecognized: true } },
+        { $group: { _id: null, total: { $sum: '$adminEarningsAmount' } } }
       ])
     ])
 
@@ -190,6 +197,9 @@ export const getDashboardStats = async (_req, res) => {
           pendingAmount: wdPending.amount,
           totalPaid: wdCompleted.total
         },
+        adminEarnings: {
+          memberIncome: adminMemberEarningsAgg[0]?.total || 0
+        },
         b2bPending,
         subsidyPending,
         monthlyRevenue
@@ -226,7 +236,7 @@ export const getAdminUsers = async (req, res) => {
       ]
     }
 
-    const [users, total] = await Promise.all([
+    const [rawUsers, total] = await Promise.all([
       User.find(filter)
         .select('-password -resetPasswordToken -resetPasswordExpires')
         .sort('-createdAt')
@@ -236,6 +246,10 @@ export const getAdminUsers = async (req, res) => {
 
       User.countDocuments(filter)
     ])
+    const users = rawUsers.map(user => ({
+      ...user,
+      featureAccess: normalizeFeatureAccess(user.featureAccess, DEFAULT_PUBLIC_ACCESS),
+    }))
 
     res.json({
       success: true,
@@ -264,7 +278,8 @@ export const createAdminUser = async (req, res) => {
       email,
       phone,
       password,
-      role = 'customer'
+      role = 'customer',
+      featureAccess
     } = req.body
 
     if (!name || !email || !password) {
@@ -291,6 +306,7 @@ export const createAdminUser = async (req, res) => {
       phone,
       password,
       role,
+      featureAccess: normalizeFeatureAccess(featureAccess, DEFAULT_PUBLIC_ACCESS),
       isActive: true
     })
 
@@ -322,6 +338,10 @@ export const updateAdminUser = async (req, res) => {
       }
     })
 
+    if (req.body.featureAccess !== undefined) {
+      updates.featureAccess = normalizeFeatureAccess(req.body.featureAccess, DEFAULT_PUBLIC_ACCESS)
+    }
+
     const user = await User.findByIdAndUpdate(
       req.params.id,
       updates,
@@ -337,7 +357,7 @@ export const updateAdminUser = async (req, res) => {
 
     res.json({
       success: true,
-      user
+      user: user.toPublicJSON()
     })
 
   } catch (err) {

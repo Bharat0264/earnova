@@ -6,6 +6,7 @@ import {
 import { protect, adminOnly } from '../middleware/auth.js'
 
 const router = Router()
+router.use(protect)
 
 /* Customer */
 router.get('/',                protect, getMyOrders)

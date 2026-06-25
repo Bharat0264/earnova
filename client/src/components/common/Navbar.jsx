@@ -1,15 +1,14 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { ShoppingCart, Heart, User, Menu, X, Zap, LogOut, Package, ChevronDown } from 'lucide-react'
+import { ShoppingCart, Heart, User, Menu, X, Zap, LogOut, Package, ChevronDown, Briefcase } from 'lucide-react'
 import { useCart } from '../../context/CartContext'
 import { useAuth } from '../../context/AuthContext'
 import AuthModal from '../auth/AuthModal'
 
 const NAV_LINKS = [
-  { to: '/products', label: 'Products'      },
-  { to: '/b2b',      label: 'B2B Solutions' },
-  { to: '/subsidy',  label: 'Subsidy Info'  },
-  { to: '/referral', label: 'Referral'      },
+  { to: '/freelance', label: 'Freelancing', feature: 'freelancing', publicPreview: true },
+  { to: '/products', label: 'Shop at Earnova', authenticated: true },
+  { to: '/referral', label: 'Earn & Refer', feature: 'ecommerce' },
 ]
 
 export default function Navbar() {
@@ -21,8 +20,14 @@ export default function Navbar() {
   const profileRef = useRef(null)
 
   const { cartCount }                     = useCart()
-  const { user, isAuthenticated, isAdmin, logout } = useAuth()
+  const { user, isAuthenticated, isAdmin, logout, hasFeature } = useAuth()
   const location = useLocation()
+  const visibleLinks = NAV_LINKS.filter(link =>
+    (link.publicPreview && !isAuthenticated) ||
+    (isAuthenticated && (link.authenticated || hasFeature(link.feature)))
+  )
+  const shoppingEnabled = isAuthenticated
+  const ecommerceEnabled = isAuthenticated && hasFeature('ecommerce')
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 18)
@@ -70,12 +75,12 @@ export default function Navbar() {
 
             {/* Logo */}
             <Link to="/" className="flex items-center gap-3 group shrink-0">
-              <img src="/earnova-logo.png" alt="Earnova" className="w-[210px] h-auto object-contain" />
+              <img src="/earnova-logo.png" alt="Earnova" className="w-[150px] sm:w-[210px] h-auto object-contain" />
             </Link>
 
             {/* Desktop nav */}
             <nav className="hidden md:flex items-center gap-7">
-              {NAV_LINKS.map(({ to, label }) => (
+              {visibleLinks.map(({ to, label }) => (
                 <Link key={to} to={to}
                       className={`nav-link ${isActive(to) ? 'active !text-primary-700' : ''}`}>
                   {label}
@@ -87,25 +92,29 @@ export default function Navbar() {
             <div className="flex items-center gap-1">
 
               {/* Wishlist */}
-              <Link to="/account?tab=wishlist"
-                    className="p-2.5 text-gray-500 hover:text-primary-700 hover:bg-primary-50
-                               rounded-xl transition-colors" aria-label="Wishlist">
-                <Heart className="w-5 h-5" />
-              </Link>
+              {shoppingEnabled && (
+                <Link to="/account?tab=wishlist"
+                      className="hidden sm:block p-2.5 text-gray-500 hover:text-primary-700 hover:bg-primary-50
+                                 rounded-xl transition-colors" aria-label="Wishlist">
+                  <Heart className="w-5 h-5" />
+                </Link>
+              )}
 
               {/* Cart */}
-              <Link to="/cart"
-                    className="relative p-2.5 text-gray-500 hover:text-primary-700 hover:bg-primary-50
-                               rounded-xl transition-colors" aria-label="Cart">
-                <ShoppingCart className="w-5 h-5" />
-                {cartCount > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1
-                                   bg-primary-700 text-white text-[10px] font-bold rounded-full
-                                   flex items-center justify-center leading-none">
-                    {cartCount > 99 ? '99+' : cartCount}
-                  </span>
-                )}
-              </Link>
+              {shoppingEnabled && (
+                <Link to="/cart"
+                      className="relative p-2.5 text-gray-500 hover:text-primary-700 hover:bg-primary-50
+                                 rounded-xl transition-colors" aria-label="Cart">
+                  <ShoppingCart className="w-5 h-5" />
+                  {cartCount > 0 && (
+                    <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1
+                                     bg-primary-700 text-white text-[10px] font-bold rounded-full
+                                     flex items-center justify-center leading-none">
+                      {cartCount > 99 ? '99+' : cartCount}
+                    </span>
+                  )}
+                </Link>
+              )}
 
               {/* Profile / Auth — desktop */}
               {isAuthenticated ? (
@@ -143,21 +152,30 @@ export default function Navbar() {
                           <Zap className="w-4 h-4" /> Admin Panel
                         </Link>
                       )}
-                      <Link to="/account?tab=orders"
-                            className="flex items-center gap-2.5 px-4 py-3 text-sm text-gray-600
-                                       hover:bg-gray-50 transition-colors">
-                        <Package className="w-4 h-4" /> My Orders
-                      </Link>
+                      {shoppingEnabled && (
+                        <Link to="/account?tab=orders"
+                              className="flex items-center gap-2.5 px-4 py-3 text-sm text-gray-600
+                                         hover:bg-gray-50 transition-colors">
+                          <Package className="w-4 h-4" /> My Orders
+                        </Link>
+                      )}
                       <Link to="/account?tab=profile"
                             className="flex items-center gap-2.5 px-4 py-3 text-sm text-gray-600
                                        hover:bg-gray-50 transition-colors">
                         <User className="w-4 h-4" /> Profile
                       </Link>
-                      <Link to="/referral"
+                      <Link to="/freelance?mode=freelancer"
                             className="flex items-center gap-2.5 px-4 py-3 text-sm text-gray-600
                                        hover:bg-gray-50 transition-colors">
-                        <Zap className="w-4 h-4" /> Referral — ₹{(user?.walletBalance || 0).toLocaleString('en-IN')}
+                        <Briefcase className="w-4 h-4" /> Freelancer Profile
                       </Link>
+                      {ecommerceEnabled && (
+                        <Link to="/referral"
+                              className="flex items-center gap-2.5 px-4 py-3 text-sm text-gray-600
+                                         hover:bg-gray-50 transition-colors">
+                          <Zap className="w-4 h-4" /> Referral — ₹{(user?.walletBalance || 0).toLocaleString('en-IN')}
+                        </Link>
+                      )}
                       <div className="h-px bg-gray-100" />
                       <button onClick={logout}
                               className="flex items-center gap-2.5 px-4 py-3 text-sm text-red-500
@@ -211,7 +229,7 @@ export default function Navbar() {
             </button>
           </div>
           <nav className="flex flex-col gap-1 p-4 flex-1 overflow-y-auto">
-            {NAV_LINKS.map(({ to, label }) => (
+            {visibleLinks.map(({ to, label }) => (
               <Link key={to} to={to}
                     className={`px-4 py-3 rounded-xl text-sm font-medium transition-colors ${
                       isActive(to) ? 'bg-primary-50 text-primary-700' : 'text-gray-600 hover:bg-gray-50'
@@ -231,11 +249,16 @@ export default function Navbar() {
                     <Zap className="w-4 h-4" /> Admin Panel
                   </Link>
                 )}
-                <Link to="/account?tab=orders" className="px-4 py-3 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 flex items-center gap-2">
-                  <Package className="w-4 h-4" /> My Orders
-                </Link>
+                {shoppingEnabled && (
+                  <Link to="/account?tab=orders" className="px-4 py-3 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 flex items-center gap-2">
+                    <Package className="w-4 h-4" /> My Orders
+                  </Link>
+                )}
                 <Link to="/account?tab=profile" className="px-4 py-3 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 flex items-center gap-2">
                   <User className="w-4 h-4" /> Profile
+                </Link>
+                <Link to="/freelance?mode=freelancer" className="px-4 py-3 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 flex items-center gap-2">
+                  <Briefcase className="w-4 h-4" /> Freelancer Profile
                 </Link>
                 <button onClick={logout} className="px-4 py-3 rounded-xl text-sm font-medium text-red-500 hover:bg-red-50 flex items-center gap-2 text-left w-full">
                   <LogOut className="w-4 h-4" /> Sign Out

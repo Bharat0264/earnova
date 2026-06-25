@@ -234,12 +234,20 @@ export const getProducts = async (req, res) => {
       ? total || products.length || 1
       : parseInt(req.query.limit, 10) || 12
 
+    const canViewMemberEarnings = req.user?.role === 'admin' ||
+      (req.user?.featureAccess instanceof Map
+        ? req.user.featureAccess.get('ecommerce') === true
+        : req.user?.featureAccess?.ecommerce === true)
+    const visibleProducts = canViewMemberEarnings
+      ? products
+      : products.map(({ referralIncome, ...product }) => product)
+
     res.json({
       success:  true,
       total,
       page,
       pages:    req.query.limit === 'all' ? 1 : Math.ceil(total / limit) || 1,
-      products,
+      products: visibleProducts,
     })
   } catch (err) {
     res.status(500).json({ success: false, message: err.message })
@@ -260,6 +268,12 @@ export const getProduct = async (req, res) => {
     if (!product) {
       return res.status(404).json({ success: false, message: 'Product not found' })
     }
+
+    const canViewMemberEarnings = req.user?.role === 'admin' ||
+      (req.user?.featureAccess instanceof Map
+        ? req.user.featureAccess.get('ecommerce') === true
+        : req.user?.featureAccess?.ecommerce === true)
+    if (!canViewMemberEarnings) delete product.referralIncome
 
     res.json({ success: true, product })
   } catch (err) {

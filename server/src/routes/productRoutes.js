@@ -6,9 +6,10 @@ import {
   addReview, getFeaturedProducts, importProducts,
   getAdminProducts,
 } from '../controllers/productController.js'
-import { protect, adminOnly, optionalAuth } from '../middleware/auth.js'
+import { protect, adminOnly } from '../middleware/auth.js'
 
 const router = Router()
+router.use(protect)
 
 /* ── Multer — memory storage (buffer passed to Cloudinary) ── */
 const upload = multer({
@@ -24,10 +25,10 @@ const upload = multer({
 })
 
 /* ── Public ── */
-router.get('/',          optionalAuth, getProducts)
+router.get('/',          getProducts)
 router.get('/featured',  getFeaturedProducts)
 router.get('/admin/all', protect, adminOnly, getAdminProducts)
-router.get('/:slug',     optionalAuth, getProduct)
+router.get('/:slug',     getProduct)
 
 /* ── Authenticated ── */
 router.post('/:id/reviews', protect, addReview)

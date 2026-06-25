@@ -3,9 +3,10 @@ import {
   getReferralStats, getReferralTransactions, getLeaderboard,
   trackClick, requestWithdrawal, getWithdrawals, updateWithdrawal,
 } from '../controllers/referralController.js'
-import { protect, adminOnly } from '../middleware/auth.js'
+import { protect, adminOnly, requireFeature } from '../middleware/auth.js'
 
 const router = Router()
+router.use(protect, requireFeature('ecommerce'))
 
 /* Public */
 router.get('/leaderboard',    getLeaderboard)

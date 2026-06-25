@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { TrendingUp, TrendingDown, Package, Users, IndianRupee, Wallet } from 'lucide-react'
+import { TrendingUp, TrendingDown, Package, Users, IndianRupee, Wallet, CircleDollarSign } from 'lucide-react'
 import { formatPrice } from '../../utils/formatters'
 
 /* ═══════════ STAT CARD ═══════════ */
@@ -56,10 +56,15 @@ export function DashboardStats({ stats, loading }) {
       value:  formatPrice(stats?.withdrawals?.pendingAmount || 0),
       sub:    `${stats?.withdrawals?.pending || 0} requests · ${stats?.b2bPending || 0} B2B · ${stats?.subsidyPending || 0} subsidy`,
     },
+    {
+      title: 'Admin Member Earnings', Icon: CircleDollarSign, accent: 'bg-slate-800',
+      value: formatPrice(stats?.adminEarnings?.memberIncome || 0),
+      sub: 'From delivered non-member orders',
+    },
   ]
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
       {cards.map(c => <StatCard key={c.title} {...c} loading={loading} />)}
     </div>
   )

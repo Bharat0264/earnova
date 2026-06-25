@@ -2,6 +2,7 @@ import crypto  from 'crypto'
 import User    from '../models/User.js'
 import { signToken } from '../middleware/auth.js'
 import { sendWelcomeEmail, sendPasswordResetEmail } from '../utils/email.js'
+import { DEFAULT_PUBLIC_ACCESS } from '../config/features.js'
 
 const respond = (res, user, statusCode = 200) => {
   const token = signToken(user._id)
@@ -10,11 +11,44 @@ const respond = (res, user, statusCode = 200) => {
 
 /* ── POST /api/auth/register ── */
 /* ── POST /api/auth/register ── */
-export const register = async (_req, res) => {
-  return res.status(403).json({
-    success: false,
-    message: 'Account creation is disabled. Contact the administrator.'
-  })
+export const register = async (req, res) => {
+  try {
+    const name = req.body.name?.trim()
+    const email = req.body.email?.trim().toLowerCase()
+    const phone = req.body.phone?.trim()
+    const { password, referralCode } = req.body
+
+    if (!name || !email || !password) {
+      return res.status(400).json({ success: false, message: 'Name, email and password are required.' })
+    }
+    if (password.length < 6) {
+      return res.status(400).json({ success: false, message: 'Password must be at least 6 characters.' })
+    }
+    if (await User.exists({ email })) {
+      return res.status(409).json({ success: false, message: 'An account with this email already exists.' })
+    }
+
+    let referredBy
+    if (referralCode) {
+      const referrer = await User.findOne({ referralCode: referralCode.trim().toUpperCase() })
+      referredBy = referrer?._id
+    }
+
+    const user = await User.create({
+      name,
+      email,
+      phone,
+      password,
+      referredBy,
+      role: 'customer',
+      featureAccess: DEFAULT_PUBLIC_ACCESS,
+    })
+
+    sendWelcomeEmail(user).catch(err => console.warn('[Email] welcome failed:', err.message))
+    respond(res, user, 201)
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message })
+  }
 }
 
 /* ── POST /api/auth/login ── */
