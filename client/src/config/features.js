@@ -6,12 +6,18 @@ export const FEATURES = [
   },
   {
     key: 'ecommerce',
-    label: 'E-commerce',
-    description: 'See and earn product member income, plus access referrals, subsidies, and B2B programs.',
+    label: 'Shop at Earnova',
+    description: 'Access the product shop, checkout, referral wallet, subsidies and B2B product programs.',
+  },
+  {
+    key: 'businessSolutions',
+    label: 'Business Solutions',
+    description: 'Use the sales, order, and churn prediction workspace.',
   },
 ]
 
 export const DEFAULT_PUBLIC_ACCESS = {
   freelancing: true,
   ecommerce: false,
+  businessSolutions: true,
 }

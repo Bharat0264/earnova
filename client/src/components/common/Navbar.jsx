@@ -1,14 +1,18 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { ShoppingCart, Heart, User, Menu, X, Zap, LogOut, Package, ChevronDown, Briefcase } from 'lucide-react'
+import { ShoppingCart, Heart, User, Menu, X, Zap, LogOut, Package, ChevronDown, Briefcase, SunMedium, BarChart3, FileCheck2 } from 'lucide-react'
 import { useCart } from '../../context/CartContext'
 import { useAuth } from '../../context/AuthContext'
 import AuthModal from '../auth/AuthModal'
 
 const NAV_LINKS = [
   { to: '/freelance', label: 'Freelancing', feature: 'freelancing', publicPreview: true },
-  { to: '/products', label: 'Shop at Earnova', authenticated: true },
-  { to: '/referral', label: 'Earn & Refer', feature: 'ecommerce' },
+  { to: '/energy-solutions', label: 'Earnova Energy Solutions', public: true },
+  { to: '/business-solutions', label: 'Earnova Business Solutions', public: true },
+  { to: '/ca-services', label: 'Earnova CA Services', public: true },
+  { to: '/investors', label: 'Investors', public: true },
+  { to: '/products', label: 'Shop at Earnova', feature: 'ecommerce' },
+  { to: '/referral', label: 'Earn & Refer', public: true },
 ]
 
 export default function Navbar() {
@@ -23,10 +27,11 @@ export default function Navbar() {
   const { user, isAuthenticated, isAdmin, logout, hasFeature } = useAuth()
   const location = useLocation()
   const visibleLinks = NAV_LINKS.filter(link =>
+    link.public ||
     (link.publicPreview && !isAuthenticated) ||
     (isAuthenticated && (link.authenticated || hasFeature(link.feature)))
   )
-  const shoppingEnabled = isAuthenticated
+  const shoppingEnabled = isAuthenticated && hasFeature('ecommerce')
   const ecommerceEnabled = isAuthenticated && hasFeature('ecommerce')
 
   useEffect(() => {
@@ -169,6 +174,21 @@ export default function Navbar() {
                                        hover:bg-gray-50 transition-colors">
                         <Briefcase className="w-4 h-4" /> Freelancer Profile
                       </Link>
+                      <Link to="/energy-solutions"
+                            className="flex items-center gap-2.5 px-4 py-3 text-sm text-gray-600
+                                       hover:bg-gray-50 transition-colors">
+                        <SunMedium className="w-4 h-4" /> Energy Solutions
+                      </Link>
+                      <Link to="/business-solutions"
+                            className="flex items-center gap-2.5 px-4 py-3 text-sm text-gray-600
+                                       hover:bg-gray-50 transition-colors">
+                        <BarChart3 className="w-4 h-4" /> Business Solutions
+                      </Link>
+                      <Link to="/ca-services"
+                            className="flex items-center gap-2.5 px-4 py-3 text-sm text-gray-600
+                                       hover:bg-gray-50 transition-colors">
+                        <FileCheck2 className="w-4 h-4" /> CA Services
+                      </Link>
                       {ecommerceEnabled && (
                         <Link to="/referral"
                               className="flex items-center gap-2.5 px-4 py-3 text-sm text-gray-600
@@ -259,6 +279,15 @@ export default function Navbar() {
                 </Link>
                 <Link to="/freelance?mode=freelancer" className="px-4 py-3 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 flex items-center gap-2">
                   <Briefcase className="w-4 h-4" /> Freelancer Profile
+                </Link>
+                <Link to="/energy-solutions" className="px-4 py-3 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 flex items-center gap-2">
+                  <SunMedium className="w-4 h-4" /> Energy Solutions
+                </Link>
+                <Link to="/business-solutions" className="px-4 py-3 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 flex items-center gap-2">
+                  <BarChart3 className="w-4 h-4" /> Business Solutions
+                </Link>
+                <Link to="/ca-services" className="px-4 py-3 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 flex items-center gap-2">
+                  <FileCheck2 className="w-4 h-4" /> CA Services
                 </Link>
                 <button onClick={logout} className="px-4 py-3 rounded-xl text-sm font-medium text-red-500 hover:bg-red-50 flex items-center gap-2 text-left w-full">
                   <LogOut className="w-4 h-4" /> Sign Out

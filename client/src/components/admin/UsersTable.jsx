@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Plus, Search, ShieldCheck, Store, User } from 'lucide-react'
 import { formatDate, formatPrice } from '../../utils/formatters'
 import { api } from '../../utils/api'
-import { DEFAULT_PUBLIC_ACCESS, FEATURES } from '../../config/features'
+import { DEFAULT_PUBLIC_ACCESS } from '../../config/features'
 
 const ROLE_STYLE = {
   admin: 'bg-primary-100 text-primary-700',
@@ -45,13 +45,12 @@ export default function UsersTable({ data, loading, reload }) {
     }
   }
 
-  const toggleFeature = (user, feature) => {
-    const current = user.featureAccess?.[feature] ?? DEFAULT_PUBLIC_ACCESS[feature] ?? false
+  const setShopAccess = (user, allowed) => {
     updateUser(user, {
       featureAccess: {
         ...DEFAULT_PUBLIC_ACCESS,
         ...(user.featureAccess || {}),
-        [feature]: !current,
+        ecommerce: allowed,
       },
     })
   }
@@ -125,23 +124,15 @@ export default function UsersTable({ data, loading, reload }) {
                     {isAdmin ? (
                       <span className="text-xs font-bold text-primary-700">All services</span>
                     ) : (
-                      <div className="flex flex-wrap gap-3">
-                        {FEATURES.map(feature => {
-                          const checked = user.featureAccess?.[feature.key] ?? DEFAULT_PUBLIC_ACCESS[feature.key] ?? false
-                          return (
-                            <label key={feature.key} className="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-600 cursor-pointer">
-                              <input
-                                type="checkbox"
-                                checked={checked}
-                                disabled={updating === user._id}
-                                onChange={() => toggleFeature(user, feature.key)}
-                                className="w-4 h-4 accent-primary-700"
-                              />
-                              {feature.label}
-                            </label>
-                          )
-                        })}
-                      </div>
+                      <select
+                        value={user.featureAccess?.ecommerce ?? DEFAULT_PUBLIC_ACCESS.ecommerce ? 'allowed' : 'blocked'}
+                        disabled={updating === user._id}
+                        onChange={event => setShopAccess(user, event.target.value === 'allowed')}
+                        className="border border-gray-200 rounded-xl px-3 py-2 text-xs font-semibold bg-white text-gray-700"
+                      >
+                        <option value="blocked">Shop at Earnova blocked</option>
+                        <option value="allowed">Shop at Earnova allowed</option>
+                      </select>
                     )}
                   </td>
                   <td className="px-4 py-3">{formatPrice(user.walletBalance || 0)}</td>
@@ -163,7 +154,7 @@ export default function UsersTable({ data, loading, reload }) {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
             <h2 className="font-display font-bold text-lg">Create Member</h2>
-            <p className="text-sm text-gray-500 mt-1 mb-5">Choose exactly which Earnova services this user can access.</p>
+            <p className="text-sm text-gray-500 mt-1 mb-5">Only Shop at Earnova is admin controlled. Freelancing, Business Solutions, CA Services and Energy Solutions are open for everyone.</p>
             <div className="space-y-3">
               <input placeholder="Name" value={form.name} onChange={event => setForm({ ...form, name: event.target.value })} className="input-base" />
               <input type="email" placeholder="Email" value={form.email} onChange={event => setForm({ ...form, email: event.target.value })} className="input-base" />
@@ -173,26 +164,21 @@ export default function UsersTable({ data, loading, reload }) {
                 <option value="customer">Member</option><option value="dealer">Dealer</option>
               </select>
               <div className="rounded-2xl border border-gray-200 p-4">
-                <p className="text-sm font-bold text-gray-900 mb-3">Access To</p>
-                <div className="space-y-3">
-                  {FEATURES.map(feature => (
-                    <label key={feature.key} className="flex items-start gap-3 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={Boolean(form.featureAccess[feature.key])}
-                        onChange={event => setForm({
-                          ...form,
-                          featureAccess: { ...form.featureAccess, [feature.key]: event.target.checked },
-                        })}
-                        className="w-4 h-4 mt-0.5 accent-primary-700"
-                      />
-                      <span>
-                        <span className="block text-sm font-semibold text-gray-800">{feature.label}</span>
-                        <span className="block text-xs text-gray-500 mt-0.5">{feature.description}</span>
-                      </span>
-                    </label>
-                  ))}
-                </div>
+                <label className="block">
+                  <span className="block text-sm font-bold text-gray-900 mb-2">Shop at Earnova access</span>
+                  <select
+                    value={form.featureAccess.ecommerce ? 'allowed' : 'blocked'}
+                    onChange={event => setForm({
+                      ...form,
+                      featureAccess: { ...DEFAULT_PUBLIC_ACCESS, ecommerce: event.target.value === 'allowed' },
+                    })}
+                    className="input-base"
+                  >
+                    <option value="blocked">Blocked until admin allows</option>
+                    <option value="allowed">Allowed for this user</option>
+                  </select>
+                </label>
+                <p className="text-xs text-gray-500 mt-2">All other Earnova services stay accessible without manual admin selection.</p>
               </div>
             </div>
             <div className="flex gap-2 mt-5">

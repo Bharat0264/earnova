@@ -3,7 +3,13 @@ import Razorpay from 'razorpay'
 import FreelancerProfile from '../models/FreelancerProfile.js'
 import FreelanceJob from '../models/FreelanceJob.js'
 
-const SERVICE_FEE_RATE = 10
+const DEFAULT_SERVICE_FEE_RATE = 10
+const HIGH_VALUE_SERVICE_FEE_RATE = 1.5
+const HIGH_VALUE_SERVICE_FEE_THRESHOLD = 2500
+
+const getServiceFeeRate = amount =>
+  amount > HIGH_VALUE_SERVICE_FEE_THRESHOLD ? HIGH_VALUE_SERVICE_FEE_RATE : DEFAULT_SERVICE_FEE_RATE
+
 const cleanSkills = (value) => {
   const values = Array.isArray(value) ? value : String(value || '').split(',')
   return [...new Set(values.map(item => item.trim()).filter(Boolean))].slice(0, 20)
@@ -61,18 +67,34 @@ export const createJob = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Job amount must be at least ₹100.' })
     }
 
-    const serviceFee = Math.round(freelancerAmount * SERVICE_FEE_RATE / 100)
+    const isAdminClient = req.user?.role === 'admin'
+    const serviceFeeRate = isAdminClient ? 0 : getServiceFeeRate(freelancerAmount)
+    const serviceFee = isAdminClient ? 0 : Math.round(freelancerAmount * serviceFeeRate / 100)
     const job = await FreelanceJob.create({
       ...req.body,
       client: req.user._id,
       skills: cleanSkills(req.body.skills),
       freelancerAmount,
-      serviceFeeRate: SERVICE_FEE_RATE,
+      serviceFeeRate,
       serviceFee,
       totalPayable: freelancerAmount + serviceFee,
-      statusHistory: [{ status: 'awaiting-payment', note: 'Job created. Escrow payment is pending.' }],
+      paymentStatus: isAdminClient ? 'admin-waived' : 'pending',
+      status: isAdminClient ? 'open' : 'awaiting-payment',
+      fundedAt: isAdminClient ? new Date() : undefined,
+      statusHistory: [{
+        status: isAdminClient ? 'open' : 'awaiting-payment',
+        note: isAdminClient
+          ? 'Admin-created job published without payment requirement.'
+          : 'Job created. Escrow payment is pending.',
+      }],
     })
-    res.status(201).json({ success: true, job, message: 'Job created. Complete escrow payment to publish it.' })
+    res.status(201).json({
+      success: true,
+      job,
+      message: isAdminClient
+        ? 'Admin job published without payment requirement.'
+        : 'Job created. Complete escrow payment to publish it.',
+    })
   } catch (err) {
     res.status(500).json({ success: false, message: err.message })
   }
@@ -82,6 +104,9 @@ export const createJobPaymentOrder = async (req, res) => {
   try {
     const job = await FreelanceJob.findOne({ _id: req.params.id, client: req.user._id })
     if (!job) return res.status(404).json({ success: false, message: 'Job not found.' })
+    if (req.user?.role === 'admin' || job.paymentStatus === 'admin-waived') {
+      return res.status(400).json({ success: false, message: 'Admin-created freelance jobs do not require payment.' })
+    }
     if (job.paymentStatus !== 'pending') return res.status(400).json({ success: false, message: 'This job is already funded.' })
 
     const { keyId, instance } = getRazorpay()
@@ -134,7 +159,7 @@ export const releaseCompletedJob = async (req, res) => {
   try {
     const job = await FreelanceJob.findById(req.params.id)
     if (!job) return res.status(404).json({ success: false, message: 'Job not found.' })
-    if (job.paymentStatus !== 'paid-to-escrow' || !['in-progress', 'submitted'].includes(job.status)) {
+    if (!['paid-to-escrow', 'admin-waived'].includes(job.paymentStatus) || !['in-progress', 'submitted'].includes(job.status)) {
       return res.status(400).json({ success: false, message: 'Only funded, completed work can be released.' })
     }
 

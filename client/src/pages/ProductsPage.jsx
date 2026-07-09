@@ -23,7 +23,7 @@ export default function ProductsPage() {
   const [gridCols,     setGridCols]     = useState(3)
 
   const filters = useMemo(() => ({
-    category: searchParams.get('category') || '',
+    category: 'solar-panels',
     brand:    searchParams.get('brand')    || '',
     minPrice: searchParams.get('minPrice') || '',
     maxPrice: searchParams.get('maxPrice') || '',
@@ -35,12 +35,11 @@ export default function ProductsPage() {
   }), [searchParams])
 
   const { products, loading, total } = useProducts(filters)
-
-  useEffect(() => {
-    const t = setTimeout(() => updateFilter('search', searchInput), 400)
-    return () => clearTimeout(t)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchInput])
+  const visibleProducts = useMemo(
+    () => products.filter(p => p.category === 'solar-panels'),
+    [products]
+  )
+  const visibleTotal = Math.min(total, visibleProducts.length || total)
 
   const updateFilter = useCallback((key, value) => {
     setSearchParams(prev => {
@@ -50,19 +49,33 @@ export default function ProductsPage() {
     })
   }, [setSearchParams])
 
+  useEffect(() => {
+    if (searchParams.get('category') && searchParams.get('category') !== 'solar-panels') {
+      setSearchParams(prev => {
+        const p = new URLSearchParams(prev)
+        p.set('category', 'solar-panels')
+        return p
+      })
+    }
+  }, [searchParams, setSearchParams])
+
+  useEffect(() => {
+    const t = setTimeout(() => updateFilter('search', searchInput), 400)
+    return () => clearTimeout(t)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchInput])
+
   const clearFilters = useCallback(() => {
     setSearchParams({})
     setSearchInput('')
   }, [setSearchParams])
 
   const activeCount = [
-    filters.category, filters.brand, filters.minPrice,
+    filters.brand, filters.minPrice,
     filters.maxPrice, filters.rating, filters.inStock,
   ].filter(Boolean).length
 
-  const pageTitle = filters.category
-    ? CATEGORY_LABELS[filters.category] || filters.category
-    : 'All Products'
+  const pageTitle = CATEGORY_LABELS['solar-panels'] || 'Solar Panels'
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -74,7 +87,7 @@ export default function ProductsPage() {
               <h1 className="font-display font-bold text-2xl text-gray-900">{pageTitle}</h1>
               {!loading && (
                 <p className="text-gray-400 text-sm mt-0.5">
-                  {total} product{total !== 1 ? 's' : ''} found
+                  {visibleTotal} product{visibleTotal !== 1 ? 's' : ''} found
                 </p>
               )}
             </div>
@@ -108,6 +121,7 @@ export default function ProductsPage() {
                 onChange={updateFilter}
                 onClear={clearFilters}
                 activeCount={activeCount}
+                includeCategories={['solar-panels']}
               />
             </div>
           </aside>
@@ -129,9 +143,7 @@ export default function ProductsPage() {
                     </span>
                   )}
                 </button>
-                {filters.category && (
-                  <FilterChip label={CATEGORY_LABELS[filters.category]} onRemove={() => updateFilter('category', '')} />
-                )}
+                <FilterChip label={CATEGORY_LABELS['solar-panels']} locked />
                 {filters.brand && (
                   <FilterChip label={filters.brand} onRemove={() => updateFilter('brand', '')} />
                 )}
@@ -160,12 +172,12 @@ export default function ProductsPage() {
               <div className={`grid grid-cols-2 md:grid-cols-3 ${gridCols === 4 ? 'xl:grid-cols-4' : 'xl:grid-cols-3'} gap-4`}>
                 {Array.from({ length: SKELETON_COUNT }).map((_, i) => <ProductCardSkeleton key={i} />)}
               </div>
-            ) : products.length === 0 ? (
+            ) : visibleProducts.length === 0 ? (
               <EmptyState onClear={clearFilters} hasFilters={activeCount > 0 || !!filters.search} />
             ) : (
               <>
                 <div className={`grid grid-cols-2 md:grid-cols-3 ${gridCols === 4 ? 'xl:grid-cols-4' : 'xl:grid-cols-3'} gap-4`}>
-                  {products.map(p => <ProductCard key={p._id} product={p} />)}
+                  {visibleProducts.map(p => <ProductCard key={p._id} product={p} />)}
                 </div>
               </>
             )}
@@ -180,17 +192,18 @@ export default function ProductsPage() {
           onChange={updateFilter}
           onClear={() => { clearFilters(); setFilterOpen(false) }}
           activeCount={activeCount}
+          includeCategories={['solar-panels']}
         />
       </Modal>
     </div>
   )
 }
 
-function FilterChip({ label, onRemove }) {
+function FilterChip({ label, onRemove, locked = false }) {
   return (
     <span className="inline-flex items-center gap-1.5 bg-primary-50 text-primary-700 text-xs font-semibold px-2.5 py-1 rounded-full">
       {label}
-      <button onClick={onRemove}><X className="w-3 h-3" /></button>
+      {!locked && <button onClick={onRemove}><X className="w-3 h-3" /></button>}
     </span>
   )
 }

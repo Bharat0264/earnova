@@ -7,7 +7,7 @@
 const img = (color, textColor, label) =>
   `https://placehold.co/600x600/${color}/${textColor}?text=${encodeURIComponent(label)}&font=sora`
 
-export const MOCK_PRODUCTS = [
+const ALL_MOCK_PRODUCTS = [
   /* ═══════════════════════════════════
      SOLAR PANELS
   ═══════════════════════════════════ */
@@ -676,5 +676,6 @@ export const MOCK_PRODUCTS = [
   },
 ]
 
+export const MOCK_PRODUCTS = ALL_MOCK_PRODUCTS.filter(product => product.category === 'solar-panels')
 export const BRANDS = [...new Set(MOCK_PRODUCTS.map(p => p.brand))].sort()
-export const CATEGORIES = ['solar-panels', 'fans', 'acs', 'accessories']
+export const CATEGORIES = ['solar-panels']

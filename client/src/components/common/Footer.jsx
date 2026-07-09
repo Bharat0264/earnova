@@ -2,22 +2,26 @@ import { Link } from 'react-router-dom'
 import { Facebook, Instagram, Mail, Sparkles, Youtube } from 'lucide-react'
 
 const SERVICES = [
+  { label: 'Earnova Energy Solutions', to: '/energy-solutions' },
+  { label: 'Earnova Business Solutions', to: '/business-solutions' },
+  { label: 'Earnova CA Services', to: '/ca-services' },
   { label: 'Hire a Freelancer', to: '/freelance?mode=hire' },
   { label: 'Become a Freelancer', to: '/freelance?mode=freelancer' },
-  { label: 'Protected Payments', to: '/freelance' },
   { label: 'Browse Products', to: '/products' },
-  { label: 'Bulk Quotations', to: '/b2b' },
 ]
 const COMPANY = [
   { label: 'About Earnova', to: '/' },
+  { label: 'Investor Snapshot', to: '/investors' },
   { label: 'How Escrow Works', to: '/freelance' },
   { label: 'Support', to: '/' },
   { label: 'Privacy Policy', to: '/' },
   { label: 'Terms of Service', to: '/' },
 ]
 const PARTNER = [
+  { label: 'Solar Subsidy', to: '/subsidy' },
   { label: 'E-commerce Partners', to: '/products' },
   { label: 'B2B Bulk Orders', to: '/b2b' },
+  { label: 'Verified CA Network', to: '/ca-services' },
   { label: 'Referral Program', to: '/referral' },
   { label: 'Dealer Portal', to: '/b2b' },
   { label: 'Affiliate Program', to: '/referral' },

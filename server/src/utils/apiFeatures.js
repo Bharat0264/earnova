@@ -94,6 +94,7 @@ export function buildCountFilter(queryString) {
 
   Object.entries(queryString).forEach(([key, value]) => {
     if (exclude.includes(key)) return
+    if (value === '' || value === undefined || value === null) return
     if (key === 'minPrice') { obj.price = { ...obj.price, $gte: Number(value) }; return }
     if (key === 'maxPrice') { obj.price = { ...obj.price, $lte: Number(value) }; return }
     if (key === 'rating')   { obj.rating = { $gte: Number(value) }; return }

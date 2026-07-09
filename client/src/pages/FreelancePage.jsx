@@ -16,6 +16,12 @@ const CATEGORIES = [
 ]
 
 const inputClass = 'input-base bg-white'
+const DEFAULT_SERVICE_FEE_RATE = 10
+const HIGH_VALUE_SERVICE_FEE_RATE = 1.5
+const HIGH_VALUE_SERVICE_FEE_THRESHOLD = 2500
+const getServiceFeeRate = amount =>
+  Number(amount) > HIGH_VALUE_SERVICE_FEE_THRESHOLD ? HIGH_VALUE_SERVICE_FEE_RATE : DEFAULT_SERVICE_FEE_RATE
+
 const initialJob = {
   clientName: '', clientEmail: '', clientWhatsapp: '', company: '',
   title: '', category: '', description: '', skills: '', duration: '',
@@ -52,30 +58,39 @@ function FlowCard({ number, icon: Icon, title, text }) {
   )
 }
 
-function PricingSummary({ amount }) {
+function PricingSummary({ amount, paymentExempt = false }) {
   const base = Number(amount) || 0
-  const fee = Math.round(base * 0.10)
+  const rate = paymentExempt ? 0 : getServiceFeeRate(base)
+  const fee = paymentExempt ? 0 : Math.round(base * rate / 100)
+  const initialPayment = paymentExempt ? 0 : base + fee
+  const feeLabel = paymentExempt ? 'Admin service fee' : `Earnova service fee (${rate}%)`
+  const totalLabel = paymentExempt ? 'Admin payment required' : 'You fund initially'
+  const note = paymentExempt
+    ? 'Admin-created freelance jobs are published without Razorpay escrow payment.'
+    : base > HIGH_VALUE_SERVICE_FEE_THRESHOLD
+      ? 'Earnova securely holds the funds. Jobs above ₹2,500 use only 1.5% Earnova commission.'
+      : 'Earnova securely holds the funds. Jobs above ₹2,500 get reduced 1.5% Earnova commission.'
   return (
     <div className="rounded-2xl bg-slate-950 text-white p-5 space-y-3">
       <div className="flex items-center justify-between text-sm text-slate-300">
         <span>Freelancer receives</span><strong className="text-white">₹{base.toLocaleString('en-IN')}</strong>
       </div>
       <div className="flex items-center justify-between text-sm text-slate-300">
-        <span>Earnova service fee (10%)</span><strong className="text-violet-300">₹{fee.toLocaleString('en-IN')}</strong>
+        <span>{feeLabel}</span><strong className="text-violet-300">₹{fee.toLocaleString('en-IN')}</strong>
       </div>
       <div className="h-px bg-white/10" />
       <div className="flex items-center justify-between">
-        <span className="font-bold">You fund initially</span>
-        <strong className="font-display text-xl">₹{(base + fee).toLocaleString('en-IN')}</strong>
+        <span className="font-bold">{totalLabel}</span>
+        <strong className="font-display text-xl">₹{initialPayment.toLocaleString('en-IN')}</strong>
       </div>
       <p className="text-xs text-slate-400 leading-relaxed">
-        Earnova securely holds the funds. The freelancer amount is released after work completion.
+        {note}
       </p>
     </div>
   )
 }
 
-function HireForm({ user, requireAuth }) {
+function HireForm({ user, requireAuth, isAdmin = false }) {
   const [form, setForm] = useState(() => ({
     ...initialJob,
     clientName: user?.name || '',
@@ -106,6 +121,7 @@ function HireForm({ user, requireAuth }) {
     try {
       const data = await api.post('/freelance/jobs', form)
       setCreatedJob(data.job)
+      if (data.job?.paymentStatus === 'admin-waived' || data.job?.status === 'open') setFunded(true)
     } catch (err) {
       setError(err.message)
     } finally {
@@ -157,8 +173,14 @@ function HireForm({ user, requireAuth }) {
   if (funded) return (
     <div className="rounded-3xl border border-emerald-200 bg-emerald-50 p-8 text-center">
       <CheckCircle2 className="w-14 h-14 text-emerald-600 mx-auto mb-4" />
-      <h2 className="font-display text-2xl font-bold text-slate-950">Job funded and published</h2>
-      <p className="text-slate-600 mt-2">Your money is now protected in Earnova escrow until the work is completed.</p>
+      <h2 className="font-display text-2xl font-bold text-slate-950">
+        {isAdmin ? 'Admin job published' : 'Job funded and published'}
+      </h2>
+      <p className="text-slate-600 mt-2">
+        {isAdmin
+          ? 'No payment was requested because this job was created by an admin.'
+          : 'Your money is now protected in Earnova escrow until the work is completed.'}
+      </p>
     </div>
   )
 
@@ -170,12 +192,18 @@ function HireForm({ user, requireAuth }) {
         <h2 className="font-display text-2xl font-bold text-slate-950 mt-1">{createdJob.title}</h2>
         <p className="text-slate-600 text-sm mt-2">Reference: {createdJob.jobId}</p>
       </div>
-      <PricingSummary amount={createdJob.freelancerAmount} />
+      <PricingSummary amount={createdJob.freelancerAmount} paymentExempt={isAdmin || createdJob.paymentStatus === 'admin-waived'} />
       {error && <p className="rounded-xl bg-red-50 p-3 text-sm text-red-600">{error}</p>}
-      <button onClick={fundJob} disabled={loading} className="btn-primary w-full py-4">
-        {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <LockKeyhole className="w-5 h-5" />}
-        Pay securely and publish job
-      </button>
+      {isAdmin || createdJob.paymentStatus === 'admin-waived' ? (
+        <div className="rounded-2xl bg-emerald-50 border border-emerald-100 p-4 text-sm font-semibold text-emerald-700">
+          Admin-created jobs are already live. Razorpay payment is skipped.
+        </div>
+      ) : (
+        <button onClick={fundJob} disabled={loading} className="btn-primary w-full py-4">
+          {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <LockKeyhole className="w-5 h-5" />}
+          Pay securely and publish job
+        </button>
+      )}
     </div>
   )
 
@@ -220,11 +248,11 @@ function HireForm({ user, requireAuth }) {
         <Field label="Deadline"><input type="date" className={inputClass} value={form.deadline} onChange={set('deadline')} /></Field>
         <Field label="Freelancer amount" required><input type="number" min="100" className={inputClass} value={form.freelancerAmount} onChange={set('freelancerAmount')} placeholder="₹" required /></Field>
       </div>
-      <PricingSummary amount={form.freelancerAmount} />
+      <PricingSummary amount={form.freelancerAmount} paymentExempt={isAdmin} />
       {error && <p className="rounded-xl bg-red-50 p-3 text-sm text-red-600">{error}</p>}
       <button disabled={loading} className="btn-primary w-full py-4">
         {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <ArrowRight className="w-5 h-5" />}
-        Continue to secure payment
+        {isAdmin ? 'Publish job without payment' : 'Continue to secure payment'}
       </button>
     </form>
   )
@@ -311,7 +339,7 @@ function FreelancerForm({ user, requireAuth }) {
       </div>
       <div className="rounded-2xl bg-violet-50 border border-violet-100 p-4 flex gap-3">
         <ShieldCheck className="w-5 h-5 text-violet-700 shrink-0" />
-        <p className="text-sm text-violet-950">Clients fund Earnova first. You are paid the agreed amount after approved completion—no 10% fee is deducted from your earnings.</p>
+        <p className="text-sm text-violet-950">Clients fund Earnova first. You are paid the agreed amount after approved completion. Earnova commission is paid by the client, and drops to 1.5% when the job amount crosses ₹2,500.</p>
       </div>
       {error && <p className="rounded-xl bg-red-50 p-3 text-sm text-red-600">{error}</p>}
       <button disabled={loading} className="btn-primary w-full py-4">
@@ -324,7 +352,7 @@ function FreelancerForm({ user, requireAuth }) {
 
 export default function FreelancePage() {
   const [params, setParams] = useSearchParams()
-  const { user, isAuthenticated } = useAuth()
+  const { user, isAuthenticated, isAdmin } = useAuth()
   const [showAuth, setShowAuth] = useState(false)
   const active = params.get('mode') === 'freelancer' ? 'freelancer' : 'hire'
   const requireAuth = () => setShowAuth(true)
@@ -374,7 +402,7 @@ export default function FreelancePage() {
 
           <div className="bg-white rounded-[2rem] border border-slate-200 shadow-card p-6 sm:p-9 lg:p-12">
             {active === 'hire'
-              ? <HireForm user={user} requireAuth={requireAuth} />
+              ? <HireForm user={user} requireAuth={requireAuth} isAdmin={isAdmin} />
               : <FreelancerForm user={user} requireAuth={requireAuth} />}
           </div>
           {!isAuthenticated && (
@@ -391,7 +419,7 @@ export default function FreelancePage() {
           </div>
           <div className="grid md:grid-cols-4 gap-4">
             {[
-              [WalletCards, 'Client funds job', 'Job amount + 10% Earnova fee is paid initially.'],
+              [WalletCards, isAdmin ? 'Admin publishes job' : 'Client funds job', isAdmin ? 'Admin-created jobs are published without Razorpay payment.' : 'Client pays job amount plus Earnova fee. Above ₹2,500, the fee is only 1.5%.'],
               [LockKeyhole, 'Earnova holds funds', 'The freelancer can work knowing the money is secured.'],
               [Clock3, 'Work is completed', 'The client reviews the agreed deliverables.'],
               [IndianRupee, 'Freelancer is paid', 'Earnova releases the full agreed freelancer amount.'],

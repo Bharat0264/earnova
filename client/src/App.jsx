@@ -17,6 +17,10 @@ import RefLandingPage     from './pages/RefLandingPage'
 import AdminPage          from './pages/AdminPage'
 import NotFoundPage       from './pages/NotFoundPage'
 import FreelancePage      from './pages/FreelancePage'
+import EnergySolutionsPage from './pages/EnergySolutionsPage'
+import BusinessSolutionsPage from './pages/BusinessSolutionsPage'
+import CAServicesPage     from './pages/CAServicesPage'
+import InvestorsPage      from './pages/InvestorsPage'
 import FeatureGate        from './components/common/FeatureGate'
 
 export default function App() {
@@ -28,16 +32,20 @@ export default function App() {
           <main className="flex-1">
             <Routes>
               <Route path="/"             element={<HomePage />} />
-              <Route path="/products"     element={<FeatureGate><ProductsPage /></FeatureGate>} />
-              <Route path="/freelance"    element={<FeatureGate feature="freelancing"><FreelancePage /></FeatureGate>} />
-              <Route path="/products/:id" element={<FeatureGate><ProductDetailPage /></FeatureGate>} />
-              <Route path="/cart"         element={<FeatureGate><CartPage /></FeatureGate>} />
-              <Route path="/checkout"     element={<FeatureGate><CheckoutPage /></FeatureGate>} />
+              <Route path="/products"     element={<FeatureGate feature="ecommerce"><ProductsPage /></FeatureGate>} />
+              <Route path="/freelance"    element={<FreelancePage />} />
+              <Route path="/energy-solutions" element={<EnergySolutionsPage />} />
+              <Route path="/business-solutions" element={<BusinessSolutionsPage />} />
+              <Route path="/ca-services" element={<CAServicesPage />} />
+              <Route path="/investors" element={<InvestorsPage />} />
+              <Route path="/products/:id" element={<FeatureGate feature="ecommerce"><ProductDetailPage /></FeatureGate>} />
+              <Route path="/cart"         element={<FeatureGate feature="ecommerce"><CartPage /></FeatureGate>} />
+              <Route path="/checkout"     element={<FeatureGate feature="ecommerce"><CheckoutPage /></FeatureGate>} />
               <Route path="/account"      element={<AccountPage />} />
-              <Route path="/b2b"          element={<FeatureGate feature="ecommerce"><B2BPage /></FeatureGate>} />
-              <Route path="/subsidy"      element={<FeatureGate feature="ecommerce"><SubsidyPage /></FeatureGate>} />
-              <Route path="/referral"     element={<FeatureGate feature="ecommerce"><ReferralPage /></FeatureGate>} />
-              <Route path="/ref/:code"    element={<FeatureGate feature="ecommerce"><RefLandingPage /></FeatureGate>} />
+              <Route path="/b2b"          element={<B2BPage />} />
+              <Route path="/subsidy"      element={<SubsidyPage />} />
+              <Route path="/referral"     element={<ReferralPage />} />
+              <Route path="/ref/:code"    element={<RefLandingPage />} />
               <Route path="/admin/*"      element={<AdminPage />} />
               <Route path="*"             element={<NotFoundPage />} />
             </Routes>

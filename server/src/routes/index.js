@@ -8,6 +8,7 @@ import b2bRoutes       from './b2bRoutes.js'
 import subsidyRoutes   from './subsidyRoutes.js'
 import adminRoutes     from './adminRoutes.js'
 import freelanceRoutes from './freelanceRoutes.js'
+import caRoutes        from './caRoutes.js'
 
 const router = Router()
 
@@ -21,5 +22,6 @@ router.use('/subsidy',  subsidyRoutes)   /* ✅ Phase 5 */
 router.use('/admin',    adminRoutes)     /* ✅ Phase 6 */
 
 router.use('/freelance', freelanceRoutes)
+router.use('/ca', caRoutes)
 
 export default router

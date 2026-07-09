@@ -4,6 +4,10 @@ import Product from '../models/Product.js'
 import Withdrawal from '../models/Withdrawal.js'
 import B2BQuote from '../models/B2BQuote.js'
 import SubsidyRequest from '../models/SubsidyRequest.js'
+import FreelanceJob from '../models/FreelanceJob.js'
+import FreelancerProfile from '../models/FreelancerProfile.js'
+import CAProfile from '../models/CAProfile.js'
+import CATaxJob from '../models/CATaxJob.js'
 import { DEFAULT_PUBLIC_ACCESS, normalizeFeatureAccess } from '../config/features.js'
 
 /* ────────────────────────────────────────
@@ -30,6 +34,9 @@ export const getDashboardStats = async (_req, res) => {
       subsidyPending,
       monthlyRevenueAgg,
       adminMemberEarningsAgg,
+      freelanceStatusAgg,
+      caProfileStatusAgg,
+      caTaxStatusAgg,
     ] = await Promise.all([
       Order.aggregate([
         { $match: { paymentStatus: 'paid' } },
@@ -130,6 +137,18 @@ export const getDashboardStats = async (_req, res) => {
       Order.aggregate([
         { $match: { adminEarningsRecognized: true } },
         { $group: { _id: null, total: { $sum: '$adminEarningsAmount' } } }
+      ]),
+
+      FreelanceJob.aggregate([
+        { $group: { _id: '$status', count: { $sum: 1 } } }
+      ]),
+
+      CAProfile.aggregate([
+        { $group: { _id: '$status', count: { $sum: 1 } } }
+      ]),
+
+      CATaxJob.aggregate([
+        { $group: { _id: '$status', count: { $sum: 1 } } }
       ])
     ])
 
@@ -147,6 +166,18 @@ export const getDashboardStats = async (_req, res) => {
     const statusMap = {}
     orderStatusAgg.forEach(s => {
       statusMap[s._id] = s.count
+    })
+    const freelanceStatusMap = {}
+    freelanceStatusAgg.forEach(s => {
+      freelanceStatusMap[s._id] = s.count
+    })
+    const caProfileStatusMap = {}
+    caProfileStatusAgg.forEach(s => {
+      caProfileStatusMap[s._id] = s.count
+    })
+    const caTaxStatusMap = {}
+    caTaxStatusAgg.forEach(s => {
+      caTaxStatusMap[s._id] = s.count
     })
 
     const wdPending = withdrawalAgg[0]?.pending?.[0] || {
@@ -202,6 +233,24 @@ export const getDashboardStats = async (_req, res) => {
         },
         b2bPending,
         subsidyPending,
+        freelanceJobs: {
+          total: Object.values(freelanceStatusMap).reduce((a, b) => a + b, 0),
+          awaitingPayment: freelanceStatusMap['awaiting-payment'] || 0,
+          open: freelanceStatusMap.open || 0,
+          inProgress: freelanceStatusMap['in-progress'] || 0,
+          submitted: freelanceStatusMap.submitted || 0,
+          completed: freelanceStatusMap.completed || 0,
+        },
+        caWork: {
+          pendingProfiles: caProfileStatusMap.pending || 0,
+          verifiedProfiles: caProfileStatusMap.verified || 0,
+          activeTaxJobs: (caTaxStatusMap.submitted || 0)
+            + (caTaxStatusMap['under-review'] || 0)
+            + (caTaxStatusMap['documents-needed'] || 0)
+            + (caTaxStatusMap.verified || 0)
+            + (caTaxStatusMap.filed || 0),
+          completedTaxJobs: caTaxStatusMap.completed || 0,
+        },
         monthlyRevenue
       }
     })
@@ -365,5 +414,290 @@ export const updateAdminUser = async (req, res) => {
       success: false,
       message: err.message
     })
+  }
+}
+
+export const getAdminFreelanceJobs = async (req, res) => {
+  try {
+    const page = Math.max(parseInt(req.query.page) || 1, 1)
+    const limit = Math.min(parseInt(req.query.limit) || 50, 100)
+    const filter = {}
+
+    if (req.query.status && req.query.status !== 'all') filter.status = req.query.status
+    if (req.query.paymentStatus && req.query.paymentStatus !== 'all') filter.paymentStatus = req.query.paymentStatus
+    if (req.query.q) {
+      const re = new RegExp(req.query.q, 'i')
+      filter.$or = [
+        { jobId: re },
+        { title: re },
+        { clientName: re },
+        { clientEmail: re },
+        { category: re },
+      ]
+    }
+
+    const [jobs, total, freelancers] = await Promise.all([
+      FreelanceJob.find(filter)
+        .populate('client', 'name email phone role')
+        .populate({
+          path: 'assignedFreelancer',
+          select: 'name email whatsapp phone title city skills status user',
+          populate: { path: 'user', select: 'name email phone role' },
+        })
+        .sort('-createdAt')
+        .skip((page - 1) * limit)
+        .limit(limit)
+        .lean(),
+      FreelanceJob.countDocuments(filter),
+      FreelancerProfile.find({ status: { $in: ['verified', 'pending'] } })
+        .select('name email whatsapp phone title city skills status user')
+        .populate('user', 'name email phone role')
+        .sort({ status: 1, name: 1 })
+        .lean(),
+    ])
+
+    res.json({
+      success: true,
+      total,
+      page,
+      pages: Math.ceil(total / limit),
+      jobs,
+      freelancers,
+    })
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message })
+  }
+}
+
+export const updateAdminFreelanceJob = async (req, res) => {
+  try {
+    const allowedStatuses = ['awaiting-payment', 'open', 'in-progress', 'submitted', 'completed', 'cancelled', 'disputed']
+    const updates = {}
+    const history = []
+
+    if (req.body.status !== undefined) {
+      if (!allowedStatuses.includes(req.body.status)) {
+        return res.status(400).json({ success: false, message: 'Invalid freelance job status.' })
+      }
+      updates.status = req.body.status
+      if (req.body.status === 'completed') updates.completedAt = new Date()
+      history.push({ status: req.body.status, note: `Admin changed status to ${req.body.status}.` })
+    }
+
+    if (req.body.assignedFreelancer !== undefined) {
+      if (req.body.assignedFreelancer) {
+        const profile = await FreelancerProfile.findById(req.body.assignedFreelancer)
+        if (!profile) return res.status(404).json({ success: false, message: 'Freelancer profile not found.' })
+        updates.assignedFreelancer = profile._id
+        if (!updates.status) updates.status = 'in-progress'
+        history.push({ status: updates.status || 'in-progress', note: `Assigned to ${profile.name}.` })
+      } else {
+        updates.assignedFreelancer = null
+        history.push({ status: req.body.status || 'open', note: 'Freelancer assignment removed.' })
+      }
+    }
+
+    if (!Object.keys(updates).length) {
+      return res.status(400).json({ success: false, message: 'No valid updates provided.' })
+    }
+
+    const updateDoc = { $set: updates }
+    if (history.length) updateDoc.$push = { statusHistory: { $each: history } }
+
+    const job = await FreelanceJob.findByIdAndUpdate(
+      req.params.id,
+      updateDoc,
+      { new: true, runValidators: true }
+    )
+      .populate('client', 'name email phone role')
+      .populate({
+        path: 'assignedFreelancer',
+        select: 'name email whatsapp phone title city skills status user',
+        populate: { path: 'user', select: 'name email phone role' },
+      })
+      .lean()
+
+    if (!job) return res.status(404).json({ success: false, message: 'Freelance job not found.' })
+    res.json({ success: true, job })
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message })
+  }
+}
+
+export const getAdminCAProfiles = async (req, res) => {
+  try {
+    const page = Math.max(parseInt(req.query.page) || 1, 1)
+    const limit = Math.min(parseInt(req.query.limit) || 50, 100)
+    const filter = {}
+
+    if (req.query.status && req.query.status !== 'all') filter.status = req.query.status
+    if (req.query.q) {
+      const re = new RegExp(req.query.q, 'i')
+      filter.$or = [
+        { name: re },
+        { email: re },
+        { whatsapp: re },
+        { membershipNumber: re },
+        { firmName: re },
+        { city: re },
+      ]
+    }
+
+    const [profiles, total] = await Promise.all([
+      CAProfile.find(filter)
+        .populate('user', 'name email phone role')
+        .populate('verifiedBy', 'name email')
+        .sort('-createdAt')
+        .skip((page - 1) * limit)
+        .limit(limit)
+        .lean(),
+      CAProfile.countDocuments(filter),
+    ])
+
+    res.json({ success: true, profiles, total, page, pages: Math.ceil(total / limit) })
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message })
+  }
+}
+
+export const updateAdminCAProfile = async (req, res) => {
+  try {
+    const allowedStatuses = ['pending', 'verified', 'paused', 'rejected']
+    const updates = {}
+
+    if (req.body.status !== undefined) {
+      if (!allowedStatuses.includes(req.body.status)) {
+        return res.status(400).json({ success: false, message: 'Invalid CA profile status.' })
+      }
+      updates.status = req.body.status
+      updates.verifiedAt = req.body.status === 'verified' ? new Date() : null
+      updates.verifiedBy = req.body.status === 'verified' ? req.user._id : null
+    }
+
+    if (req.body.adminNote !== undefined) updates.adminNote = String(req.body.adminNote || '').trim()
+
+    if (!Object.keys(updates).length) {
+      return res.status(400).json({ success: false, message: 'No valid updates provided.' })
+    }
+
+    const profile = await CAProfile.findByIdAndUpdate(
+      req.params.id,
+      updates,
+      { new: true, runValidators: true }
+    )
+      .populate('user', 'name email phone role')
+      .populate('verifiedBy', 'name email')
+      .lean()
+
+    if (!profile) return res.status(404).json({ success: false, message: 'CA profile not found.' })
+    res.json({ success: true, profile })
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message })
+  }
+}
+
+export const getAdminCATaxJobs = async (req, res) => {
+  try {
+    const page = Math.max(parseInt(req.query.page) || 1, 1)
+    const limit = Math.min(parseInt(req.query.limit) || 50, 100)
+    const filter = {}
+
+    if (req.query.status && req.query.status !== 'all') filter.status = req.query.status
+    if (req.query.q) {
+      const re = new RegExp(req.query.q, 'i')
+      filter.$or = [
+        { jobId: re },
+        { clientName: re },
+        { clientEmail: re },
+        { clientWhatsapp: re },
+        { pan: re },
+        { filingType: re },
+      ]
+    }
+
+    const [jobs, total, caProfiles] = await Promise.all([
+      CATaxJob.find(filter)
+        .populate('client', 'name email phone role')
+        .populate({
+          path: 'assignedCA',
+          select: 'name email whatsapp phone firmName membershipNumber city state specializations status user',
+          populate: { path: 'user', select: 'name email phone role' },
+        })
+        .sort('-createdAt')
+        .skip((page - 1) * limit)
+        .limit(limit)
+        .lean(),
+      CATaxJob.countDocuments(filter),
+      CAProfile.find({ status: 'verified' })
+        .select('name email whatsapp phone firmName membershipNumber city state specializations status user')
+        .populate('user', 'name email phone role')
+        .sort({ name: 1 })
+        .lean(),
+    ])
+
+    res.json({ success: true, jobs, caProfiles, total, page, pages: Math.ceil(total / limit) })
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message })
+  }
+}
+
+export const updateAdminCATaxJob = async (req, res) => {
+  try {
+    const allowedStatuses = ['submitted', 'under-review', 'documents-needed', 'verified', 'filed', 'completed', 'cancelled']
+    const updates = {}
+    const history = []
+
+    if (req.body.status !== undefined) {
+      if (!allowedStatuses.includes(req.body.status)) {
+        return res.status(400).json({ success: false, message: 'Invalid CA tax job status.' })
+      }
+      updates.status = req.body.status
+      if (req.body.status === 'completed') updates.completedAt = new Date()
+      history.push({ status: req.body.status, note: `Admin changed status to ${req.body.status}.` })
+    }
+
+    if (req.body.assignedCA !== undefined) {
+      if (req.body.assignedCA) {
+        const profile = await CAProfile.findById(req.body.assignedCA)
+        if (!profile) return res.status(404).json({ success: false, message: 'CA profile not found.' })
+        if (profile.status !== 'verified') {
+          return res.status(400).json({ success: false, message: 'Only verified Earnova CAs can be assigned.' })
+        }
+        updates.assignedCA = profile._id
+        if (!updates.status) updates.status = 'under-review'
+        history.push({ status: updates.status || 'under-review', note: `Assigned to CA ${profile.name}.` })
+      } else {
+        updates.assignedCA = null
+        history.push({ status: req.body.status || 'submitted', note: 'CA assignment removed.' })
+      }
+    }
+
+    if (req.body.caNotes !== undefined) updates.caNotes = String(req.body.caNotes || '').trim()
+    if (req.body.adminNote !== undefined) updates.adminNote = String(req.body.adminNote || '').trim()
+
+    if (!Object.keys(updates).length) {
+      return res.status(400).json({ success: false, message: 'No valid updates provided.' })
+    }
+
+    const updateDoc = { $set: updates }
+    if (history.length) updateDoc.$push = { statusHistory: { $each: history } }
+
+    const job = await CATaxJob.findByIdAndUpdate(
+      req.params.id,
+      updateDoc,
+      { new: true, runValidators: true }
+    )
+      .populate('client', 'name email phone role')
+      .populate({
+        path: 'assignedCA',
+        select: 'name email whatsapp phone firmName membershipNumber city state specializations status user',
+        populate: { path: 'user', select: 'name email phone role' },
+      })
+      .lean()
+
+    if (!job) return res.status(404).json({ success: false, message: 'CA tax job not found.' })
+    res.json({ success: true, job })
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message })
   }
 }

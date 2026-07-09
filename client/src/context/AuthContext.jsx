@@ -74,6 +74,7 @@ export function AuthProvider({ children }) {
 
   const hasFeature = (feature) => {
     if (user?.role === 'admin') return true
+    if (DEFAULT_PUBLIC_ACCESS[feature] === true) return true
     return user?.featureAccess?.[feature] ?? DEFAULT_PUBLIC_ACCESS[feature] ?? false
   }
 

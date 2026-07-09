@@ -3,7 +3,13 @@ import {
   getDashboardStats,
   getAdminUsers,
   updateAdminUser,
-  createAdminUser
+  createAdminUser,
+  getAdminFreelanceJobs,
+  updateAdminFreelanceJob,
+  getAdminCAProfiles,
+  updateAdminCAProfile,
+  getAdminCATaxJobs,
+  updateAdminCATaxJob
 } from '../controllers/adminController.js'
 
 import { protect, adminOnly } from '../middleware/auth.js'
@@ -20,5 +26,15 @@ router.get('/stats', getDashboardStats)
 router.get('/users', getAdminUsers)
 router.post('/users', createAdminUser)
 router.patch('/users/:id', updateAdminUser)
+
+/* Freelance jobs */
+router.get('/freelance-jobs', getAdminFreelanceJobs)
+router.patch('/freelance-jobs/:id', updateAdminFreelanceJob)
+
+/* CA verification and tax work */
+router.get('/ca-profiles', getAdminCAProfiles)
+router.patch('/ca-profiles/:id', updateAdminCAProfile)
+router.get('/ca-tax-jobs', getAdminCATaxJobs)
+router.patch('/ca-tax-jobs/:id', updateAdminCATaxJob)
 
 export default router

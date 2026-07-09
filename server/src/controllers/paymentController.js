@@ -70,6 +70,8 @@ const hasEcommerceMemberBenefits = (user) => {
   return access instanceof Map ? access.get('ecommerce') === true : access?.ecommerce === true
 }
 
+const BUSINESS_SUBSCRIPTION_PRICE = 19
+
 /* ────────────────────────────────────────
    POST /api/payment/create-order
 ────────────────────────────────────────── */
@@ -256,6 +258,74 @@ export const createCodOrder = async (req, res) => {
    POST /api/payment/webhook
    Raw body required — configured in route
 ────────────────────────────────────────── */
+export const createBusinessSubscriptionOrder = async (req, res) => {
+  try {
+    const { keyId } = requireRazorpayConfig()
+    const instance = getRazorpay()
+
+    const rzpOrder = await instance.orders.create({
+      amount: BUSINESS_SUBSCRIPTION_PRICE * 100,
+      currency: 'INR',
+      receipt: `earn_biz_${Date.now()}`,
+      notes: {
+        userId: req.user._id.toString(),
+        plan: 'business-solutions-monthly',
+      },
+    })
+
+    res.json({
+      success: true,
+      orderId: rzpOrder.id,
+      amount: rzpOrder.amount,
+      currency: rzpOrder.currency,
+      keyId,
+    })
+  } catch (err) {
+    const message = paymentSetupMessage(err)
+    console.error('[Payment] business subscription create failed:', message)
+    res.status(err.status || err.statusCode || 500).json({ success: false, message })
+  }
+}
+
+export const verifyBusinessSubscription = async (req, res) => {
+  try {
+    const { razorpayOrderId, razorpayPaymentId, razorpaySignature } = req.body
+
+    if (!razorpayOrderId || !razorpayPaymentId || !razorpaySignature) {
+      return res.status(400).json({ success: false, message: 'Payment details are missing.' })
+    }
+
+    const expected = crypto
+      .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
+      .update(`${razorpayOrderId}|${razorpayPaymentId}`)
+      .digest('hex')
+
+    if (expected !== razorpaySignature) {
+      return res.status(400).json({ success: false, message: 'Payment verification failed. Signature mismatch.' })
+    }
+
+    const user = await User.findById(req.user._id)
+    if (!user) return res.status(404).json({ success: false, message: 'User not found.' })
+
+    user.featureAccess.set('businessSolutions', true)
+    await user.save()
+
+    res.json({
+      success: true,
+      user: user.toPublicJSON(),
+      subscription: {
+        plan: 'business-solutions-monthly',
+        amount: BUSINESS_SUBSCRIPTION_PRICE,
+        paymentId: razorpayPaymentId,
+        status: 'active',
+      },
+    })
+  } catch (err) {
+    console.error('[Payment] business subscription verify failed:', err.message)
+    res.status(500).json({ success: false, message: 'Subscription activation failed: ' + err.message })
+  }
+}
+
 export const handleWebhook = async (req, res) => {
   try {
     const signature = req.headers['x-razorpay-signature']

@@ -1,5 +1,7 @@
 import mongoose from 'mongoose'
 
+const DEFAULT_SERVICE_FEE_RATE = 10
+
 const statusEventSchema = new mongoose.Schema({
   status: String,
   note: String,
@@ -21,13 +23,13 @@ const freelanceJobSchema = new mongoose.Schema({
   deadline: Date,
   workMode: { type: String, enum: ['remote', 'onsite', 'hybrid'], default: 'remote' },
   freelancerAmount: { type: Number, required: true, min: 1 },
-  serviceFeeRate: { type: Number, default: 10, immutable: true },
+  serviceFeeRate: { type: Number, default: DEFAULT_SERVICE_FEE_RATE, immutable: true },
   serviceFee: { type: Number, required: true, min: 0 },
   totalPayable: { type: Number, required: true, min: 1 },
   currency: { type: String, default: 'INR' },
   paymentStatus: {
     type: String,
-    enum: ['pending', 'paid-to-escrow', 'refunded', 'released'],
+    enum: ['pending', 'paid-to-escrow', 'admin-waived', 'refunded', 'released'],
     default: 'pending',
     index: true,
   },

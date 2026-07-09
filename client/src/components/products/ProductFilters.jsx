@@ -33,11 +33,17 @@ function FilterSection({ title, defaultOpen = true, children }) {
  *   onClear: () => void,
  *   activeCount: number,
  *   className?: string,
+ *   excludeCategories?: string[],
+ *   includeCategories?: string[],
  * }} props
  */
-export default function ProductFilters({ filters, onChange, onClear, activeCount, className = '' }) {
+export default function ProductFilters({ filters, onChange, onClear, activeCount, className = '', excludeCategories = [], includeCategories = null }) {
   const [priceMin, setPriceMin] = useState(filters.minPrice || '')
   const [priceMax, setPriceMax] = useState(filters.maxPrice || '')
+  const categories = CATEGORIES
+    .filter(cat => !includeCategories || includeCategories.includes(cat))
+    .filter(cat => !excludeCategories.includes(cat))
+  const categoryLocked = includeCategories?.length === 1
 
   const applyPrice = () => {
     onChange('minPrice', priceMin)
@@ -71,19 +77,21 @@ export default function ProductFilters({ filters, onChange, onClear, activeCount
       {/* ── Category ── */}
       <FilterSection title="Category">
         <ul className="space-y-1.5">
-          <li>
-            <button
-              onClick={() => onChange('category', '')}
-              className={`w-full text-left text-sm px-2 py-1.5 rounded-lg transition-colors ${
-                !filters.category
-                  ? 'bg-primary-50 text-primary-700 font-semibold'
-                  : 'text-gray-600 hover:bg-gray-50'
-              }`}
-            >
-              All Products
-            </button>
-          </li>
-          {CATEGORIES.map(cat => (
+          {!categoryLocked && (
+            <li>
+              <button
+                onClick={() => onChange('category', '')}
+                className={`w-full text-left text-sm px-2 py-1.5 rounded-lg transition-colors ${
+                  !filters.category
+                    ? 'bg-primary-50 text-primary-700 font-semibold'
+                    : 'text-gray-600 hover:bg-gray-50'
+                }`}
+              >
+                All Products
+              </button>
+            </li>
+          )}
+          {categories.map(cat => (
             <li key={cat}>
               <button
                 onClick={() => onChange('category', filters.category === cat ? '' : cat)}

@@ -12,7 +12,7 @@ const CATEGORIES = [
     iconBg:   'bg-yellow-100 group-hover:bg-yellow-200',
     iconColor:'text-yellow-600',
     arrowColor:'text-yellow-600',
-    to:       '/products?category=solar-panels',
+    to:       '/energy-solutions',
   },
   {
     id:       'fans',
