@@ -658,6 +658,11 @@ export const updateAdminCATaxJob = async (req, res) => {
 
     if (req.body.assignedCA !== undefined) {
       if (req.body.assignedCA) {
+        const currentJob = await CATaxJob.findById(req.params.id).select('paymentStatus')
+        if (!currentJob) return res.status(404).json({ success: false, message: 'CA tax job not found.' })
+        if (!['paid', 'admin-waived'].includes(currentJob.paymentStatus)) {
+          return res.status(400).json({ success: false, message: 'CA work can be assigned only after payment is confirmed.' })
+        }
         const profile = await CAProfile.findById(req.body.assignedCA)
         if (!profile) return res.status(404).json({ success: false, message: 'CA profile not found.' })
         if (profile.status !== 'verified') {

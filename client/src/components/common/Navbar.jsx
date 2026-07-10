@@ -6,13 +6,16 @@ import { useAuth } from '../../context/AuthContext'
 import AuthModal from '../auth/AuthModal'
 
 const NAV_LINKS = [
-  { to: '/freelance', label: 'Freelancing', feature: 'freelancing', publicPreview: true },
-  { to: '/energy-solutions', label: 'Earnova Energy Solutions', public: true },
-  { to: '/business-solutions', label: 'Earnova Business Solutions', public: true },
-  { to: '/ca-services', label: 'Earnova CA Services', public: true },
   { to: '/investors', label: 'Investors', public: true },
   { to: '/products', label: 'Shop at Earnova', feature: 'ecommerce' },
   { to: '/referral', label: 'Earn & Refer', public: true },
+]
+
+const SERVICE_LINKS = [
+  { to: '/freelance', label: 'Freelancing', description: 'Hire talent or work as a freelancer', icon: Briefcase, feature: 'freelancing', publicPreview: true },
+  { to: '/energy-solutions', label: 'Energy Solutions', description: 'Solar and energy project support', icon: SunMedium, public: true },
+  { to: '/business-solutions', label: 'Business Solutions', description: 'AI analytics for business owners', icon: BarChart3, public: true },
+  { to: '/ca-services', label: 'CA Services', description: 'ITR, tax, audit and compliance help', icon: FileCheck2, public: true },
 ]
 
 export default function Navbar() {
@@ -21,12 +24,19 @@ export default function Navbar() {
   const [showAuth,   setShowAuth]   = useState(false)
   const [authTab,    setAuthTab]    = useState('login')
   const [profileOpen, setProfileOpen] = useState(false)
+  const [servicesOpen, setServicesOpen] = useState(false)
   const profileRef = useRef(null)
+  const servicesRef = useRef(null)
 
   const { cartCount }                     = useCart()
   const { user, isAuthenticated, isAdmin, logout, hasFeature } = useAuth()
   const location = useLocation()
   const visibleLinks = NAV_LINKS.filter(link =>
+    link.public ||
+    (link.publicPreview && !isAuthenticated) ||
+    (isAuthenticated && (link.authenticated || hasFeature(link.feature)))
+  )
+  const visibleServiceLinks = SERVICE_LINKS.filter(link =>
     link.public ||
     (link.publicPreview && !isAuthenticated) ||
     (isAuthenticated && (link.authenticated || hasFeature(link.feature)))
@@ -40,13 +50,16 @@ export default function Navbar() {
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
-  useEffect(() => { setMenuOpen(false); setProfileOpen(false) }, [location.pathname])
+  useEffect(() => { setMenuOpen(false); setProfileOpen(false); setServicesOpen(false) }, [location.pathname])
 
   /* Close profile dropdown on outside click */
   useEffect(() => {
     const handler = (e) => {
       if (profileRef.current && !profileRef.current.contains(e.target)) {
         setProfileOpen(false)
+      }
+      if (servicesRef.current && !servicesRef.current.contains(e.target)) {
+        setServicesOpen(false)
       }
     }
     document.addEventListener('mousedown', handler)
@@ -85,6 +98,37 @@ export default function Navbar() {
 
             {/* Desktop nav */}
             <nav className="hidden md:flex items-center gap-7">
+              <div ref={servicesRef} className="relative">
+                <button
+                  type="button"
+                  onClick={() => setServicesOpen(value => !value)}
+                  className={`nav-link inline-flex items-center gap-1.5 ${visibleServiceLinks.some(link => isActive(link.to)) ? 'active !text-primary-700' : ''}`}
+                >
+                  Earnova Services
+                  <ChevronDown className={`w-3.5 h-3.5 transition-transform ${servicesOpen ? 'rotate-180' : ''}`} />
+                </button>
+                {servicesOpen && (
+                  <div className="absolute left-0 top-full mt-3 w-80 rounded-2xl border border-gray-100 bg-white p-2 shadow-card-hover z-50">
+                    {visibleServiceLinks.map(({ to, label, description, icon: Icon }) => (
+                      <Link
+                        key={to}
+                        to={to}
+                        className={`flex items-start gap-3 rounded-xl px-3 py-3 transition-colors ${
+                          isActive(to) ? 'bg-primary-50 text-primary-800' : 'text-gray-700 hover:bg-gray-50'
+                        }`}
+                      >
+                        <span className="w-9 h-9 rounded-xl bg-primary-50 text-primary-700 flex items-center justify-center shrink-0">
+                          <Icon className="w-4 h-4" />
+                        </span>
+                        <span>
+                          <span className="block text-sm font-bold">{label}</span>
+                          <span className="block text-xs text-gray-500 mt-0.5">{description}</span>
+                        </span>
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
               {visibleLinks.map(({ to, label }) => (
                 <Link key={to} to={to}
                       className={`nav-link ${isActive(to) ? 'active !text-primary-700' : ''}`}>
@@ -174,21 +218,6 @@ export default function Navbar() {
                                        hover:bg-gray-50 transition-colors">
                         <Briefcase className="w-4 h-4" /> Freelancer Profile
                       </Link>
-                      <Link to="/energy-solutions"
-                            className="flex items-center gap-2.5 px-4 py-3 text-sm text-gray-600
-                                       hover:bg-gray-50 transition-colors">
-                        <SunMedium className="w-4 h-4" /> Energy Solutions
-                      </Link>
-                      <Link to="/business-solutions"
-                            className="flex items-center gap-2.5 px-4 py-3 text-sm text-gray-600
-                                       hover:bg-gray-50 transition-colors">
-                        <BarChart3 className="w-4 h-4" /> Business Solutions
-                      </Link>
-                      <Link to="/ca-services"
-                            className="flex items-center gap-2.5 px-4 py-3 text-sm text-gray-600
-                                       hover:bg-gray-50 transition-colors">
-                        <FileCheck2 className="w-4 h-4" /> CA Services
-                      </Link>
                       {ecommerceEnabled && (
                         <Link to="/referral"
                               className="flex items-center gap-2.5 px-4 py-3 text-sm text-gray-600
@@ -249,6 +278,23 @@ export default function Navbar() {
             </button>
           </div>
           <nav className="flex flex-col gap-1 p-4 flex-1 overflow-y-auto">
+            <details open className="rounded-xl bg-gray-50">
+              <summary className="list-none cursor-pointer px-4 py-3 rounded-xl text-sm font-bold text-gray-900 flex items-center justify-between">
+                Earnova Services
+                <ChevronDown className="w-4 h-4 text-gray-400" />
+              </summary>
+              <div className="px-2 pb-2">
+                {visibleServiceLinks.map(({ to, label, icon: Icon }) => (
+                  <Link key={to} to={to}
+                        className={`flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${
+                          isActive(to) ? 'bg-primary-50 text-primary-700' : 'text-gray-600 hover:bg-white'
+                        }`}>
+                    <Icon className="w-4 h-4" />
+                    {label}
+                  </Link>
+                ))}
+              </div>
+            </details>
             {visibleLinks.map(({ to, label }) => (
               <Link key={to} to={to}
                     className={`px-4 py-3 rounded-xl text-sm font-medium transition-colors ${
@@ -279,15 +325,6 @@ export default function Navbar() {
                 </Link>
                 <Link to="/freelance?mode=freelancer" className="px-4 py-3 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 flex items-center gap-2">
                   <Briefcase className="w-4 h-4" /> Freelancer Profile
-                </Link>
-                <Link to="/energy-solutions" className="px-4 py-3 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 flex items-center gap-2">
-                  <SunMedium className="w-4 h-4" /> Energy Solutions
-                </Link>
-                <Link to="/business-solutions" className="px-4 py-3 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 flex items-center gap-2">
-                  <BarChart3 className="w-4 h-4" /> Business Solutions
-                </Link>
-                <Link to="/ca-services" className="px-4 py-3 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 flex items-center gap-2">
-                  <FileCheck2 className="w-4 h-4" /> CA Services
                 </Link>
                 <button onClick={logout} className="px-4 py-3 rounded-xl text-sm font-medium text-red-500 hover:bg-red-50 flex items-center gap-2 text-left w-full">
                   <LogOut className="w-4 h-4" /> Sign Out

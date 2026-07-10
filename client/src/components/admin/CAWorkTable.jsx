@@ -16,6 +16,9 @@ const STATUS_STYLE = {
   filed: 'bg-cyan-50 text-cyan-700',
   completed: 'bg-eco-50 text-eco-700',
   cancelled: 'bg-red-50 text-red-600',
+  paid: 'bg-eco-50 text-eco-700',
+  'admin-waived': 'bg-primary-50 text-primary-700',
+  failed: 'bg-red-50 text-red-600',
 }
 
 function Badge({ value }) {
@@ -139,7 +142,7 @@ export default function CAWorkTable({ profiles, taxJobs, caProfiles, loadingProf
         {[
           ['Pending CA verification', profiles.filter(profile => profile.status === 'pending').length],
           ['Verified Earnova CAs', profiles.filter(profile => profile.status === 'verified').length],
-          ['Active tax jobs', taxJobs.filter(job => ['submitted', 'under-review', 'documents-needed', 'verified', 'filed'].includes(job.status)).length],
+          ['Paid/active tax jobs', taxJobs.filter(job => ['paid', 'admin-waived'].includes(job.paymentStatus) && ['submitted', 'under-review', 'documents-needed', 'verified', 'filed'].includes(job.status)).length],
           ['Assigned jobs', taxJobs.filter(job => job.assignedCA).length],
         ].map(([label, value]) => (
           <div key={label} className="bg-white border border-gray-100 rounded-2xl p-4 shadow-card">
@@ -220,6 +223,7 @@ export default function CAWorkTable({ profiles, taxJobs, caProfiles, loadingProf
                     <div className="flex items-center gap-2 flex-wrap">
                       <p className="font-display font-bold text-gray-900">{job.clientName}</p>
                       <Badge value={job.status} />
+                      <Badge value={job.paymentStatus} />
                       <span className="text-[10px] bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full capitalize">{job.filingType?.replaceAll('-', ' ')}</span>
                     </div>
                     <p className="text-xs text-gray-500 mt-1">
@@ -229,7 +233,7 @@ export default function CAWorkTable({ profiles, taxJobs, caProfiles, loadingProf
                   <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 text-xs lg:min-w-[560px]">
                     <div><p className="text-gray-400 font-bold">Client</p><p className="font-semibold text-gray-800 truncate">{job.clientWhatsapp}</p></div>
                     <div><p className="text-gray-400 font-bold">Assigned CA</p><p className={`font-semibold truncate ${assignedCA ? 'text-eco-700' : 'text-amber-700'}`}>{assignedCA?.name || 'Not assigned'}</p></div>
-                    <div><p className="text-gray-400 font-bold">Turnover</p><p className="font-semibold text-gray-900">{formatPrice(job.turnover || 0)}</p></div>
+                    <div><p className="text-gray-400 font-bold">CA payout</p><p className="font-semibold text-gray-900">{formatPrice(job.caPayoutAmount ?? Math.max((job.serviceAmount || 0) - 49, 0))}</p></div>
                     <div className="flex items-center justify-between"><div><p className="text-gray-400 font-bold">Documents</p><p className="font-semibold text-gray-900">{job.documents?.length || 0}</p></div>{expanded === job._id ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}</div>
                   </div>
                 </div>
@@ -240,6 +244,15 @@ export default function CAWorkTable({ profiles, taxJobs, caProfiles, loadingProf
                   <div className="grid md:grid-cols-4 gap-4 text-xs text-gray-600">
                     <div><p className="font-bold text-gray-400 mb-1">Client contact</p><p className="font-semibold text-gray-800">{job.clientName}</p><p>{job.clientEmail}</p><p>{job.clientWhatsapp}</p></div>
                     <div><p className="font-bold text-gray-400 mb-1">Tax profile</p><p>{job.clientType}</p><p>Filing: {job.filingType?.replaceAll('-', ' ')}</p><p>Income: {job.incomeSources?.join(', ') || 'Not set'}</p></div>
+                    <div>
+                      <p className="font-bold text-gray-400 mb-1">CA package</p>
+                      <p className="font-semibold text-gray-800">{job.serviceLabel || 'Simple salaried'}</p>
+                      <p>Total paid: {formatPrice(job.serviceAmount || 0)}{job.serviceAmountMax && job.serviceAmountMax !== job.serviceAmount ? `-${formatPrice(job.serviceAmountMax)}` : ''}</p>
+                      <p>Earnova: {formatPrice(job.earnovaFee || 49)}</p>
+                      <p>Verified CA: {formatPrice(job.caPayoutAmount ?? Math.max((job.serviceAmount || 0) - 49, 0))}{job.caPayoutAmountMax && job.caPayoutAmountMax !== job.caPayoutAmount ? `-${formatPrice(job.caPayoutAmountMax)}` : ''}</p>
+                      <p>Payment: {job.paymentStatus || 'pending'}</p>
+                      {job.razorpayPaymentId && <p>RZP: {job.razorpayPaymentId}</p>}
+                    </div>
                     <div><p className="font-bold text-gray-400 mb-1">Amounts</p><p>Interest: {formatPrice(job.bankInterest || 0)}</p><p>Capital gains: {formatPrice(job.capitalGains || 0)}</p><p>Business: {formatPrice(job.businessIncome || 0)}</p><p>80C/80D: {formatPrice((job.deductions80C || 0) + (job.deductions80D || 0))}</p></div>
                     <div><p className="font-bold text-gray-400 mb-1">Assigned CA</p>{assignedCA ? <><p className="font-semibold text-gray-800">{assignedCA.name}</p><p>{assignedCA.membershipNumber}</p><p>{assignedCA.whatsapp}</p></> : <p className="text-amber-700 font-semibold">No CA assigned yet.</p>}</div>
                   </div>

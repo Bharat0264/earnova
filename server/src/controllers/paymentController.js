@@ -42,16 +42,31 @@ const calcAmounts = (cartItems) => {
 }
 
 const hydrateCartItems = async (cartItems) => {
-  const ids = cartItems.map(i => i._id || i.product).filter(Boolean)
+  const serviceItems = cartItems
+    .filter(item => item.itemType === 'service' || item.serviceKey)
+    .map(item => {
+      if (item.serviceKey !== BUSINESS_CART_SERVICE.serviceKey && item._id !== BUSINESS_CART_SERVICE._id) {
+        throw new Error(`Service unavailable: ${item.name || item.serviceKey || item._id}`)
+      }
+      return { ...BUSINESS_CART_SERVICE }
+    })
+
+  const ids = cartItems
+    .filter(item => !(item.itemType === 'service' || item.serviceKey))
+    .map(i => i._id || i.product)
+    .filter(Boolean)
   const products = await Product.find({ _id: { $in: ids }, isActive: true }).lean()
   const byId = new Map(products.map(p => [p._id.toString(), p]))
 
-  return cartItems.map(item => {
+  const productItems = cartItems
+    .filter(item => !(item.itemType === 'service' || item.serviceKey))
+    .map(item => {
     const product = byId.get(String(item._id || item.product))
     if (!product) throw new Error(`Product unavailable: ${item.name || item._id}`)
     const quantity = Math.max(Number(item.quantity) || 1, 1)
     return {
       product: product._id,
+      itemType: 'product',
       name: product.name,
       image: product.thumbnail || product.images?.[0] || '',
       price: product.price,
@@ -62,6 +77,8 @@ const hydrateCartItems = async (cartItems) => {
       referralCommission: product.referralCommission ?? 5,
     }
   })
+
+  return [...productItems, ...serviceItems]
 }
 
 const hasEcommerceMemberBenefits = (user) => {
@@ -71,6 +88,19 @@ const hasEcommerceMemberBenefits = (user) => {
 }
 
 const BUSINESS_SUBSCRIPTION_PRICE = 19
+const BUSINESS_CART_SERVICE = {
+  _id: 'earnova-business-solutions-monthly',
+  itemType: 'service',
+  serviceKey: 'businessSolutions',
+  name: 'Earnova Business Solutions - Monthly Access',
+  image: '/favicon.svg',
+  price: BUSINESS_SUBSCRIPTION_PRICE,
+  quantity: 1,
+  gstRate: 0,
+  category: 'earnova-services',
+  memberIncome: 0,
+  referralCommission: 0,
+}
 
 /* ────────────────────────────────────────
    POST /api/payment/create-order
@@ -91,6 +121,11 @@ export const createRazorpayOrder = async (req, res) => {
       amount:   total * 100,   // paise
       currency: 'INR',
       receipt:  `earn_${Date.now()}`,
+      notes: {
+        userId: req.user._id.toString(),
+        cartType: dbCartItems.some(item => item.serviceKey === 'businessSolutions') ? 'service-cart' : 'product-cart',
+        services: dbCartItems.filter(item => item.serviceKey).map(item => item.serviceKey).join(','),
+      },
     })
 
     res.json({
@@ -143,12 +178,15 @@ export const verifyPayment = async (req, res) => {
     /* 4. Determine referral info */
     const fullUser = await User.findById(req.user._id)
     const memberIncomeRecipient = hasEcommerceMemberBenefits(fullUser) ? 'member' : 'admin'
+    const includesBusinessAccess = dbCartItems.some(item => item.serviceKey === 'businessSolutions')
 
     /* 5. Create DB order */
     const order = await Order.create({
       user:    req.user._id,
       items:   dbCartItems.map(item => ({
         product:  item.product,
+        itemType: item.itemType || 'product',
+        serviceKey: item.serviceKey,
         name:     item.name,
         image:    item.image,
         price:    item.price,
@@ -244,10 +282,17 @@ export const createCodOrder = async (req, res) => {
       memberIncomeRecipient,
     })
 
+    if (includesBusinessAccess) {
+      fullUser.featureAccess.set('businessSolutions', true)
+      await fullUser.save()
+      order.statusHistory.push({ status: 'processing', note: 'Business Solutions access enabled after Razorpay confirmation.' })
+      await order.save()
+    }
+
     sendOrderConfirmation(order, fullUser)
       .catch(err => console.warn('[Email] order-confirm failed:', err.message))
 
-    res.status(201).json({ success: true, order })
+    res.status(201).json({ success: true, order, user: includesBusinessAccess ? fullUser.toPublicJSON() : undefined })
   } catch (err) {
     console.error('[Payment] cod-order failed:', err.message)
     res.status(500).json({ success: false, message: 'Order creation failed: ' + err.message })
@@ -269,7 +314,11 @@ export const createBusinessSubscriptionOrder = async (req, res) => {
       receipt: `earn_biz_${Date.now()}`,
       notes: {
         userId: req.user._id.toString(),
+        userEmail: req.user.email || '',
+        userPhone: req.user.phone || '',
         plan: 'business-solutions-monthly',
+        service: 'Earnova Business Solutions',
+        billingCycle: 'monthly',
       },
     })
 

@@ -23,6 +23,7 @@ export default function ReviewStep({ address, onBack, onPay, loading, error }) {
 
   const total = cartItems.reduce((s, i) => s + i.price * i.quantity, 0)
   const solarOnly = cartItems.length > 0 && cartItems.every(i => i.category === 'solar-panels')
+  const serviceOnly = cartItems.length > 0 && cartItems.every(i => i.itemType === 'service')
 
   return (
     <div className="space-y-5">
@@ -35,12 +36,14 @@ export default function ReviewStep({ address, onBack, onPay, loading, error }) {
         {cartItems.map(item => (
           <div key={item._id} className="flex items-center gap-3 p-4">
             <div className="w-14 h-14 rounded-xl overflow-hidden bg-gray-50 border border-gray-100 shrink-0">
-              <img
-                src={item.thumbnail || item.images?.[0]}
-                alt={item.name}
-                className="w-full h-full object-cover"
-                onError={e => { e.currentTarget.style.opacity = '0' }}
-              />
+              {(item.thumbnail || item.images?.[0]) && (
+                <img
+                  src={item.thumbnail || item.images?.[0]}
+                  alt={item.name}
+                  className="w-full h-full object-cover"
+                  onError={e => { e.currentTarget.style.opacity = '0' }}
+                />
+              )}
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-gray-900 line-clamp-1">{item.name}</p>
@@ -54,7 +57,7 @@ export default function ReviewStep({ address, onBack, onPay, loading, error }) {
       </div>
 
       {/* Delivery address */}
-      <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-card">
+      {!serviceOnly && address && <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-card">
         <div className="flex items-start gap-3">
           <MapPin className="w-4 h-4 text-primary-600 mt-0.5 shrink-0" />
           <div>
@@ -73,7 +76,7 @@ export default function ReviewStep({ address, onBack, onPay, loading, error }) {
             Change
           </button>
         </div>
-      </div>
+      </div>}
 
       {/* Price summary */}
       <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-card space-y-2.5">
@@ -102,7 +105,7 @@ export default function ReviewStep({ address, onBack, onPay, loading, error }) {
         )}
       </button>
 
-      {solarOnly && (
+      {solarOnly && !serviceOnly && (
         <button
           onClick={() => onPay('cod')}
           disabled={loading}
@@ -119,7 +122,9 @@ export default function ReviewStep({ address, onBack, onPay, loading, error }) {
       <p className="text-center text-xs text-gray-400">
         {solarOnly
           ? 'Solar products support Razorpay or pay on delivery'
-          : 'Secured prepaid checkout by Razorpay for this category'}
+          : serviceOnly
+            ? 'Business access activates only after Razorpay confirms this cart payment'
+            : 'Secured prepaid checkout by Razorpay for this category'}
       </p>
     </div>
   )

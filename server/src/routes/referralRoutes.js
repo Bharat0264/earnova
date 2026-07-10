@@ -6,7 +6,7 @@ import {
 import { protect, adminOnly, requireFeature } from '../middleware/auth.js'
 
 const router = Router()
-router.use(protect, requireFeature('ecommerce'))
+router.use(protect, requireFeature('referrals'))
 
 /* Public */
 router.get('/leaderboard',    getLeaderboard)

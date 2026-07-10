@@ -3,7 +3,7 @@ import { submitQuote, getQuotes, updateQuote } from '../controllers/b2bControlle
 import { protect, adminOnly, requireFeature } from '../middleware/auth.js'
 
 const router = Router()
-router.use(protect, requireFeature('ecommerce'))
+router.use(protect, requireFeature('b2bPrograms'))
 
 router.post('/quote',        submitQuote)                         /* Public  */
 router.get('/quotes',        protect, adminOnly, getQuotes)       /* Admin   */

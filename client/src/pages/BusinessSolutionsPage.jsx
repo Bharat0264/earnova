@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   AlertTriangle, BarChart3, Brain, CheckCircle2, ChevronRight, Cloud, Database,
   ClipboardCheck, FileSpreadsheet, Gauge, IndianRupee, Layers, LineChart, Loader2,
@@ -7,12 +8,23 @@ import {
   Users, WalletCards,
 } from 'lucide-react'
 import AuthModal from '../components/auth/AuthModal'
-import { loadRazorpayScript } from '../components/checkout/ReviewStep'
 import { useAuth } from '../context/AuthContext'
-import { api } from '../utils/api'
+import { useCart } from '../context/CartContext'
 import { formatPrice } from '../utils/formatters'
 
 const PLAN_PRICE = 19
+const BUSINESS_CART_ITEM = {
+  _id: 'earnova-business-solutions-monthly',
+  itemType: 'service',
+  serviceKey: 'businessSolutions',
+  name: 'Earnova Business Solutions - Monthly Access',
+  brand: 'Earnova Services',
+  price: PLAN_PRICE,
+  quantity: 1,
+  gstRate: 0,
+  category: 'earnova-services',
+  thumbnail: '/favicon.svg',
+}
 const TABS = ['Overview', 'Profit Lab', 'AI Forecast', 'AI Advisor', 'Customers', 'Products', 'Integrations']
 const SAVED_ORDERS_KEY = 'earnova-business-orders-v1'
 const SAVED_SOURCE_KEY = 'earnova-business-source-v1'
@@ -157,7 +169,6 @@ const compactPrice = value => {
 
 const clamp = (value, min, max) => Math.min(Math.max(Number(value) || 0, min), max)
 const formatPercent = value => `${Math.round(value)}%`
-
 const aggregateBy = (rows, key, valueFn) => {
   const map = new Map()
   rows.forEach(row => {
@@ -264,7 +275,9 @@ function NumberInput({ label, value, onChange, min = 0, max, suffix }) {
 }
 
 export default function BusinessSolutionsPage() {
-  const { user, isAuthenticated, hasFeature, updateUser } = useAuth()
+  const { isAuthenticated, hasFeature } = useAuth()
+  const { addToCart } = useCart()
+  const navigate = useNavigate()
   const [showAuth, setShowAuth] = useState(false)
   const [paying, setPaying] = useState(false)
   const [message, setMessage] = useState('')
@@ -393,52 +406,12 @@ export default function BusinessSolutionsPage() {
       return
     }
 
-    setPaying(true)
     setMessage('')
-    try {
-      const loaded = await loadRazorpayScript()
-      if (!loaded) throw new Error('Razorpay failed to load. Check your internet connection.')
-
-      const { orderId, amount, currency, keyId } = await api.post('/payment/business-subscription/create-order', {})
-
-      await new Promise((resolve, reject) => {
-        const rzp = new window.Razorpay({
-          key: keyId,
-          amount,
-          currency,
-          name: 'Earnova Business Solutions',
-          description: 'Monthly AI business analytics subscription',
-          image: '/favicon.svg',
-          order_id: orderId,
-          handler: async response => {
-            try {
-              const data = await api.post('/payment/business-subscription/verify', {
-                razorpayOrderId: response.razorpay_order_id,
-                razorpayPaymentId: response.razorpay_payment_id,
-                razorpaySignature: response.razorpay_signature,
-              })
-              if (data?.user) updateUser(data.user)
-              setMessage('Business Solutions is active for this account.')
-              resolve()
-            } catch (err) {
-              reject(err)
-            }
-          },
-          prefill: { name: user?.name, email: user?.email, contact: user?.phone },
-          theme: { color: '#5b21b6' },
-          modal: { ondismiss: () => { setMessage('Payment cancelled. You can subscribe when ready.'); resolve() } },
-        })
-        rzp.on('payment.failed', response => {
-          setMessage(`Payment failed: ${response.error.description}`)
-          resolve()
-        })
-        rzp.open()
-      })
-    } catch (err) {
-      setMessage(err.message)
-    } finally {
-      setPaying(false)
-    }
+    setPaying(true)
+    addToCart(BUSINESS_CART_ITEM, 1)
+    setMessage('Business Solutions was added to cart. Complete Razorpay checkout to activate access.')
+    setPaying(false)
+    navigate('/cart')
   }
 
   return (
@@ -473,7 +446,7 @@ export default function BusinessSolutionsPage() {
                   ) : subscribed ? (
                     <><CheckCircle2 className="w-4 h-4" /> Subscription active</>
                   ) : (
-                    <><IndianRupee className="w-4 h-4" /> Activate for {formatPrice(PLAN_PRICE)}/month</>
+                    <><IndianRupee className="w-4 h-4" /> Add {formatPrice(PLAN_PRICE)}/month to cart</>
                   )}
                 </button>
                 <a href="#business-dashboard" className="btn-secondary">Open dashboard</a>
@@ -533,6 +506,8 @@ export default function BusinessSolutionsPage() {
       </section>
 
       <section id="business-dashboard" className="section-wrapper py-6">
+        {subscribed ? (
+          <>
         <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-card mb-5">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
             <div className="flex items-center gap-3">
@@ -1017,10 +992,53 @@ export default function BusinessSolutionsPage() {
                 ) : paying ? (
                   <><Loader2 className="w-4 h-4 animate-spin" /> Opening payment</>
                 ) : (
-                  <><IndianRupee className="w-4 h-4" /> Pay {formatPrice(PLAN_PRICE)}/month</>
+                  <><IndianRupee className="w-4 h-4" /> Add {formatPrice(PLAN_PRICE)}/month to cart</>
                 )}
               </button>
             </SectionCard>
+          </div>
+        )}
+          </>
+        ) : (
+          <div className="bg-white border border-amber-100 rounded-2xl p-6 md:p-8 shadow-card">
+            <div className="grid lg:grid-cols-[0.9fr_1.1fr] gap-6 items-center">
+              <div>
+                <div className="w-14 h-14 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center mb-4">
+                  <LockKeyhole className="w-7 h-7" />
+                </div>
+                <p className="text-xs font-black uppercase tracking-[0.18em] text-amber-700">Payment required</p>
+                <h2 className="font-display font-bold text-2xl md:text-3xl text-gray-950 mt-2">
+                  Business AI unlocks after Razorpay confirms {formatPrice(PLAN_PRICE)}/month.
+                </h2>
+                <p className="text-gray-500 mt-3 leading-relaxed">
+                  Login creates the Earnova account and keeps Freelancing available by default. Business Solutions stays locked until this member pays through Razorpay or an admin enables it from the Users service dropdown.
+                </p>
+                <div className="flex flex-col sm:flex-row gap-3 mt-6">
+                  <button onClick={handleSubscribe} disabled={paying} className="btn-primary">
+                    {paying ? (
+                      <><Loader2 className="w-4 h-4 animate-spin" /> Opening payment</>
+                    ) : (
+                      <><IndianRupee className="w-4 h-4" /> Add {formatPrice(PLAN_PRICE)}/month to cart</>
+                    )}
+                  </button>
+                </div>
+                {message && <p className="text-sm text-gray-500 mt-3">{message}</p>}
+              </div>
+              <div className="grid sm:grid-cols-2 gap-3">
+                {[
+                  ['Revenue dashboard', 'Daily sales, top products, customer trends and projections.'],
+                  ['Profit lab', 'Margins, costs, ad spend, break-even and target tracking.'],
+                  ['AI advisor', 'Owner-ready answers from uploaded or manually entered sales data.'],
+                  ['Forecasting', 'Future sales, orders, churn risk and demand signals.'],
+                ].map(([title, detail]) => (
+                  <div key={title} className="rounded-xl border border-gray-100 bg-gray-50 p-4">
+                    <LockKeyhole className="w-4 h-4 text-amber-600 mb-3" />
+                    <p className="font-display font-bold text-gray-900">{title}</p>
+                    <p className="text-sm text-gray-500 mt-1">{detail}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         )}
       </section>

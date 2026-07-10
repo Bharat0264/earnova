@@ -1,8 +1,8 @@
 import { useState } from 'react'
-import { Plus, Search, ShieldCheck, Store, User } from 'lucide-react'
+import { ChevronDown, Plus, Search, ShieldCheck, Store, User } from 'lucide-react'
 import { formatDate, formatPrice } from '../../utils/formatters'
 import { api } from '../../utils/api'
-import { DEFAULT_PUBLIC_ACCESS } from '../../config/features'
+import { DEFAULT_PUBLIC_ACCESS, FEATURES } from '../../config/features'
 
 const ROLE_STYLE = {
   admin: 'bg-primary-100 text-primary-700',
@@ -25,6 +25,7 @@ export default function UsersTable({ data, loading, reload }) {
   const [updating, setUpdating] = useState(null)
   const [showCreate, setShowCreate] = useState(false)
   const [form, setForm] = useState(emptyForm)
+  const [openAccessUser, setOpenAccessUser] = useState(null)
 
   const filtered = data.filter(user => {
     const matchRole = role === 'all' || user.role === role
@@ -45,14 +46,34 @@ export default function UsersTable({ data, loading, reload }) {
     }
   }
 
-  const setShopAccess = (user, allowed) => {
+  const setServiceAccess = (user, serviceKey, allowed) => {
+    setOpenAccessUser(user._id)
     updateUser(user, {
       featureAccess: {
         ...DEFAULT_PUBLIC_ACCESS,
         ...(user.featureAccess || {}),
-        ecommerce: allowed,
+        [serviceKey]: allowed,
       },
     })
+  }
+
+  const setFormServiceAccess = (serviceKey, allowed) => {
+    setForm(current => ({
+      ...current,
+      featureAccess: {
+        ...DEFAULT_PUBLIC_ACCESS,
+        ...(current.featureAccess || {}),
+        [serviceKey]: allowed,
+      },
+    }))
+  }
+
+  const accessLabel = (featureAccess = {}) => {
+    const normalized = { ...DEFAULT_PUBLIC_ACCESS, ...featureAccess }
+    const enabled = FEATURES.filter(service => normalized[service.key]).map(service => service.label)
+    if (!enabled.length) return 'No services enabled'
+    if (enabled.length === FEATURES.length) return 'All services'
+    return enabled.join(', ')
   }
 
   const createMember = async () => {
@@ -91,7 +112,7 @@ export default function UsersTable({ data, loading, reload }) {
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-gray-50 border-b border-gray-100">
-              {['User', 'Role', 'Access To', 'Wallet', 'Referrals', 'Joined', 'Status'].map(title => (
+              {['User', 'Role', 'Services', 'Wallet', 'Referrals', 'Joined', 'Status'].map(title => (
                 <th key={title} className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase whitespace-nowrap">{title}</th>
               ))}
             </tr>
@@ -120,19 +141,41 @@ export default function UsersTable({ data, loading, reload }) {
                       )}
                     </div>
                   </td>
-                  <td className="px-4 py-3 min-w-[230px]">
+                  <td className="px-4 py-3 min-w-[280px]">
                     {isAdmin ? (
                       <span className="text-xs font-bold text-primary-700">All services</span>
                     ) : (
-                      <select
-                        value={user.featureAccess?.ecommerce ?? DEFAULT_PUBLIC_ACCESS.ecommerce ? 'allowed' : 'blocked'}
-                        disabled={updating === user._id}
-                        onChange={event => setShopAccess(user, event.target.value === 'allowed')}
-                        className="border border-gray-200 rounded-xl px-3 py-2 text-xs font-semibold bg-white text-gray-700"
+                      <details
+                        open={openAccessUser === user._id}
+                        onToggle={event => setOpenAccessUser(event.currentTarget.open ? user._id : null)}
                       >
-                        <option value="blocked">Shop at Earnova blocked</option>
-                        <option value="allowed">Shop at Earnova allowed</option>
-                      </select>
+                        <summary className="list-none cursor-pointer inline-flex items-center justify-between gap-3 w-full border border-gray-200 rounded-xl px-3 py-2 text-xs font-semibold bg-white text-gray-700">
+                          <span className="truncate">{accessLabel(user.featureAccess)}</span>
+                          <ChevronDown className="w-4 h-4 shrink-0 text-gray-400" />
+                        </summary>
+                        <div className="mt-2 w-72 rounded-2xl border border-gray-200 bg-white p-3 shadow-xl">
+                          <div className="space-y-2">
+                            {FEATURES.map(service => {
+                              const normalized = { ...DEFAULT_PUBLIC_ACCESS, ...(user.featureAccess || {}) }
+                              return (
+                                <label key={service.key} className="flex items-start gap-3 rounded-xl px-2 py-2 hover:bg-gray-50">
+                                  <input
+                                    type="checkbox"
+                                    checked={Boolean(normalized[service.key])}
+                                    disabled={updating === user._id}
+                                    onChange={event => setServiceAccess(user, service.key, event.target.checked)}
+                                    className="mt-1 h-4 w-4 rounded border-gray-300 text-primary-700"
+                                  />
+                                  <span>
+                                    <span className="block text-sm font-bold text-gray-800">{service.label}</span>
+                                    <span className="block text-xs text-gray-500 leading-snug">{service.description}</span>
+                                  </span>
+                                </label>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      </details>
                     )}
                   </td>
                   <td className="px-4 py-3">{formatPrice(user.walletBalance || 0)}</td>
@@ -154,7 +197,7 @@ export default function UsersTable({ data, loading, reload }) {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
             <h2 className="font-display font-bold text-lg">Create Member</h2>
-            <p className="text-sm text-gray-500 mt-1 mb-5">Only Shop at Earnova is admin controlled. Freelancing, Business Solutions, CA Services and Energy Solutions are open for everyone.</p>
+            <p className="text-sm text-gray-500 mt-1 mb-5">New members get Freelancing by default. Enable paid or admin-approved services from the dropdown.</p>
             <div className="space-y-3">
               <input placeholder="Name" value={form.name} onChange={event => setForm({ ...form, name: event.target.value })} className="input-base" />
               <input type="email" placeholder="Email" value={form.email} onChange={event => setForm({ ...form, email: event.target.value })} className="input-base" />
@@ -164,21 +207,29 @@ export default function UsersTable({ data, loading, reload }) {
                 <option value="customer">Member</option><option value="dealer">Dealer</option>
               </select>
               <div className="rounded-2xl border border-gray-200 p-4">
-                <label className="block">
-                  <span className="block text-sm font-bold text-gray-900 mb-2">Shop at Earnova access</span>
-                  <select
-                    value={form.featureAccess.ecommerce ? 'allowed' : 'blocked'}
-                    onChange={event => setForm({
-                      ...form,
-                      featureAccess: { ...DEFAULT_PUBLIC_ACCESS, ecommerce: event.target.value === 'allowed' },
-                    })}
-                    className="input-base"
-                  >
-                    <option value="blocked">Blocked until admin allows</option>
-                    <option value="allowed">Allowed for this user</option>
-                  </select>
-                </label>
-                <p className="text-xs text-gray-500 mt-2">All other Earnova services stay accessible without manual admin selection.</p>
+                <details open>
+                  <summary className="list-none cursor-pointer flex items-center justify-between gap-3 text-sm font-bold text-gray-900">
+                    Services enabled for this member
+                    <ChevronDown className="w-4 h-4 text-gray-400" />
+                  </summary>
+                  <div className="space-y-2 mt-3">
+                    {FEATURES.map(service => (
+                      <label key={service.key} className="flex items-start gap-3 rounded-xl border border-gray-100 p-3">
+                        <input
+                          type="checkbox"
+                          checked={Boolean(form.featureAccess?.[service.key])}
+                          onChange={event => setFormServiceAccess(service.key, event.target.checked)}
+                          className="mt-1 h-4 w-4 rounded border-gray-300 text-primary-700"
+                        />
+                        <span>
+                          <span className="block text-sm font-bold text-gray-800">{service.label}</span>
+                          <span className="block text-xs text-gray-500 leading-snug">{service.description}</span>
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                </details>
+                <p className="text-xs text-gray-500 mt-3">Business Solutions can also be enabled automatically after the member pays {formatPrice(19)} through Razorpay.</p>
               </div>
             </div>
             <div className="flex gap-2 mt-5">

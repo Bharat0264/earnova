@@ -43,7 +43,6 @@ export const adminOnly = (req, res, next) => {
 
 export const requireFeature = (feature) => (req, res, next) => {
   if (req.user?.role === 'admin') return next()
-  if (DEFAULT_PUBLIC_ACCESS[feature] === true) return next()
 
   const access = req.user?.featureAccess
   const storedValue = access instanceof Map ? access.get(feature) : access?.[feature]

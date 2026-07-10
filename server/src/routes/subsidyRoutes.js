@@ -3,7 +3,7 @@ import { checkEligibility, submitRequest, getRequests, updateRequest } from '../
 import { protect, adminOnly, requireFeature } from '../middleware/auth.js'
 
 const router = Router()
-router.use(protect, requireFeature('ecommerce'))
+router.use(protect, requireFeature('subsidies'))
 
 router.post('/check-eligibility', checkEligibility)                     /* Public */
 router.post('/request',           submitRequest)                        /* Public */

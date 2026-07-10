@@ -26,10 +26,12 @@ export function CartProvider({ children }) {
       const exists = prev.find(i => i._id === product._id)
       if (exists) {
         return prev.map(i =>
-          i._id === product._id ? { ...i, quantity: i.quantity + qty } : i
+          i._id === product._id
+            ? { ...i, quantity: product.itemType === 'service' ? 1 : i.quantity + qty }
+            : i
         )
       }
-      return [...prev, { ...product, quantity: qty }]
+      return [...prev, { ...product, quantity: product.itemType === 'service' ? 1 : qty }]
     })
   }
 

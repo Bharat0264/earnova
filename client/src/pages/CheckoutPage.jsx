@@ -46,7 +46,7 @@ function StepIndicator({ current }) {
 }
 
 export default function CheckoutPage() {
-  const { user, isAuthenticated, loading: authLoading } = useAuth()
+  const { user, isAuthenticated, loading: authLoading, updateUser } = useAuth()
   const { cartItems, clearCart } = useCart()
   const [showAuth,    setShowAuth]    = useState(false)
   const [step,        setStep]        = useState(1)
@@ -54,6 +54,7 @@ export default function CheckoutPage() {
   const [paying,      setPaying]      = useState(false)
   const [payError,    setPayError]    = useState('')
   const [order,       setOrder]       = useState(null)
+  const serviceOnly = cartItems.length > 0 && cartItems.every(item => item.itemType === 'service')
 
   /* Redirect to login if not authenticated */
   useEffect(() => {
@@ -67,6 +68,10 @@ export default function CheckoutPage() {
       setAddress(def)
     }
   }, [user])
+
+  useEffect(() => {
+    if (serviceOnly && step === 1) setStep(2)
+  }, [serviceOnly, step])
 
   /* Empty cart guard */
   if (!authLoading && isAuthenticated && cartItems.length === 0 && !order) {
@@ -123,6 +128,7 @@ export default function CheckoutPage() {
                 shippingAddress:   address,
                 cartItems,
               })
+              if (data?.user) updateUser(data.user)
               clearCart()
               setOrder(data.order)
               setStep(4)

@@ -1,7 +1,9 @@
 import mongoose from 'mongoose'
 
 const itemSchema = new mongoose.Schema({
-  product:  { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
+  product:  { type: mongoose.Schema.Types.ObjectId, ref: 'Product' },
+  itemType: { type: String, enum: ['product', 'service'], default: 'product' },
+  serviceKey: String,
   name:     String,
   image:    String,
   price:    { type: Number, required: true },
