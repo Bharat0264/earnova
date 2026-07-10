@@ -226,11 +226,18 @@ export const verifyPayment = async (req, res) => {
       await order.save()
     }
 
+    if (includesBusinessAccess) {
+      fullUser.featureAccess.set('businessSolutions', true)
+      await fullUser.save()
+      order.statusHistory.push({ status: 'processing', note: 'Business Solutions access enabled after Razorpay confirmation.' })
+      await order.save()
+    }
+
     /* 7. Send confirmation email (non-blocking) */
     sendOrderConfirmation(order, fullUser)
       .catch(err => console.warn('[Email] order-confirm failed:', err.message))
 
-    res.status(201).json({ success: true, order })
+    res.status(201).json({ success: true, order, user: includesBusinessAccess ? fullUser.toPublicJSON() : undefined })
   } catch (err) {
     console.error('[Payment] verify failed:', err.message)
     res.status(500).json({ success: false, message: 'Order creation failed: ' + err.message })
@@ -282,17 +289,10 @@ export const createCodOrder = async (req, res) => {
       memberIncomeRecipient,
     })
 
-    if (includesBusinessAccess) {
-      fullUser.featureAccess.set('businessSolutions', true)
-      await fullUser.save()
-      order.statusHistory.push({ status: 'processing', note: 'Business Solutions access enabled after Razorpay confirmation.' })
-      await order.save()
-    }
-
     sendOrderConfirmation(order, fullUser)
       .catch(err => console.warn('[Email] order-confirm failed:', err.message))
 
-    res.status(201).json({ success: true, order, user: includesBusinessAccess ? fullUser.toPublicJSON() : undefined })
+    res.status(201).json({ success: true, order })
   } catch (err) {
     console.error('[Payment] cod-order failed:', err.message)
     res.status(500).json({ success: false, message: 'Order creation failed: ' + err.message })
