@@ -170,7 +170,7 @@ export const requestWithdrawal = async (req, res) => {
     await user.save()
 
     const withdrawal = await Withdrawal.create({
-      user: user._id, amount, upiId: upiId.trim(), accountName: accountName.trim(),
+      user: user._id, source: 'referral', amount, upiId: upiId.trim(), accountName: accountName.trim(),
     })
 
     /* Attempt Razorpay Payout if configured */
@@ -210,6 +210,7 @@ export const getWithdrawals = async (req, res) => {
 
     if (req.user.role === 'admin') {
       query.populate('user', 'name email phone walletBalance referralEarnings')
+      query.populate('caProfile', 'name email whatsapp membershipNumber firmName')
     }
 
     const withdrawals = await query.lean()

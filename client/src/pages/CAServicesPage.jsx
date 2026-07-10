@@ -1,11 +1,12 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { BadgeCheck, Briefcase, Calculator, ClipboardCheck, FileCheck2, FileText, ShieldCheck } from 'lucide-react'
+import { BadgeCheck, Briefcase, Calculator, ClipboardCheck, FileCheck2, FileText, Link as LinkIcon, Send, ShieldCheck, Wallet } from 'lucide-react'
 import AuthModal from '../components/auth/AuthModal'
+import WithdrawalModal from '../components/referral/WithdrawalModal'
 import { useAuth } from '../context/AuthContext'
 import { useCart } from '../context/CartContext'
 import { api } from '../utils/api'
-import { formatPrice } from '../utils/formatters'
+import { formatDate, formatPrice } from '../utils/formatters'
 
 const INCOME_SOURCES = ['Salary', 'Business', 'Capital gains', 'Rental income', 'Foreign income', 'Interest income', 'Freelance income']
 const CA_SPECIALIZATIONS = ['ITR filing', 'GST', 'TDS', 'Bookkeeping', 'Audit support', 'Tax notices', 'Business compliance', 'Financial statements']
@@ -104,8 +105,157 @@ function ToggleGroup({ options, value, onChange }) {
   )
 }
 
+function CAWorkDesk({ isAuthenticated, profile, jobs, withdrawals, walletBalance, totalEarned, loading, completionForms, onChangeCompletion, onSubmitWork, onWithdraw }) {
+  if (!isAuthenticated) {
+    return (
+      <div className="bg-white border border-gray-100 rounded-2xl shadow-card p-5">
+        <p className="text-xs font-bold text-eco-700 uppercase tracking-wide">For assigned CAs</p>
+        <h2 className="font-display font-bold text-xl text-gray-900 mt-1">CA work desk</h2>
+        <p className="text-sm text-gray-500 mt-1">Log in after admin verification to view assigned client details and submit completed work.</p>
+      </div>
+    )
+  }
+
+  const verified = profile?.status === 'verified'
+  const activeJobs = jobs.filter(job => job.status !== 'completed' && job.status !== 'cancelled')
+
+  return (
+    <div className="bg-white border border-gray-100 rounded-2xl shadow-card p-5 space-y-4">
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+        <div>
+          <p className="text-xs font-bold text-eco-700 uppercase tracking-wide">For assigned CAs</p>
+          <h2 className="font-display font-bold text-xl text-gray-900 mt-1">CA work desk</h2>
+          <p className="text-sm text-gray-500 mt-1">
+            {verified
+              ? 'View client details, complete assigned work, and withdraw credited payouts.'
+              : profile
+                ? `Profile status: ${profile.status}. Admin verification is required before work is visible.`
+                : 'Submit your CA profile below. Admin verification is required before work is assigned.'}
+          </p>
+        </div>
+        {verified && walletBalance >= 100 && (
+          <button type="button" onClick={onWithdraw} className="btn-primary justify-center text-sm">
+            <Wallet className="w-4 h-4" />
+            Withdraw {formatPrice(walletBalance)}
+          </button>
+        )}
+      </div>
+
+      {verified && (
+        <>
+          <div className="grid sm:grid-cols-3 gap-3">
+            {[
+              ['Wallet', formatPrice(walletBalance)],
+              ['Total earned', formatPrice(totalEarned || 0)],
+              ['Active jobs', activeJobs.length],
+            ].map(([label, value]) => (
+              <div key={label} className="rounded-xl border border-gray-100 bg-gray-50 p-3">
+                <p className="text-[11px] font-bold uppercase tracking-wide text-gray-400">{label}</p>
+                <p className="font-display font-bold text-lg text-gray-900 mt-1">{loading ? '...' : value}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="space-y-3">
+            {loading ? (
+              <div className="h-24 rounded-xl bg-gray-100 animate-pulse" />
+            ) : jobs.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-gray-200 p-4 text-sm text-gray-500">
+                No assigned CA work yet.
+              </div>
+            ) : jobs.map(job => {
+              const form = completionForms[job._id] || {}
+              const completed = job.status === 'completed'
+              return (
+                <div key={job._id} className="rounded-xl border border-gray-100 p-4 space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="font-display font-bold text-gray-900">{job.clientName}</p>
+                        <span className="text-[10px] font-bold rounded-full bg-primary-50 text-primary-700 px-2 py-0.5">{job.status?.replaceAll('-', ' ')}</span>
+                        <span className="text-[10px] font-bold rounded-full bg-eco-50 text-eco-700 px-2 py-0.5">{job.paymentStatus}</span>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">{job.jobId} · {job.serviceLabel} · {formatDate(job.createdAt)}</p>
+                    </div>
+                    <p className="font-bold text-eco-700">{formatPrice(job.caPayoutAmount || 0)}</p>
+                  </div>
+
+                  <div className="grid sm:grid-cols-2 gap-3 text-xs text-gray-600">
+                    <div className="rounded-lg bg-gray-50 p-3">
+                      <p className="font-bold text-gray-400 mb-1">Client details</p>
+                      <p>{job.clientEmail}</p>
+                      <p>{job.clientWhatsapp}</p>
+                      <p>PAN {job.pan} · AY {job.assessmentYear}</p>
+                      <p>Income: {job.incomeSources?.join(', ') || 'Not set'}</p>
+                    </div>
+                    <div className="rounded-lg bg-gray-50 p-3">
+                      <p className="font-bold text-gray-400 mb-1">Documents</p>
+                      <div className="flex flex-wrap gap-2">
+                        {(job.documents || []).length
+                          ? job.documents.map(doc => (
+                              <a key={`${doc.label}-${doc.url}`} href={doc.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-semibold text-primary-700">
+                                <LinkIcon className="w-3 h-3" />
+                                {doc.label}
+                              </a>
+                            ))
+                          : <span className="text-gray-400">No links submitted.</span>}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="rounded-lg bg-gray-50 p-3 text-xs text-gray-600">
+                    <p className="font-bold text-gray-400 mb-1">Client notes</p>
+                    <p className="whitespace-pre-wrap">{job.notes || 'No notes provided.'}</p>
+                  </div>
+
+                  {!completed ? (
+                    <div className="space-y-2">
+                      <textarea
+                        className="input-base min-h-[72px] text-sm"
+                        placeholder="Completion notes, acknowledgement number, filing summary, or next steps"
+                        value={form.notes || ''}
+                        onChange={event => onChangeCompletion(job._id, 'notes', event.target.value)}
+                      />
+                      <div className="grid sm:grid-cols-[0.8fr_1.2fr] gap-2">
+                        <input className="input-base text-sm" placeholder="Proof label" value={form.documentLabel || ''} onChange={event => onChangeCompletion(job._id, 'documentLabel', event.target.value)} />
+                        <input className="input-base text-sm" placeholder="Completed form / proof URL" value={form.documentUrl || ''} onChange={event => onChangeCompletion(job._id, 'documentUrl', event.target.value)} />
+                      </div>
+                      <button type="button" onClick={() => onSubmitWork(job)} className="btn-primary justify-center w-full text-sm">
+                        <Send className="w-4 h-4" />
+                        Submit completed work and credit wallet
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="rounded-lg bg-eco-50 text-eco-700 px-3 py-2 text-xs font-bold">
+                      Completed. Payout credited {job.caPayoutCreditedAt ? formatDate(job.caPayoutCreditedAt) : 'to wallet'}.
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+
+          {withdrawals.length > 0 && (
+            <div>
+              <p className="text-xs font-bold text-gray-500 mb-2">CA withdrawal requests</p>
+              <div className="space-y-2">
+                {withdrawals.slice(0, 4).map(wd => (
+                  <div key={wd._id} className="flex items-center justify-between rounded-xl bg-gray-50 px-3 py-2 text-xs">
+                    <span className="font-semibold text-gray-800">{formatPrice(wd.amount)} · {wd.upiId}</span>
+                    <span className="font-bold capitalize text-primary-700">{wd.status}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  )
+}
+
 export default function CAServicesPage() {
-  const { isAuthenticated, user } = useAuth()
+  const { isAuthenticated, user, updateUser } = useAuth()
   const { addToCart } = useCart()
   const navigate = useNavigate()
   const [showAuth, setShowAuth] = useState(false)
@@ -125,6 +275,10 @@ export default function CAServicesPage() {
   const [message, setMessage] = useState('')
   const [createdJob, setCreatedJob] = useState(null)
   const [paymentDone, setPaymentDone] = useState(false)
+  const [caWork, setCAWork] = useState({ profile: null, jobs: [], withdrawals: [], walletBalance: 0, totalEarned: 0 })
+  const [caWorkLoading, setCAWorkLoading] = useState(false)
+  const [completionForms, setCompletionForms] = useState({})
+  const [showCAWithdrawal, setShowCAWithdrawal] = useState(false)
   const selectedPackage = CA_SERVICE_PACKAGES.find(item => item.key === clientForm.servicePackage) || CA_SERVICE_PACKAGES[0]
   const packagePrice = selectedPackage.amountMax && selectedPackage.amountMax !== selectedPackage.amount
     ? `${formatPrice(selectedPackage.amount)}-${formatPrice(selectedPackage.amountMax)}`
@@ -135,6 +289,29 @@ export default function CAServicesPage() {
     setShowAuth(true)
     return true
   }
+
+  const loadCAWork = async () => {
+    if (!isAuthenticated) return
+    setCAWorkLoading(true)
+    try {
+      const res = await api.get('/ca/work/me')
+      setCAWork({
+        profile: res.profile || null,
+        jobs: res.jobs || [],
+        withdrawals: res.withdrawals || [],
+        walletBalance: res.walletBalance || 0,
+        totalEarned: res.totalEarned || 0,
+      })
+    } catch {
+      setCAWork(prev => ({ ...prev, jobs: [], withdrawals: [] }))
+    } finally {
+      setCAWorkLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    loadCAWork()
+  }, [isAuthenticated]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const updateDocument = (index, field, value) => {
     setClientForm(prev => ({
@@ -191,6 +368,7 @@ export default function CAServicesPage() {
     try {
       const res = await api.put('/ca/profile', caForm)
       setMessage(res.message || 'CA application submitted.')
+      loadCAWork()
     } catch (err) {
       setMessage(err.message)
     } finally {
@@ -198,8 +376,53 @@ export default function CAServicesPage() {
     }
   }
 
+  const updateCompletionForm = (jobId, key, value) => {
+    setCompletionForms(prev => ({
+      ...prev,
+      [jobId]: { ...(prev[jobId] || {}), [key]: value },
+    }))
+  }
+
+  const submitCAWork = async job => {
+    const form = completionForms[job._id] || {}
+    setSubmitting(`complete-${job._id}`)
+    setMessage('')
+    try {
+      const completionDocuments = form.documentUrl?.trim()
+        ? [{ label: form.documentLabel?.trim() || 'Completed work proof', url: form.documentUrl.trim() }]
+        : []
+      const res = await api.post(`/ca/tax-jobs/${job._id}/submit-work`, {
+        caNotes: form.notes,
+        completionNotes: form.notes,
+        completionDocuments,
+      })
+      if (res.user) updateUser(res.user)
+      setMessage(res.message || 'Work submitted and CA wallet credited.')
+      setCompletionForms(prev => ({ ...prev, [job._id]: { notes: '', documentLabel: '', documentUrl: '' } }))
+      loadCAWork()
+    } catch (err) {
+      setMessage(err.message)
+    } finally {
+      setSubmitting(null)
+    }
+  }
+
+  const submitCAWithdrawal = async payload => {
+    const res = await api.post('/ca/withdraw', payload)
+    updateUser({ walletBalance: res.newBalance })
+    await loadCAWork()
+    return res
+  }
+
   return (
     <div className="bg-white">
+      <WithdrawalModal
+        isOpen={showCAWithdrawal}
+        onClose={() => setShowCAWithdrawal(false)}
+        walletBalance={caWork.walletBalance || 0}
+        withdrawals={caWork.withdrawals}
+        onSubmit={submitCAWithdrawal}
+      />
       <section className="border-b border-gray-100 bg-gradient-to-br from-slate-950 via-primary-950 to-emerald-950 text-white">
         <div className="section-wrapper py-14 lg:py-20 grid lg:grid-cols-[1.05fr_0.95fr] gap-10 items-center">
           <div>
@@ -413,6 +636,21 @@ export default function CAServicesPage() {
             </button>
           </form>
 
+          <div className="space-y-5">
+          <CAWorkDesk
+            isAuthenticated={isAuthenticated}
+            profile={caWork.profile}
+            jobs={caWork.jobs}
+            withdrawals={caWork.withdrawals}
+            walletBalance={caWork.walletBalance}
+            totalEarned={caWork.totalEarned}
+            loading={caWorkLoading}
+            completionForms={completionForms}
+            onChangeCompletion={updateCompletionForm}
+            onSubmitWork={submitCAWork}
+            onWithdraw={() => setShowCAWithdrawal(true)}
+          />
+
           <form onSubmit={submitCAApplication} className="bg-gray-50 border border-gray-100 rounded-2xl p-5 space-y-5">
             <div>
               <p className="text-xs font-bold text-eco-700 uppercase tracking-wide">For chartered accountants</p>
@@ -464,6 +702,7 @@ export default function CAServicesPage() {
               {submitting === 'ca' ? 'Submitting...' : 'Apply for Earnova CA verification'}
             </button>
           </form>
+          </div>
         </div>
 
         <div className="grid md:grid-cols-4 gap-3">

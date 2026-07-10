@@ -36,11 +36,11 @@ export default function App() {
               <Route path="/freelance"    element={<FreelancePage />} />
               <Route path="/energy-solutions" element={<FeatureGate feature="energySolutions"><EnergySolutionsPage /></FeatureGate>} />
               <Route path="/business-solutions" element={<BusinessSolutionsPage />} />
-              <Route path="/ca-services" element={<FeatureGate feature="caServices"><CAServicesPage /></FeatureGate>} />
+              <Route path="/ca-services" element={<CAServicesPage />} />
               <Route path="/investors" element={<InvestorsPage />} />
               <Route path="/products/:id" element={<FeatureGate feature="ecommerce"><ProductDetailPage /></FeatureGate>} />
-              <Route path="/cart"         element={<FeatureGate feature="ecommerce"><CartPage /></FeatureGate>} />
-              <Route path="/checkout"     element={<FeatureGate feature="ecommerce"><CheckoutPage /></FeatureGate>} />
+              <Route path="/cart"         element={<FeatureGate><CartPage /></FeatureGate>} />
+              <Route path="/checkout"     element={<FeatureGate><CheckoutPage /></FeatureGate>} />
               <Route path="/account"      element={<AccountPage />} />
               <Route path="/b2b"          element={<FeatureGate feature="b2bPrograms"><B2BPage /></FeatureGate>} />
               <Route path="/subsidy"      element={<FeatureGate feature="subsidies"><SubsidyPage /></FeatureGate>} />

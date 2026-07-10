@@ -2,6 +2,8 @@ import crypto from 'crypto'
 import Razorpay from 'razorpay'
 import CAProfile from '../models/CAProfile.js'
 import CATaxJob from '../models/CATaxJob.js'
+import User from '../models/User.js'
+import Withdrawal from '../models/Withdrawal.js'
 
 const EARNOVA_CA_FEE = 49
 
@@ -60,6 +62,41 @@ const cleanDocuments = value => {
 const toNumber = value => {
   const parsed = Number(value)
   return Number.isFinite(parsed) ? parsed : 0
+}
+
+const getVerifiedCAProfileForUser = async (userId) => {
+  const profile = await CAProfile.findOne({ user: userId })
+  if (!profile) {
+    const err = new Error('Create your Earnova CA profile before accessing assigned work.')
+    err.status = 404
+    throw err
+  }
+  if (profile.status !== 'verified') {
+    const err = new Error('Your CA profile must be verified by admin before assigned work is available.')
+    err.status = 403
+    throw err
+  }
+  return profile
+}
+
+const getCAWalletTotals = async (profileId, userId) => {
+  const [earnedAgg, withdrawnAgg] = await Promise.all([
+    CATaxJob.aggregate([
+      { $match: { assignedCA: profileId, caPayoutCreditedAt: { $ne: null } } },
+      { $group: { _id: null, total: { $sum: '$caPayoutAmount' } } },
+    ]),
+    Withdrawal.aggregate([
+      { $match: { user: userId, source: 'ca', status: { $ne: 'failed' } } },
+      { $group: { _id: null, total: { $sum: '$amount' } } },
+    ]),
+  ])
+
+  const totalEarned = earnedAgg[0]?.total || 0
+  const heldOrPaid = withdrawnAgg[0]?.total || 0
+  return {
+    totalEarned,
+    walletBalance: Math.max(totalEarned - heldOrPaid, 0),
+  }
 }
 
 export const upsertCAProfile = async (req, res) => {
@@ -249,5 +286,132 @@ export const getMyTaxJobs = async (req, res) => {
     res.json({ success: true, jobs })
   } catch (err) {
     res.status(500).json({ success: false, message: err.message })
+  }
+}
+
+export const getMyCAWork = async (req, res) => {
+  try {
+    const profile = await CAProfile.findOne({ user: req.user._id }).lean()
+    if (!profile) {
+      return res.json({
+        success: true,
+        profile: null,
+        jobs: [],
+        withdrawals: [],
+        walletBalance: 0,
+        totalEarned: 0,
+      })
+    }
+
+    const [jobs, withdrawals, walletTotals] = await Promise.all([
+      CATaxJob.find({ assignedCA: profile._id })
+        .populate('client', 'name email phone')
+        .sort('-updatedAt')
+        .lean(),
+      Withdrawal.find({ user: req.user._id, source: 'ca' })
+        .sort('-createdAt')
+        .limit(50)
+        .lean(),
+      getCAWalletTotals(profile._id, req.user._id),
+    ])
+
+    res.json({
+      success: true,
+      profile,
+      jobs,
+      withdrawals,
+      walletBalance: walletTotals.walletBalance,
+      totalEarned: walletTotals.totalEarned,
+    })
+  } catch (err) {
+    res.status(err.status || 500).json({ success: false, message: err.message })
+  }
+}
+
+export const submitAssignedTaxJob = async (req, res) => {
+  try {
+    const profile = await getVerifiedCAProfileForUser(req.user._id)
+    const job = await CATaxJob.findOne({ _id: req.params.id, assignedCA: profile._id })
+    if (!job) return res.status(404).json({ success: false, message: 'Assigned CA tax job not found.' })
+    if (!['paid', 'admin-waived'].includes(job.paymentStatus)) {
+      return res.status(400).json({ success: false, message: 'CA payout can be credited only after client payment is confirmed.' })
+    }
+    if (job.status === 'cancelled') {
+      return res.status(400).json({ success: false, message: 'Cancelled CA work cannot be submitted.' })
+    }
+
+    const completionDocuments = cleanDocuments(req.body.completionDocuments)
+    job.status = 'completed'
+    job.completedAt = job.completedAt || new Date()
+    job.caNotes = String(req.body.caNotes || job.caNotes || '').trim()
+    job.completionNotes = String(req.body.completionNotes || '').trim()
+    job.completionDocuments = completionDocuments
+
+    if (!job.caPayoutCreditedAt) {
+      await User.findByIdAndUpdate(req.user._id, { $inc: { walletBalance: job.caPayoutAmount || 0 } })
+      job.caPayoutCreditedAt = new Date()
+      job.statusHistory.push({
+        status: 'completed',
+        note: `CA submitted completed work. CA wallet credited INR ${job.caPayoutAmount || 0}.`,
+      })
+    } else {
+      job.statusHistory.push({ status: 'completed', note: 'CA resubmitted completion details.' })
+    }
+
+    await job.save()
+
+    const updatedUser = await User.findById(req.user._id).select('-password')
+    res.json({
+      success: true,
+      job,
+      user: updatedUser?.toPublicJSON ? updatedUser.toPublicJSON() : updatedUser,
+      message: 'Work submitted. CA payout has been added to your wallet.',
+    })
+  } catch (err) {
+    res.status(err.status || 500).json({ success: false, message: err.message })
+  }
+}
+
+export const requestCAWithdrawal = async (req, res) => {
+  try {
+    const profile = await getVerifiedCAProfileForUser(req.user._id)
+    const { amount, upiId, accountName } = req.body
+    const user = await User.findById(req.user._id)
+    const numAmount = Number(amount)
+    const walletTotals = await getCAWalletTotals(profile._id, req.user._id)
+
+    if (!numAmount || numAmount < 100) {
+      return res.status(400).json({ success: false, message: 'Minimum withdrawal amount is INR 100.' })
+    }
+    if (numAmount > walletTotals.walletBalance || numAmount > user.walletBalance) {
+      return res.status(400).json({
+        success: false,
+        message: `Insufficient CA wallet balance. Available: INR ${walletTotals.walletBalance}.`,
+      })
+    }
+    if (!upiId?.trim() || !accountName?.trim()) {
+      return res.status(400).json({ success: false, message: 'UPI ID and account holder name are required.' })
+    }
+
+    user.walletBalance -= numAmount
+    await user.save()
+
+    const withdrawal = await Withdrawal.create({
+      user: user._id,
+      source: 'ca',
+      caProfile: profile._id,
+      amount: numAmount,
+      upiId: upiId.trim(),
+      accountName: accountName.trim(),
+    })
+
+    res.status(201).json({
+      success: true,
+      withdrawal,
+      newBalance: user.walletBalance,
+      message: 'CA withdrawal request submitted. Admin will pay your UPI account and update the status.',
+    })
+  } catch (err) {
+    res.status(err.status || 500).json({ success: false, message: err.message })
   }
 }

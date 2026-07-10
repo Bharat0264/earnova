@@ -76,8 +76,11 @@ const caTaxJobSchema = new mongoose.Schema({
     index: true,
   },
   caNotes: { type: String, trim: true },
+  completionNotes: { type: String, trim: true, maxlength: 4000 },
+  completionDocuments: [documentSchema],
   adminNote: { type: String, trim: true },
   completedAt: Date,
+  caPayoutCreditedAt: Date,
   statusHistory: [statusEventSchema],
 }, { timestamps: true })
 

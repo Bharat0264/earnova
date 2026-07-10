@@ -687,7 +687,7 @@ export const updateAdminCATaxJob = async (req, res) => {
     const updateDoc = { $set: updates }
     if (history.length) updateDoc.$push = { statusHistory: { $each: history } }
 
-    const job = await CATaxJob.findByIdAndUpdate(
+    let job = await CATaxJob.findByIdAndUpdate(
       req.params.id,
       updateDoc,
       { new: true, runValidators: true }
@@ -701,6 +701,35 @@ export const updateAdminCATaxJob = async (req, res) => {
       .lean()
 
     if (!job) return res.status(404).json({ success: false, message: 'CA tax job not found.' })
+
+    if (job.status === 'completed' && job.assignedCA?.user?._id && !job.caPayoutCreditedAt) {
+      const creditedJob = await CATaxJob.findOneAndUpdate(
+        { _id: job._id, caPayoutCreditedAt: null },
+        {
+          $set: { caPayoutCreditedAt: new Date() },
+          $push: {
+            statusHistory: {
+              status: 'completed',
+              note: `Admin marked CA work completed. CA wallet credited INR ${job.caPayoutAmount || 0}.`,
+            },
+          },
+        },
+        { new: true }
+      )
+
+      if (creditedJob) {
+        await User.findByIdAndUpdate(job.assignedCA.user._id, { $inc: { walletBalance: job.caPayoutAmount || 0 } })
+        job = await CATaxJob.findById(job._id)
+          .populate('client', 'name email phone role')
+          .populate({
+            path: 'assignedCA',
+            select: 'name email whatsapp phone firmName membershipNumber city state specializations status user',
+            populate: { path: 'user', select: 'name email phone role' },
+          })
+          .lean()
+      }
+    }
+
     res.json({ success: true, job })
   } catch (err) {
     res.status(500).json({ success: false, message: err.message })

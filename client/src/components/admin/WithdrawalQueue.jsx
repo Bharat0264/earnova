@@ -7,7 +7,7 @@ const ST_STYLE = { pending:'bg-amber-50 text-amber-700', processing:'bg-blue-50 
 const FLOW = [
   { key: 'pending', label: 'Withdraw Requested' },
   { key: 'processing', label: 'Admin Approved' },
-  { key: 'completed', label: 'Member Paid' },
+  { key: 'completed', label: 'Paid' },
 ]
 
 export default function WithdrawalQueue({ data, loading, reload }) {
@@ -33,7 +33,7 @@ export default function WithdrawalQueue({ data, loading, reload }) {
         <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4 flex items-center gap-3">
           <div>
             <p className="font-semibold text-amber-800 text-sm">₹{pendingTotal.toLocaleString('en-IN')} pending across {data.filter(w=>w.status==='pending').length} requests</p>
-            <p className="text-amber-600 text-xs mt-0.5">Process withdrawals promptly to maintain referrer trust.</p>
+            <p className="text-amber-600 text-xs mt-0.5">Process referral and CA withdrawals promptly after checking UPI details.</p>
           </div>
         </div>
       )}
@@ -51,7 +51,7 @@ export default function WithdrawalQueue({ data, loading, reload }) {
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-gray-50 border-b border-gray-100">
-              {['User','Amount','UPI ID','Status','Date','Actions'].map(h => (
+              {['User','Source','Amount','UPI / Account','Status','Date','Actions'].map(h => (
                 <th key={h} className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">{h}</th>
               ))}
             </tr>
@@ -59,8 +59,8 @@ export default function WithdrawalQueue({ data, loading, reload }) {
           <tbody className="bg-white divide-y divide-gray-50">
             {loading
               ? Array.from({length:5}).map((_,i) => (
-                  <tr key={i}>{Array.from({length:6}).map((_,j) => (
-                    <td key={j} className="px-4 py-3"><div className="h-3.5 bg-gray-100 rounded-full animate-pulse" style={{width:`${[70,40,60,50,55,60][j]}%`}} /></td>
+                  <tr key={i}>{Array.from({length:7}).map((_,j) => (
+                    <td key={j} className="px-4 py-3"><div className="h-3.5 bg-gray-100 rounded-full animate-pulse" style={{width:`${[70,40,50,60,50,55,60][j]}%`}} /></td>
                   ))}</tr>
                 ))
               : filtered.map(w => (
@@ -70,8 +70,16 @@ export default function WithdrawalQueue({ data, loading, reload }) {
                       <p className="font-semibold text-gray-900 text-xs">{w.user?.name}</p>
                       <p className="text-[11px] text-gray-400">{w.user?.email}</p>
                     </td>
+                    <td className="px-4 py-3">
+                      <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full capitalize ${w.source === 'ca' ? 'bg-eco-50 text-eco-700' : 'bg-primary-50 text-primary-700'}`}>
+                        {w.source === 'ca' ? 'CA earnings' : 'Referral'}
+                      </span>
+                    </td>
                     <td className="px-4 py-3 font-bold text-gray-900">{formatPrice(w.amount)}</td>
-                    <td className="px-4 py-3 text-xs text-gray-600 font-mono">{w.upiId}</td>
+                    <td className="px-4 py-3 text-xs text-gray-600">
+                      <p className="font-mono">{w.upiId}</p>
+                      <p className="text-[11px] text-gray-400">{w.accountName}</p>
+                    </td>
                     <td className="px-4 py-3">
                       <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full capitalize ${ST_STYLE[w.status]}`}>{w.status}</span>
                     </td>
@@ -93,7 +101,7 @@ export default function WithdrawalQueue({ data, loading, reload }) {
                       {w.status === 'processing' && (
                         <button onClick={() => update(w._id, 'completed')} disabled={updating === w._id}
                                 className="flex items-center gap-1 text-[11px] font-bold text-eco-700 bg-eco-50 hover:bg-eco-100 px-2.5 py-1.5 rounded-lg transition-colors">
-                          <Wallet className="w-3 h-3" /> Pay Member
+                          <Wallet className="w-3 h-3" /> {w.source === 'ca' ? 'Pay CA' : 'Pay Member'}
                         </button>
                       )}
                       {(w.status === 'completed' || w.status === 'failed') && (
@@ -102,7 +110,7 @@ export default function WithdrawalQueue({ data, loading, reload }) {
                     </td>
                   </tr>
                   <tr className="bg-gray-50/60">
-                    <td colSpan={6} className="px-4 pb-3">
+                    <td colSpan={7} className="px-4 pb-3">
                       <div className="grid grid-cols-3 gap-2">
                         {FLOW.map((step, i) => {
                           const activeIndex = Math.max(FLOW.findIndex(s => s.key === w.status), 0)

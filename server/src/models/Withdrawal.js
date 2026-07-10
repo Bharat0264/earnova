@@ -3,6 +3,13 @@ import mongoose from 'mongoose'
 const withdrawalSchema = new mongoose.Schema({
   user:   { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
   amount: { type: Number, required: true, min: 100 },
+  source: {
+    type: String,
+    enum: ['referral', 'ca'],
+    default: 'referral',
+    index: true,
+  },
+  caProfile: { type: mongoose.Schema.Types.ObjectId, ref: 'CAProfile' },
 
   /* Payout details */
   upiId:       { type: String, required: true },
