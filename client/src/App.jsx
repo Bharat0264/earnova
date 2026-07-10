@@ -21,6 +21,7 @@ import EnergySolutionsPage from './pages/EnergySolutionsPage'
 import BusinessSolutionsPage from './pages/BusinessSolutionsPage'
 import CAServicesPage     from './pages/CAServicesPage'
 import InvestorsPage      from './pages/InvestorsPage'
+import ProjectsPage       from './pages/ProjectsPage'
 import FeatureGate        from './components/common/FeatureGate'
 
 export default function App() {
@@ -37,6 +38,7 @@ export default function App() {
               <Route path="/energy-solutions" element={<FeatureGate feature="energySolutions"><EnergySolutionsPage /></FeatureGate>} />
               <Route path="/business-solutions" element={<BusinessSolutionsPage />} />
               <Route path="/ca-services" element={<CAServicesPage />} />
+              <Route path="/projects" element={<ProjectsPage />} />
               <Route path="/investors" element={<InvestorsPage />} />
               <Route path="/products/:id" element={<FeatureGate feature="ecommerce"><ProductDetailPage /></FeatureGate>} />
               <Route path="/cart"         element={<FeatureGate><CartPage /></FeatureGate>} />

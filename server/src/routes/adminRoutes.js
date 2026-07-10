@@ -9,7 +9,9 @@ import {
   getAdminCAProfiles,
   updateAdminCAProfile,
   getAdminCATaxJobs,
-  updateAdminCATaxJob
+  updateAdminCATaxJob,
+  getAdminProjectListings,
+  updateAdminProjectListing
 } from '../controllers/adminController.js'
 
 import { protect, adminOnly } from '../middleware/auth.js'
@@ -36,5 +38,9 @@ router.get('/ca-profiles', getAdminCAProfiles)
 router.patch('/ca-profiles/:id', updateAdminCAProfile)
 router.get('/ca-tax-jobs', getAdminCATaxJobs)
 router.patch('/ca-tax-jobs/:id', updateAdminCATaxJob)
+
+/* Project marketplace */
+router.get('/project-listings', getAdminProjectListings)
+router.patch('/project-listings/:id', updateAdminProjectListing)
 
 export default router

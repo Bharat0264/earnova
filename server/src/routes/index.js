@@ -9,6 +9,7 @@ import subsidyRoutes   from './subsidyRoutes.js'
 import adminRoutes     from './adminRoutes.js'
 import freelanceRoutes from './freelanceRoutes.js'
 import caRoutes        from './caRoutes.js'
+import projectRoutes   from './projectRoutes.js'
 
 const router = Router()
 
@@ -23,5 +24,6 @@ router.use('/admin',    adminRoutes)     /* ✅ Phase 6 */
 
 router.use('/freelance', freelanceRoutes)
 router.use('/ca', caRoutes)
+router.use('/projects', projectRoutes)
 
 export default router

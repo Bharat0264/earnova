@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { ShoppingCart, Heart, User, Menu, X, Zap, LogOut, Package, ChevronDown, Briefcase, SunMedium, BarChart3, FileCheck2 } from 'lucide-react'
+import { ShoppingCart, Heart, User, Menu, X, Zap, LogOut, Package, ChevronDown, Briefcase, SunMedium, BarChart3, FileCheck2, Code2 } from 'lucide-react'
 import { useCart } from '../../context/CartContext'
 import { useAuth } from '../../context/AuthContext'
 import AuthModal from '../auth/AuthModal'
@@ -16,6 +16,7 @@ const SERVICE_LINKS = [
   { to: '/energy-solutions', label: 'Energy Solutions', description: 'Solar and energy project support', icon: SunMedium, public: true },
   { to: '/business-solutions', label: 'Business Solutions', description: 'AI analytics for business owners', icon: BarChart3, public: true },
   { to: '/ca-services', label: 'CA Services', description: 'ITR, tax, audit and compliance help', icon: FileCheck2, public: true },
+  { to: '/projects', label: 'Projects', description: 'Buy or list approved ready-made projects', icon: Code2, public: true },
 ]
 
 export default function Navbar() {
@@ -41,7 +42,7 @@ export default function Navbar() {
     (link.publicPreview && !isAuthenticated) ||
     (isAuthenticated && (link.authenticated || hasFeature(link.feature)))
   )
-  const shoppingEnabled = isAuthenticated && hasFeature('ecommerce')
+  const shoppingEnabled = (isAuthenticated && hasFeature('ecommerce')) || cartCount > 0
   const ecommerceEnabled = isAuthenticated && hasFeature('ecommerce')
 
   useEffect(() => {

@@ -4,6 +4,7 @@ import Order    from '../models/Order.js'
 import User     from '../models/User.js'
 import Product  from '../models/Product.js'
 import CATaxJob from '../models/CATaxJob.js'
+import ProjectListing from '../models/ProjectListing.js'
 import { sendOrderConfirmation } from '../utils/email.js'
 
 const requireRazorpayConfig = () => {
@@ -67,6 +68,28 @@ const hydrateCartItems = async (cartItems, userId) => {
           quantity: 1,
           gstRate: 0,
           category: 'earnova-services',
+          memberIncome: 0,
+          referralCommission: 0,
+        }
+      }
+
+      if (item.serviceKey === 'projectListing') {
+        const listingId = item.projectListingId || item.serviceRef
+        const listing = await ProjectListing.findOne({ _id: listingId, status: 'approved' })
+        if (!listing) throw new Error('Project listing is unavailable or already sold.')
+
+        return {
+          _id: `earnova-project-${listing._id}`,
+          itemType: 'service',
+          serviceKey: 'projectListing',
+          serviceRef: listing._id.toString(),
+          buyerWhatsapp: String(item.buyerWhatsapp || '').trim(),
+          name: `Earnova Project - ${listing.title}`,
+          image: '/favicon.svg',
+          price: listing.price,
+          quantity: 1,
+          gstRate: 0,
+          category: 'earnova-projects',
           memberIncome: 0,
           referralCommission: 0,
         }
@@ -206,6 +229,9 @@ export const verifyPayment = async (req, res) => {
     const caTaxJobRefs = dbCartItems
       .filter(item => item.serviceKey === 'caTaxJob' && item.serviceRef)
       .map(item => item.serviceRef)
+    const projectPurchases = dbCartItems
+      .filter(item => item.serviceKey === 'projectListing' && item.serviceRef)
+      .map(item => ({ listingId: item.serviceRef, buyerWhatsapp: item.buyerWhatsapp }))
 
     /* 5. Create DB order */
     const order = await Order.create({
@@ -215,6 +241,7 @@ export const verifyPayment = async (req, res) => {
         itemType: item.itemType || 'product',
         serviceKey: item.serviceKey,
         serviceRef: item.serviceRef,
+        buyerWhatsapp: item.buyerWhatsapp,
         name:     item.name,
         image:    item.image,
         price:    item.price,
@@ -277,6 +304,40 @@ export const verifyPayment = async (req, res) => {
       }
       order.statusHistory.push({ status: 'processing', note: 'CA service payment confirmed after Razorpay cart checkout.' })
       await order.save()
+    }
+
+    if (projectPurchases.length) {
+      for (const purchase of projectPurchases) {
+        const listing = await ProjectListing.findOneAndUpdate(
+          { _id: purchase.listingId, status: 'approved' },
+          {
+            $set: {
+              status: 'sold',
+              soldAt: new Date(),
+              buyer: req.user._id,
+              buyerName: fullUser.name,
+              buyerEmail: fullUser.email,
+              buyerWhatsapp: purchase.buyerWhatsapp || fullUser.phone || '',
+              razorpayOrderId,
+              razorpayPaymentId,
+              razorpaySignature,
+              sellerCreditedAt: new Date(),
+            },
+          },
+          { new: true }
+        )
+
+        if (listing) {
+          await User.findByIdAndUpdate(listing.seller, {
+            $inc: { walletBalance: listing.sellerPayout || 0 },
+          })
+          order.statusHistory.push({
+            status: 'processing',
+            note: `Project ${listing.listingId} sold. Seller wallet credited INR ${listing.sellerPayout || 0}. Buyer WhatsApp: ${listing.buyerWhatsapp || 'not provided'}.`,
+          })
+          await order.save()
+        }
+      }
     }
 
     /* 7. Send confirmation email (non-blocking) */

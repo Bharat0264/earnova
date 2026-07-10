@@ -39,7 +39,7 @@ function makeTableHook(apiPath, mockData) {
       try {
         const qs  = new URLSearchParams(params).toString()
         const res = await api.get(`${apiPath}${qs ? '?' + qs : ''}`)
-        const arr = res.orders || res.users || res.quotes || res.requests || res.withdrawals || res.products || []
+        const arr = res.orders || res.users || res.quotes || res.requests || res.withdrawals || res.products || res.listings || []
         setData(arr)
         setTotal(res.total || arr.length)
       } catch {
@@ -61,6 +61,7 @@ export const useAdminUsers      = makeTableHook('/admin/users',       MOCK_USERS
 export const useAdminB2B        = makeTableHook('/b2b/quotes',        MOCK_B2B_QUOTES)
 export const useAdminSubsidy    = makeTableHook('/subsidy/requests',  MOCK_SUBSIDY_REQUESTS)
 export const useAdminWithdrawals = makeTableHook('/referral/withdrawals', MOCK_WITHDRAWALS)
+export const useAdminProjectListings = makeTableHook('/admin/project-listings', [])
 
 export function useAdminFreelanceJobs(params = {}) {
   const [data, setData] = useState([])

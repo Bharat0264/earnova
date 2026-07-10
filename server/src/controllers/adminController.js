@@ -8,6 +8,7 @@ import FreelanceJob from '../models/FreelanceJob.js'
 import FreelancerProfile from '../models/FreelancerProfile.js'
 import CAProfile from '../models/CAProfile.js'
 import CATaxJob from '../models/CATaxJob.js'
+import ProjectListing from '../models/ProjectListing.js'
 import { DEFAULT_PUBLIC_ACCESS, normalizeFeatureAccess } from '../config/features.js'
 
 /* ────────────────────────────────────────
@@ -731,6 +732,88 @@ export const updateAdminCATaxJob = async (req, res) => {
     }
 
     res.json({ success: true, job })
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message })
+  }
+}
+
+export const getAdminProjectListings = async (req, res) => {
+  try {
+    const page = Math.max(parseInt(req.query.page) || 1, 1)
+    const limit = Math.min(parseInt(req.query.limit) || 50, 100)
+    const filter = {}
+
+    if (req.query.status && req.query.status !== 'all') filter.status = req.query.status
+    if (req.query.q) {
+      const re = new RegExp(req.query.q, 'i')
+      filter.$or = [
+        { listingId: re },
+        { title: re },
+        { category: re },
+        { sellerName: re },
+        { sellerEmail: re },
+        { sellerWhatsapp: re },
+      ]
+    }
+
+    const [listings, total] = await Promise.all([
+      ProjectListing.find(filter)
+        .populate('seller', 'name email phone walletBalance')
+        .populate('buyer', 'name email phone')
+        .populate('approvedBy', 'name email')
+        .sort('-createdAt')
+        .skip((page - 1) * limit)
+        .limit(limit)
+        .lean(),
+      ProjectListing.countDocuments(filter),
+    ])
+
+    res.json({ success: true, listings, total, page, pages: Math.ceil(total / limit) })
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message })
+  }
+}
+
+export const updateAdminProjectListing = async (req, res) => {
+  try {
+    const allowedStatuses = ['pending', 'approved', 'rejected', 'sold', 'paused']
+    const updates = {}
+
+    if (req.body.status !== undefined) {
+      if (!allowedStatuses.includes(req.body.status)) {
+        return res.status(400).json({ success: false, message: 'Invalid project listing status.' })
+      }
+      updates.status = req.body.status
+      if (req.body.status === 'approved') {
+        updates.approvedAt = new Date()
+        updates.approvedBy = req.user._id
+      }
+    }
+
+    if (req.body.adminNote !== undefined) updates.adminNote = String(req.body.adminNote || '').trim()
+    if (req.body.price !== undefined) {
+      const price = Math.round(Number(req.body.price) || 0)
+      if (price < 100) return res.status(400).json({ success: false, message: 'Price must be at least INR 100.' })
+      updates.price = price
+      updates.sellerPayout = price
+    }
+
+    if (!Object.keys(updates).length) {
+      return res.status(400).json({ success: false, message: 'No valid updates provided.' })
+    }
+
+    const listing = await ProjectListing.findByIdAndUpdate(
+      req.params.id,
+      updates,
+      { new: true, runValidators: true }
+    )
+      .populate('seller', 'name email phone walletBalance')
+      .populate('buyer', 'name email phone')
+      .populate('approvedBy', 'name email')
+      .lean()
+
+    if (!listing) return res.status(404).json({ success: false, message: 'Project listing not found.' })
+    res.json({ success: true, listing })
   } catch (err) {
     res.status(500).json({ success: false, message: err.message })
   }

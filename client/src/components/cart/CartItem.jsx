@@ -66,7 +66,7 @@ export default function CartItem({ item }) {
 
         {/* GST note */}
         <p className="text-[11px] text-gray-400 mt-1">
-          {isService ? 'Monthly service access. Activated after Razorpay confirmation.' : `Incl. ${gstRate}% GST (${formatPrice(gst)})`}
+          {isService ? 'Service item. Activated or processed after Razorpay confirmation.' : `Incl. ${gstRate}% GST (${formatPrice(gst)})`}
         </p>
 
         {/* Bottom row */}

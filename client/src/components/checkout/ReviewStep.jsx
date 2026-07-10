@@ -123,7 +123,7 @@ export default function ReviewStep({ address, onBack, onPay, loading, error }) {
         {solarOnly
           ? 'Solar products support Razorpay or pay on delivery'
           : serviceOnly
-            ? 'Business access activates only after Razorpay confirms this cart payment'
+            ? 'Service access or delivery starts only after Razorpay confirms this cart payment'
             : 'Secured prepaid checkout by Razorpay for this category'}
       </p>
     </div>

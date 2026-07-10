@@ -5,6 +5,7 @@ const itemSchema = new mongoose.Schema({
   itemType: { type: String, enum: ['product', 'service'], default: 'product' },
   serviceKey: String,
   serviceRef: String,
+  buyerWhatsapp: String,
   name:     String,
   image:    String,
   price:    { type: Number, required: true },

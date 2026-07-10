@@ -2,6 +2,7 @@ import { useSearchParams, Navigate, Link } from 'react-router-dom'
 import {
   LayoutDashboard, Package, ShoppingBag, Users,
   Building2, Sun, Wallet, LogOut, Zap, ChevronRight, Briefcase, FileCheck2,
+  Code2,
 } from 'lucide-react'
 import { DashboardStats, RevenueChart } from '../components/admin/DashboardStats'
 import OrdersTable      from '../components/admin/OrdersTable'
@@ -12,11 +13,13 @@ import SubsidyInbox     from '../components/admin/SubsidyInbox'
 import WithdrawalQueue  from '../components/admin/WithdrawalQueue'
 import FreelanceJobsTable from '../components/admin/FreelanceJobsTable'
 import CAWorkTable      from '../components/admin/CAWorkTable'
+import ProjectListingsTable from '../components/admin/ProjectListingsTable'
 import { useAuth }      from '../context/AuthContext'
 import {
   useAdminStats, useAdminOrders, useAdminProducts,
   useAdminUsers, useAdminB2B, useAdminSubsidy, useAdminWithdrawals,
   useAdminFreelanceJobs, useAdminCAProfiles, useAdminCATaxJobs,
+  useAdminProjectListings,
 } from '../hooks/useAdmin'
 
 export default function AdminPage() {
@@ -36,6 +39,7 @@ export default function AdminPage() {
   const freelanceJobs = useAdminFreelanceJobs()
   const caProfiles = useAdminCAProfiles()
   const caTaxJobs = useAdminCATaxJobs()
+  const projectListings = useAdminProjectListings()
   const activeFreelanceJobs = (stats?.freelanceJobs?.open || 0)
     + (stats?.freelanceJobs?.inProgress || 0)
     + (stats?.freelanceJobs?.submitted || 0)
@@ -69,6 +73,7 @@ export default function AdminPage() {
     { key: 'users',       label: 'Users',           Icon: Users,            badge: null                    },
     { key: 'freelance',   label: 'Freelance Jobs',  Icon: Briefcase,        badge: activeFreelanceJobs },
     { key: 'ca',          label: 'CA Services',     Icon: FileCheck2,       badge: activeCAWork },
+    { key: 'projects',    label: 'Projects',        Icon: Code2,            badge: projectListings.data.filter(item => item.status === 'pending').length },
     { key: 'b2b',         label: 'B2B Quotes',      Icon: Building2,        badge: stats?.b2bPending       },
     { key: 'subsidy',     label: 'Subsidy',         Icon: Sun,              badge: stats?.subsidyPending   },
     { key: 'withdrawals', label: 'Withdrawals',     Icon: Wallet,           badge: stats?.withdrawals?.pending },
@@ -78,7 +83,7 @@ export default function AdminPage() {
 
   const PAGE_TITLE = {
     dashboard: 'Dashboard', orders: 'Orders', products: 'Products',
-    users: 'Users', freelance: 'Freelance Jobs', ca: 'CA Services', b2b: 'B2B Quotes', subsidy: 'Subsidy Requests', withdrawals: 'Withdrawals',
+    users: 'Users', freelance: 'Freelance Jobs', ca: 'CA Services', projects: 'Projects', b2b: 'B2B Quotes', subsidy: 'Subsidy Requests', withdrawals: 'Withdrawals',
   }
 
   return (
@@ -182,6 +187,7 @@ export default function AdminPage() {
                         { label: 'B2B Quotes',    val: stats?.b2bPending,                 tab: 'b2b',         color: 'text-primary-600' },
                         { label: 'Freelance Jobs', val: activeFreelanceJobs, tab: 'freelance', color: 'text-violet-600' },
                         { label: 'CA Services', val: activeCAWork, tab: 'ca', color: 'text-eco-600' },
+                        { label: 'Projects', val: projectListings.data.filter(item => item.status === 'pending').length, tab: 'projects', color: 'text-indigo-600' },
                         { label: 'Subsidy Reqs',  val: stats?.subsidyPending,              tab: 'subsidy',     color: 'text-yellow-600'  },
                         { label: 'Withdrawals',   val: stats?.withdrawals?.pending,        tab: 'withdrawals', color: 'text-orange-600'  },
                         { label: 'Open Orders',   val: stats?.orders?.pending,             tab: 'orders',      color: 'text-blue-600'    },
@@ -212,6 +218,7 @@ export default function AdminPage() {
           {tab === 'users'       && <UsersTable       data={users.data}       loading={users.loading}       reload={() => { users.reload(); reloadStats() }} />}
           {tab === 'freelance'   && <FreelanceJobsTable data={freelanceJobs.data} freelancers={freelanceJobs.freelancers} loading={freelanceJobs.loading} reload={() => { freelanceJobs.reload(); reloadStats() }} />}
           {tab === 'ca'          && <CAWorkTable profiles={caProfiles.data} taxJobs={caTaxJobs.data} caProfiles={caTaxJobs.caProfiles} loadingProfiles={caProfiles.loading} loadingJobs={caTaxJobs.loading} reloadProfiles={() => { caProfiles.reload(); caTaxJobs.reload(); reloadStats() }} reloadJobs={() => { caTaxJobs.reload(); reloadStats() }} />}
+          {tab === 'projects'    && <ProjectListingsTable data={projectListings.data} loading={projectListings.loading} reload={() => { projectListings.reload(); reloadStats() }} />}
           {tab === 'b2b'         && <B2BInbox         data={b2b.data}         loading={b2b.loading}         reload={() => { b2b.reload(); reloadStats() }} />}
           {tab === 'subsidy'     && <SubsidyInbox     data={subsidy.data}     loading={subsidy.loading}     reload={() => { subsidy.reload(); reloadStats() }} />}
           {tab === 'withdrawals' && <WithdrawalQueue  data={withdrawals.data} loading={withdrawals.loading} reload={() => { withdrawals.reload(); reloadStats() }} />}
