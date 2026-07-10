@@ -94,6 +94,10 @@ export default function ProjectsPage() {
 
   const buyProject = project => {
     if (requireLogin()) return
+    if (project.status !== 'approved') {
+      setMessage('This project is already purchased or unavailable.')
+      return
+    }
     const whatsapp = buyerWhatsapp.trim()
     if (!whatsapp) {
       setMessage('Enter your WhatsApp number before adding a project to cart.')
@@ -174,17 +178,26 @@ export default function ProjectsPage() {
                   <div>
                     <div className="flex flex-wrap items-center gap-2">
                       <h3 className="font-display font-bold text-xl text-slate-950">{project.title}</h3>
-                      <span className="rounded-full bg-eco-50 text-eco-700 text-[10px] font-bold px-2 py-0.5">Admin approved</span>
+                      <span className="rounded-full bg-eco-50 text-eco-700 text-[10px] font-bold px-2 py-0.5">
+                        {project.status === 'sold' ? 'Purchased' : 'Admin approved'}
+                      </span>
                     </div>
                     <p className="text-sm text-slate-500 mt-1">{project.category} · {project.listingId}</p>
                     <p className="text-sm text-slate-700 mt-3 leading-relaxed">{project.shortDescription}</p>
                   </div>
                   <div className="lg:text-right shrink-0">
                     <p className="font-display font-black text-2xl text-slate-950">{formatPrice(project.price)}</p>
-                    <button type="button" onClick={() => buyProject(project)} className="btn-primary mt-3 justify-center">
-                      <ShoppingCart className="w-4 h-4" />
-                      Add to cart
-                    </button>
+                    {project.status === 'sold' && project.liveDemoUrl ? (
+                      <a href={project.liveDemoUrl} target="_blank" rel="noreferrer" className="btn-primary mt-3 justify-center">
+                        <LinkIcon className="w-4 h-4" />
+                        Open live demo
+                      </a>
+                    ) : (
+                      <button type="button" onClick={() => buyProject(project)} className="btn-primary mt-3 justify-center">
+                        <ShoppingCart className="w-4 h-4" />
+                        Add to cart
+                      </button>
+                    )}
                   </div>
                 </div>
 
@@ -199,8 +212,11 @@ export default function ProjectsPage() {
                     {project.liveDemoUrl && (
                       <a href={project.liveDemoUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-sm font-bold text-primary-700 mt-2">
                         <LinkIcon className="w-4 h-4" />
-                        View live demo
+                        Live demo unlocked
                       </a>
+                    )}
+                    {!project.liveDemoUrl && (
+                      <p className="text-xs font-semibold text-slate-500 mt-2">Live demo unlocks after payment for this project.</p>
                     )}
                   </div>
                 </div>

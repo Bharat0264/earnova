@@ -9,6 +9,24 @@ const toAmount = value => Math.round(Number(value) || 0)
 
 const SELLER_FEE = 0
 
+const sameId = (left, right) => left && right && String(left) === String(right)
+
+const canViewLiveDemo = (listing, user) => {
+  if (user?.role === 'admin') return true
+  return listing.status === 'sold' && sameId(listing.buyer, user?._id)
+}
+
+const serializeProjectListing = (listing, user) => {
+  const project = { ...listing }
+  project.canViewLiveDemo = canViewLiveDemo(project, user)
+
+  if (!project.canViewLiveDemo) {
+    delete project.liveDemoUrl
+  }
+
+  return project
+}
+
 export const submitProjectListing = async (req, res) => {
   try {
     const required = [
@@ -52,13 +70,17 @@ export const submitProjectListing = async (req, res) => {
   }
 }
 
-export const getApprovedProjects = async (_req, res) => {
+export const getApprovedProjects = async (req, res) => {
   try {
-    const projects = await ProjectListing.find({ status: 'approved' })
+    const filter = req.user?._id
+      ? { $or: [{ status: 'approved' }, { status: 'sold', buyer: req.user._id }] }
+      : { status: 'approved' }
+
+    const projects = await ProjectListing.find(filter)
       .select('-razorpaySignature -buyerWhatsapp')
       .sort('-approvedAt -createdAt')
       .lean()
-    res.json({ success: true, projects })
+    res.json({ success: true, projects: projects.map(project => serializeProjectListing(project, req.user)) })
   } catch (err) {
     res.status(500).json({ success: false, message: err.message })
   }
@@ -70,7 +92,10 @@ export const getProjectListing = async (req, res) => {
       .select('-razorpaySignature -buyerWhatsapp')
       .lean()
     if (!listing) return res.status(404).json({ success: false, message: 'Project listing not found.' })
-    res.json({ success: true, listing })
+    if (listing.status === 'sold' && !canViewLiveDemo(listing, req.user)) {
+      return res.status(404).json({ success: false, message: 'Project listing not found.' })
+    }
+    res.json({ success: true, listing: serializeProjectListing(listing, req.user) })
   } catch (err) {
     res.status(500).json({ success: false, message: err.message })
   }

@@ -1,5 +1,5 @@
 import { Router } from 'express'
-import { protect } from '../middleware/auth.js'
+import { optionalAuth, protect } from '../middleware/auth.js'
 import {
   submitProjectListing,
   getApprovedProjects,
@@ -9,9 +9,9 @@ import {
 
 const router = Router()
 
-router.get('/', getApprovedProjects)
+router.get('/', optionalAuth, getApprovedProjects)
 router.get('/my-listings', protect, getMyProjectListings)
-router.get('/:id', getProjectListing)
+router.get('/:id', optionalAuth, getProjectListing)
 router.post('/submit', protect, submitProjectListing)
 
 export default router
