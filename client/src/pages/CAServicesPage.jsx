@@ -1,8 +1,9 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { BadgeCheck, Briefcase, Calculator, ClipboardCheck, FileCheck2, FileText, ShieldCheck } from 'lucide-react'
 import AuthModal from '../components/auth/AuthModal'
-import { loadRazorpayScript } from '../components/checkout/ReviewStep'
 import { useAuth } from '../context/AuthContext'
+import { useCart } from '../context/CartContext'
 import { api } from '../utils/api'
 import { formatPrice } from '../utils/formatters'
 
@@ -105,6 +106,8 @@ function ToggleGroup({ options, value, onChange }) {
 
 export default function CAServicesPage() {
   const { isAuthenticated, user } = useAuth()
+  const { addToCart } = useCart()
+  const navigate = useNavigate()
   const [showAuth, setShowAuth] = useState(false)
   const [clientForm, setClientForm] = useState(() => ({
     ...emptyClientForm,
@@ -153,55 +156,26 @@ export default function CAServicesPage() {
       const res = await api.post('/ca/tax-jobs', payload)
       setCreatedJob(res.job)
       setPaymentDone(res.job?.paymentStatus === 'admin-waived' || res.job?.paymentStatus === 'paid')
-      setMessage(res.message || 'Tax work submitted. Complete Razorpay payment to activate CA review.')
+      setMessage(res.message || 'Tax work submitted. Complete Razorpay payment from cart to activate CA review.')
       if (res.job?.paymentStatus === 'admin-waived' || res.job?.paymentStatus === 'paid') {
         setClientForm(prev => ({ ...emptyClientForm, clientName: prev.clientName, clientEmail: prev.clientEmail, clientWhatsapp: prev.clientWhatsapp }))
+      } else if (res.job?._id) {
+        addToCart({
+          _id: `earnova-ca-service-${res.job._id}`,
+          itemType: 'service',
+          serviceKey: 'caTaxJob',
+          serviceRef: res.job._id,
+          taxJobId: res.job._id,
+          name: `Earnova CA Services - ${res.job.serviceLabel}`,
+          brand: 'Earnova Services',
+          price: res.job.serviceAmount,
+          quantity: 1,
+          gstRate: 0,
+          category: 'earnova-services',
+          thumbnail: '/favicon.svg',
+        }, 1)
+        navigate('/cart')
       }
-    } catch (err) {
-      setMessage(err.message)
-    } finally {
-      setSubmitting(null)
-    }
-  }
-
-  const payForCAWork = async () => {
-    if (!createdJob) return
-    setSubmitting('payment')
-    setMessage('')
-    try {
-      const loaded = await loadRazorpayScript()
-      if (!loaded) throw new Error('Razorpay could not load. Please check your connection.')
-      const payment = await api.post(`/ca/tax-jobs/${createdJob._id}/payment-order`, {})
-      await new Promise((resolve, reject) => {
-        const checkout = new window.Razorpay({
-          key: payment.keyId,
-          amount: payment.amount,
-          currency: payment.currency,
-          name: 'Earnova CA Services',
-          description: `${createdJob.serviceLabel} - ${createdJob.jobId}`,
-          order_id: payment.orderId,
-          prefill: { name: clientForm.clientName, email: clientForm.clientEmail, contact: clientForm.clientWhatsapp },
-          theme: { color: '#6d28d9' },
-          handler: async response => {
-            try {
-              const data = await api.post(`/ca/tax-jobs/${createdJob._id}/verify-payment`, {
-                razorpayOrderId: response.razorpay_order_id,
-                razorpayPaymentId: response.razorpay_payment_id,
-                razorpaySignature: response.razorpay_signature,
-              })
-              setCreatedJob(data.job)
-              setPaymentDone(true)
-              setMessage(data.message || 'Payment confirmed. Earnova CA review is now active.')
-              setClientForm(prev => ({ ...emptyClientForm, clientName: prev.clientName, clientEmail: prev.clientEmail, clientWhatsapp: prev.clientWhatsapp }))
-              resolve()
-            } catch (err) {
-              reject(err)
-            }
-          },
-          modal: { ondismiss: resolve },
-        })
-        checkout.open()
-      })
     } catch (err) {
       setMessage(err.message)
     } finally {
@@ -293,12 +267,12 @@ export default function CAServicesPage() {
                 <p className="text-sm text-gray-600 mt-1">
                   {paymentDone
                     ? 'Earnova CA review is active and ready for admin assignment.'
-                    : `Pay ${formatPrice(createdJob.serviceAmount)} through Razorpay to activate this CA request. Earnova keeps ${formatPrice(createdJob.earnovaFee || EARNOVA_CA_FEE)} from this price; the remaining ${formatPrice(createdJob.caPayoutAmount || Math.max((createdJob.serviceAmount || 0) - EARNOVA_CA_FEE, 0))} goes to the verified CA.`}
+                    : `This CA request is added to cart. Pay ${formatPrice(createdJob.serviceAmount)} through cart checkout to activate it. Earnova keeps ${formatPrice(createdJob.earnovaFee || EARNOVA_CA_FEE)} from this price; the remaining ${formatPrice(createdJob.caPayoutAmount || Math.max((createdJob.serviceAmount || 0) - EARNOVA_CA_FEE, 0))} goes to the verified CA.`}
                 </p>
               </div>
               {!paymentDone && (
-                <button type="button" onClick={payForCAWork} disabled={submitting === 'payment'} className="btn-primary justify-center">
-                  {submitting === 'payment' ? 'Opening payment...' : `Pay ${formatPrice(createdJob.serviceAmount)}`}
+                <button type="button" onClick={() => navigate('/cart')} className="btn-primary justify-center">
+                  Go to cart
                 </button>
               )}
             </div>
@@ -434,8 +408,8 @@ export default function CAServicesPage() {
               </div>
             </div>
 
-            <button disabled={submitting === 'client' || (createdJob && !paymentDone)} className="btn-primary w-full justify-center py-3">
-              {submitting === 'client' ? 'Submitting...' : `Submit and pay ${formatPrice(selectedPackage.amount)}`}
+            <button disabled={submitting === 'client'} className="btn-primary w-full justify-center py-3">
+              {submitting === 'client' ? 'Submitting...' : `Submit and add ${formatPrice(selectedPackage.amount)} to cart`}
             </button>
           </form>
 

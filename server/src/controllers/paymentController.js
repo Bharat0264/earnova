@@ -3,6 +3,7 @@ import Razorpay from 'razorpay'
 import Order    from '../models/Order.js'
 import User     from '../models/User.js'
 import Product  from '../models/Product.js'
+import CATaxJob from '../models/CATaxJob.js'
 import { sendOrderConfirmation } from '../utils/email.js'
 
 const requireRazorpayConfig = () => {
@@ -41,15 +42,38 @@ const calcAmounts = (cartItems) => {
   return { subtotal, gst: 0, shipping: 0, total: subtotal }
 }
 
-const hydrateCartItems = async (cartItems) => {
-  const serviceItems = cartItems
+const hydrateCartItems = async (cartItems, userId) => {
+  const serviceItems = await Promise.all(cartItems
     .filter(item => item.itemType === 'service' || item.serviceKey)
-    .map(item => {
-      if (item.serviceKey !== BUSINESS_CART_SERVICE.serviceKey && item._id !== BUSINESS_CART_SERVICE._id) {
-        throw new Error(`Service unavailable: ${item.name || item.serviceKey || item._id}`)
+    .map(async item => {
+      if (item.serviceKey === BUSINESS_CART_SERVICE.serviceKey || item._id === BUSINESS_CART_SERVICE._id) {
+        return { ...BUSINESS_CART_SERVICE }
       }
-      return { ...BUSINESS_CART_SERVICE }
-    })
+
+      if (item.serviceKey === 'caTaxJob') {
+        const taxJobId = item.taxJobId || item.serviceRef
+        const job = await CATaxJob.findOne({ _id: taxJobId, client: userId })
+        if (!job) throw new Error('CA tax job not found for this cart item.')
+        if (job.paymentStatus !== 'pending') throw new Error('This CA service payment is already completed or unavailable.')
+
+        return {
+          _id: `earnova-ca-service-${job._id}`,
+          itemType: 'service',
+          serviceKey: 'caTaxJob',
+          serviceRef: job._id.toString(),
+          name: `Earnova CA Services - ${job.serviceLabel}`,
+          image: '/favicon.svg',
+          price: job.serviceAmount,
+          quantity: 1,
+          gstRate: 0,
+          category: 'earnova-services',
+          memberIncome: 0,
+          referralCommission: 0,
+        }
+      }
+
+      throw new Error(`Service unavailable: ${item.name || item.serviceKey || item._id}`)
+    }))
 
   const ids = cartItems
     .filter(item => !(item.itemType === 'service' || item.serviceKey))
@@ -112,7 +136,7 @@ export const createRazorpayOrder = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Cart is empty.' })
     }
 
-    const dbCartItems = await hydrateCartItems(cartItems)
+    const dbCartItems = await hydrateCartItems(cartItems, req.user._id)
     const { total } = calcAmounts(dbCartItems)
     const { keyId } = requireRazorpayConfig()
     const instance  = getRazorpay()
@@ -123,7 +147,7 @@ export const createRazorpayOrder = async (req, res) => {
       receipt:  `earn_${Date.now()}`,
       notes: {
         userId: req.user._id.toString(),
-        cartType: dbCartItems.some(item => item.serviceKey === 'businessSolutions') ? 'service-cart' : 'product-cart',
+        cartType: dbCartItems.some(item => item.itemType === 'service') ? 'service-cart' : 'product-cart',
         services: dbCartItems.filter(item => item.serviceKey).map(item => item.serviceKey).join(','),
       },
     })
@@ -172,13 +196,16 @@ export const verifyPayment = async (req, res) => {
     }
 
     /* 3. Calculate amounts */
-    const dbCartItems = await hydrateCartItems(cartItems)
+    const dbCartItems = await hydrateCartItems(cartItems, req.user._id)
     const { subtotal, gst, shipping, total } = calcAmounts(dbCartItems)
 
     /* 4. Determine referral info */
     const fullUser = await User.findById(req.user._id)
     const memberIncomeRecipient = hasEcommerceMemberBenefits(fullUser) ? 'member' : 'admin'
     const includesBusinessAccess = dbCartItems.some(item => item.serviceKey === 'businessSolutions')
+    const caTaxJobRefs = dbCartItems
+      .filter(item => item.serviceKey === 'caTaxJob' && item.serviceRef)
+      .map(item => item.serviceRef)
 
     /* 5. Create DB order */
     const order = await Order.create({
@@ -187,6 +214,7 @@ export const verifyPayment = async (req, res) => {
         product:  item.product,
         itemType: item.itemType || 'product',
         serviceKey: item.serviceKey,
+        serviceRef: item.serviceRef,
         name:     item.name,
         image:    item.image,
         price:    item.price,
@@ -233,6 +261,24 @@ export const verifyPayment = async (req, res) => {
       await order.save()
     }
 
+    if (caTaxJobRefs.length) {
+      const jobs = await CATaxJob.find({ _id: { $in: caTaxJobRefs }, client: req.user._id, paymentStatus: 'pending' })
+      for (const job of jobs) {
+        job.razorpayOrderId = razorpayOrderId
+        job.razorpayPaymentId = razorpayPaymentId
+        job.razorpaySignature = razorpaySignature
+        job.paymentStatus = 'paid'
+        job.paidAt = new Date()
+        job.statusHistory.push({
+          status: 'submitted',
+          note: `CA service payment received through cart for ${job.serviceLabel}. Earnova keeps ₹${job.earnovaFee}; verified CA payout is ₹${job.caPayoutAmount}.`,
+        })
+        await job.save()
+      }
+      order.statusHistory.push({ status: 'processing', note: 'CA service payment confirmed after Razorpay cart checkout.' })
+      await order.save()
+    }
+
     /* 7. Send confirmation email (non-blocking) */
     sendOrderConfirmation(order, fullUser)
       .catch(err => console.warn('[Email] order-confirm failed:', err.message))
@@ -251,7 +297,7 @@ export const createCodOrder = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Cart is empty.' })
     }
 
-    const dbCartItems = await hydrateCartItems(cartItems)
+    const dbCartItems = await hydrateCartItems(cartItems, req.user._id)
     const nonSolar = dbCartItems.find(item => item.category !== 'solar-panels')
     if (nonSolar) {
       return res.status(400).json({
