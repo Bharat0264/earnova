@@ -18,6 +18,48 @@ export const sendEmail = async ({ to, subject, html }) => {
   await transporter.sendMail({ from: FROM, to, subject, html })
 }
 
+export const sendFreelanceJobPostedEmail = async (user, job) => {
+  const baseUrl = (process.env.CLIENT_URL || 'https://earnova.in').replace(/\/+$/, '')
+  const jobUrl = `${baseUrl}/freelance?job=${job._id}`
+  const skills = (job.skills || []).length ? job.skills.join(', ') : 'Open to relevant skills'
+  const deadline = job.deadline ? new Date(job.deadline).toLocaleDateString('en-IN') : 'Flexible'
+
+  const html = layout(`
+    <h2 style="color:#111827;font-size:22px;margin:0 0 8px">New freelance job posted</h2>
+    <p style="color:#6b7280;font-size:14px;line-height:1.6;margin:0 0 24px">
+      Hi ${user.name.split(' ')[0]}, a new Earnova freelance job is open for active members.
+    </p>
+
+    <div style="background:#f5f3ff;border-radius:12px;padding:16px 20px;margin-bottom:20px">
+      <p style="color:#7c3aed;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin:0 0 4px">Job</p>
+      <p style="color:#111827;font-size:20px;font-weight:900;margin:0">${job.title}</p>
+      <p style="color:#6b7280;font-size:13px;margin:8px 0 0">${job.category} - ${job.workMode} - ${job.duration}</p>
+    </div>
+
+    <table style="width:100%;margin-bottom:20px">
+      <tr><td style="font-size:13px;color:#6b7280;padding:4px 0">Freelancer payout</td><td style="text-align:right;font-size:13px;color:#111827;font-weight:700">INR ${job.freelancerAmount.toLocaleString('en-IN')}</td></tr>
+      <tr><td style="font-size:13px;color:#6b7280;padding:4px 0">Skills</td><td style="text-align:right;font-size:13px;color:#111827">${skills}</td></tr>
+      <tr><td style="font-size:13px;color:#6b7280;padding:4px 0">Deadline</td><td style="text-align:right;font-size:13px;color:#111827">${deadline}</td></tr>
+      <tr><td style="font-size:13px;color:#6b7280;padding:4px 0">Reference</td><td style="text-align:right;font-size:13px;color:#111827">${job.jobId}</td></tr>
+    </table>
+
+    <div style="background:#f9fafb;border-radius:10px;padding:14px 16px;margin-bottom:24px;font-size:13px;color:#374151">
+      <p style="font-weight:700;margin:0 0 6px">Work details</p>
+      <p style="margin:0;line-height:1.6">${String(job.description || '').slice(0, 700)}</p>
+    </div>
+
+    <a href="${jobUrl}"
+       style="display:inline-block;background:#5b21b6;color:#fff;padding:14px 28px;border-radius:10px;text-decoration:none;font-weight:700;font-size:14px">
+      View freelance job
+    </a>`)
+
+  await sendEmail({
+    to: user.email,
+    subject: `New freelance job: ${job.title}`,
+    html,
+  })
+}
+
 /* ── Layout wrapper ── */
 const layout = (content) => `
 <!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">

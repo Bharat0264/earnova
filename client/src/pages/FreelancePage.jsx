@@ -90,6 +90,98 @@ function PricingSummary({ amount, paymentExempt = false }) {
   )
 }
 
+function JobLinkView({ jobId, isAuthenticated, requireAuth }) {
+  const [job, setJob] = useState(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    if (!jobId || !isAuthenticated) return
+    setLoading(true)
+    setError('')
+    api.get(`/freelance/jobs/${jobId}`)
+      .then(data => setJob(data.job))
+      .catch(err => setError(err.message))
+      .finally(() => setLoading(false))
+  }, [jobId, isAuthenticated])
+
+  if (!jobId) return null
+
+  if (!isAuthenticated) {
+    return (
+      <div className="bg-white rounded-[2rem] border border-violet-100 shadow-card p-6 sm:p-8 mb-8">
+        <p className="text-xs font-black uppercase tracking-[0.2em] text-violet-700">Freelance job link</p>
+        <h2 className="font-display text-2xl font-bold text-slate-950 mt-2">Sign in to view this job</h2>
+        <p className="text-slate-500 mt-2">This job link was sent to registered Earnova users. Log in to view the full job details.</p>
+        <button onClick={requireAuth} className="btn-primary mt-5">Sign in and view job</button>
+      </div>
+    )
+  }
+
+  return (
+    <div className="bg-white rounded-[2rem] border border-violet-100 shadow-card p-6 sm:p-8 mb-8">
+      <p className="text-xs font-black uppercase tracking-[0.2em] text-violet-700">Freelance job link</p>
+      {loading ? (
+        <div className="h-28 bg-slate-100 rounded-2xl animate-pulse mt-4" />
+      ) : error ? (
+        <p className="rounded-xl bg-red-50 p-3 text-sm text-red-600 mt-4">{error}</p>
+      ) : job ? (
+        <div className="mt-3 space-y-5">
+          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="font-display text-2xl sm:text-3xl font-bold text-slate-950">{job.title}</h2>
+                <span className="rounded-full bg-emerald-50 text-emerald-700 px-2.5 py-1 text-xs font-bold capitalize">{job.status}</span>
+              </div>
+              <p className="text-sm text-slate-500 mt-1">{job.jobId} · {job.category} · {job.workMode}</p>
+            </div>
+            <div className="rounded-2xl bg-slate-950 text-white px-4 py-3">
+              <p className="text-xs text-slate-300">Freelancer payout</p>
+              <p className="font-display font-bold text-xl">₹{(job.freelancerAmount || 0).toLocaleString('en-IN')}</p>
+            </div>
+          </div>
+
+          <div className="grid sm:grid-cols-3 gap-3 text-sm">
+            <div className="rounded-2xl bg-slate-50 p-4">
+              <Clock3 className="w-4 h-4 text-violet-700 mb-2" />
+              <p className="font-bold text-slate-900">Duration</p>
+              <p className="text-slate-500">{job.duration || 'Not specified'}</p>
+            </div>
+            <div className="rounded-2xl bg-slate-50 p-4">
+              <MapPin className="w-4 h-4 text-violet-700 mb-2" />
+              <p className="font-bold text-slate-900">Mode</p>
+              <p className="text-slate-500 capitalize">{job.workMode || 'remote'}</p>
+            </div>
+            <div className="rounded-2xl bg-slate-50 p-4">
+              <Mail className="w-4 h-4 text-violet-700 mb-2" />
+              <p className="font-bold text-slate-900">Client</p>
+              <p className="text-slate-500">{job.clientName}</p>
+            </div>
+          </div>
+
+          <div>
+            <p className="font-display font-bold text-slate-950 mb-2">Work details</p>
+            <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-wrap">{job.description}</p>
+          </div>
+
+          {(job.skills || []).length > 0 && (
+            <div>
+              <p className="font-display font-bold text-slate-950 mb-2">Skills</p>
+              <div className="flex flex-wrap gap-2">
+                {job.skills.map(skill => <span key={skill} className="rounded-full bg-violet-50 text-violet-700 px-3 py-1 text-xs font-bold">{skill}</span>)}
+              </div>
+            </div>
+          )}
+
+          <div className="rounded-2xl bg-violet-50 border border-violet-100 p-4 text-sm text-violet-950">
+            Contact Earnova/admin to be assigned to this work after your freelancer profile is verified.
+          </div>
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
 function HireForm({ user, requireAuth, isAdmin = false }) {
   const [form, setForm] = useState(() => ({
     ...initialJob,
@@ -354,9 +446,10 @@ export default function FreelancePage() {
   const [params, setParams] = useSearchParams()
   const { user, isAuthenticated, isAdmin } = useAuth()
   const [showAuth, setShowAuth] = useState(false)
+  const jobId = params.get('job')
   const active = params.get('mode') === 'freelancer' ? 'freelancer' : 'hire'
   const requireAuth = () => setShowAuth(true)
-  const tab = mode => setParams({ mode })
+  const tab = mode => setParams(jobId ? { mode, job: jobId } : { mode })
 
   const benefits = useMemo(() => [
     { Icon: LockKeyhole, title: 'Escrow protection', text: 'The hiring party funds the full job before work begins.' },
@@ -391,6 +484,8 @@ export default function FreelancePage() {
 
       <section className="section-wrapper py-10 lg:py-16">
         <div className="max-w-4xl mx-auto">
+          <JobLinkView jobId={jobId} isAuthenticated={isAuthenticated} requireAuth={requireAuth} />
+
           <div className="grid grid-cols-2 bg-white rounded-2xl p-1.5 border border-slate-200 shadow-sm mb-8">
             <button onClick={() => tab('hire')} className={`min-w-0 rounded-xl px-2 sm:px-4 py-3 text-xs sm:text-base font-bold flex items-center justify-center gap-1.5 sm:gap-2 transition-all ${active === 'hire' ? 'bg-slate-950 text-white shadow-lg' : 'text-slate-500 hover:text-slate-900'}`}>
               <UserRoundSearch className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" /> <span>Hire a freelancer</span>

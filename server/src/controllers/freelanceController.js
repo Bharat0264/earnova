@@ -2,6 +2,8 @@ import crypto from 'crypto'
 import Razorpay from 'razorpay'
 import FreelancerProfile from '../models/FreelancerProfile.js'
 import FreelanceJob from '../models/FreelanceJob.js'
+import User from '../models/User.js'
+import { sendFreelanceJobPostedEmail } from '../utils/email.js'
 
 const DEFAULT_SERVICE_FEE_RATE = 10
 const HIGH_VALUE_SERVICE_FEE_RATE = 1.5
@@ -23,6 +25,27 @@ const getRazorpay = () => {
     throw err
   }
   return { keyId, instance: new Razorpay({ key_id: keyId, key_secret: keySecret }) }
+}
+
+const notifyActiveUsersAboutJob = async (job) => {
+  if (!job || job.notificationSentAt || job.status !== 'open') return
+
+  const users = await User.find({ isActive: true, email: { $exists: true, $ne: '' } })
+    .select('name email')
+    .lean()
+
+  const batchSize = 10
+  for (let i = 0; i < users.length; i += batchSize) {
+    const batch = users.slice(i, i + batchSize)
+    await Promise.allSettled(batch.map(user => sendFreelanceJobPostedEmail(user, job)))
+  }
+
+  job.notificationSentAt = new Date()
+  job.statusHistory.push({
+    status: 'open',
+    note: `Freelance job notification emailed to ${users.length} active users.`,
+  })
+  await job.save()
 }
 
 export const upsertFreelancerProfile = async (req, res) => {
@@ -88,6 +111,11 @@ export const createJob = async (req, res) => {
           : 'Job created. Escrow payment is pending.',
       }],
     })
+
+    if (isAdminClient) {
+      notifyActiveUsersAboutJob(job).catch(err => console.warn('[Email] freelance job notification failed:', err.message))
+    }
+
     res.status(201).json({
       success: true,
       job,
@@ -140,6 +168,7 @@ export const verifyJobPayment = async (req, res) => {
     job.fundedAt = new Date()
     job.statusHistory.push({ status: 'open', note: 'Full job amount and Earnova service fee received into escrow.' })
     await job.save()
+    notifyActiveUsersAboutJob(job).catch(err => console.warn('[Email] freelance job notification failed:', err.message))
     res.json({ success: true, job, message: 'Payment secured. Your job is now live.' })
   } catch (err) {
     res.status(500).json({ success: false, message: err.message })
@@ -150,6 +179,20 @@ export const getMyJobs = async (req, res) => {
   try {
     const jobs = await FreelanceJob.find({ client: req.user._id }).sort('-createdAt').lean()
     res.json({ success: true, jobs })
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message })
+  }
+}
+
+export const getFreelanceJob = async (req, res) => {
+  try {
+    const job = await FreelanceJob.findById(req.params.id)
+      .select('-razorpaySignature')
+      .lean()
+    if (!job || !['open', 'in-progress', 'submitted', 'completed'].includes(job.status)) {
+      return res.status(404).json({ success: false, message: 'Freelance job not found.' })
+    }
+    res.json({ success: true, job })
   } catch (err) {
     res.status(500).json({ success: false, message: err.message })
   }

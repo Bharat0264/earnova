@@ -7,6 +7,7 @@ import {
   createJobPaymentOrder,
   verifyJobPayment,
   getMyJobs,
+  getFreelanceJob,
   releaseCompletedJob,
 } from '../controllers/freelanceController.js'
 
@@ -15,6 +16,7 @@ router.use(protect, requireFeature('freelancing'))
 router.get('/profile/me', getMyFreelancerProfile)
 router.put('/profile', upsertFreelancerProfile)
 router.get('/jobs/me', getMyJobs)
+router.get('/jobs/:id', getFreelanceJob)
 router.post('/jobs', createJob)
 router.post('/jobs/:id/payment-order', createJobPaymentOrder)
 router.post('/jobs/:id/verify-payment', verifyJobPayment)
