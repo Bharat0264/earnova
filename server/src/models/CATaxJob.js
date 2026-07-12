@@ -9,6 +9,8 @@ const statusEventSchema = new mongoose.Schema({
 const documentSchema = new mongoose.Schema({
   label: { type: String, required: true, trim: true },
   url: { type: String, required: true, trim: true },
+  publicId: { type: String, trim: true },
+  resourceType: { type: String, trim: true, default: 'image' },
 }, { _id: false })
 
 const caTaxJobSchema = new mongoose.Schema({
@@ -68,6 +70,7 @@ const caTaxJobSchema = new mongoose.Schema({
   booksMaintained: { type: Boolean, default: false },
   documents: [documentSchema],
   notes: { type: String, trim: true, maxlength: 4000 },
+  selectedCA: { type: mongoose.Schema.Types.ObjectId, ref: 'CAProfile', default: null },
   assignedCA: { type: mongoose.Schema.Types.ObjectId, ref: 'CAProfile', default: null },
   status: {
     type: String,
@@ -81,6 +84,7 @@ const caTaxJobSchema = new mongoose.Schema({
   adminNote: { type: String, trim: true },
   completedAt: Date,
   caPayoutCreditedAt: Date,
+  sensitiveDataPurgedAt: Date,
   statusHistory: [statusEventSchema],
 }, { timestamps: true })
 

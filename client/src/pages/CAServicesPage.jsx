@@ -17,16 +17,12 @@ const CA_SERVICE_PACKAGES = [
   { key: 'corporate-tax-audits', label: 'Corporate and Tax Audits', detail: 'For companies, statutory compliance and audit support.' },
 ]
 const EARNOVA_CA_FEE = 49
-const CLIENT_DOCS = [
-  'PAN card',
-  'Form 16',
-  'AIS/TIS statement',
-  'Bank statement',
-  'Investment proofs',
-  'Rent or home loan proof',
-  'Capital gains statement',
-  'GST/books data',
-]
+const REQUIRED_DOCUMENTS = {
+  'simple-salaried': ['PAN card', 'Form 16', 'AIS/TIS statement', 'Bank statement'],
+  'investors-traders': ['PAN card', 'AIS/TIS statement', 'Capital gains statement', 'Broker tax P&L', 'Bank statement'],
+  'freelancers-small-business': ['PAN card', 'AIS/TIS statement', 'Bank statement', 'Income and expense statement', 'GST returns or invoices'],
+  'corporate-tax-audits': ['PAN card', 'Financial statements', 'Bank statement', 'GST returns', 'Previous audit report', 'Company registration proof'],
+}
 
 const inputClass = 'input-base text-sm'
 const emptyClientForm = {
@@ -55,7 +51,7 @@ const emptyClientForm = {
   gstin: '',
   turnover: '',
   booksMaintained: false,
-  documents: CLIENT_DOCS.map(label => ({ label, url: '' })),
+  documents: [],
   notes: '',
 }
 const emptyCAForm = {
@@ -289,6 +285,8 @@ export default function CAServicesPage() {
   const [showCAWithdrawal, setShowCAWithdrawal] = useState(false)
   const [publicCAs, setPublicCAs] = useState([])
   const [profilesLoading, setProfilesLoading] = useState(true)
+  const [clientDetailsReady, setClientDetailsReady] = useState(false)
+  const [documentFiles, setDocumentFiles] = useState({})
   const selectedPackage = CA_SERVICE_PACKAGES.find(item => item.key === clientForm.servicePackage) || CA_SERVICE_PACKAGES[0]
   const selectedCA = publicCAs.find(profile => profile._id === clientForm.selectedCA)
   const selectedCharge = selectedCA?.pricing?.find(item => item.servicePackage === clientForm.servicePackage)?.charge || 0
@@ -329,12 +327,18 @@ export default function CAServicesPage() {
       .finally(() => setProfilesLoading(false))
   }, [])
 
-  const updateDocument = (index, field, value) => {
-    setClientForm(prev => ({
+  useEffect(() => {
+    if (!caWork.profile) return
+    const profile = caWork.profile
+    setCAForm(prev => ({
       ...prev,
-      documents: prev.documents.map((doc, i) => i === index ? { ...doc, [field]: value } : doc),
+      ...profile,
+      dateOfBirth: profile.dateOfBirth ? String(profile.dateOfBirth).slice(0, 10) : '',
+      languages: (profile.languages || []).join(', '),
+      pricing: CA_SERVICE_PACKAGES.map(service => ({ servicePackage: service.key, charge: profile.pricing?.find(item => item.servicePackage === service.key)?.charge || '' })),
+      consentToVerify: Boolean(profile.consentToVerify),
     }))
-  }
+  }, [caWork.profile])
 
   const submitClientWork = async event => {
     event.preventDefault()
@@ -342,9 +346,34 @@ export default function CAServicesPage() {
     setSubmitting('client')
     setMessage('')
     try {
+      if (!clientDetailsReady) {
+        const requiredLabels = REQUIRED_DOCUMENTS[clientForm.servicePackage]
+        const missing = requiredLabels.filter(label => !documentFiles[label])
+        if (missing.length) throw new Error(`Upload required files: ${missing.join(', ')}`)
+        const documents = []
+        for (const label of requiredLabels) {
+          const formData = new FormData()
+          formData.append('document', documentFiles[label])
+          formData.append('label', label)
+          const uploaded = await api.post('/ca/documents', formData)
+          documents.push(uploaded.document)
+        }
+        setClientForm(prev => ({ ...prev, documents }))
+        setClientDetailsReady(true)
+        setMessage('Documents uploaded securely. Now compare live CA prices and select your CA.')
+        return
+      }
       const payload = {
         ...clientForm,
-        documents: clientForm.documents.filter(doc => doc.label.trim() && doc.url.trim()),
+      }
+      const latest = await api.get('/ca/profiles')
+      setPublicCAs(latest.profiles || [])
+      const latestCA = latest.profiles?.find(profile => profile._id === clientForm.selectedCA)
+      const latestCharge = latestCA?.pricing?.find(item => item.servicePackage === clientForm.servicePackage)?.charge
+      if (!latestCA || !latestCharge) throw new Error('This CA is no longer available. Please select another CA.')
+      if (Number(latestCharge) !== Number(selectedCharge)) {
+        setMessage(`${latestCA.name}'s price changed to ${formatPrice(latestCharge)}. Please review and click again to continue safely.`)
+        return
       }
       const res = await api.post('/ca/tax-jobs', payload)
       setCreatedJob(res.job)
@@ -382,7 +411,9 @@ export default function CAServicesPage() {
     setSubmitting('ca')
     setMessage('')
     try {
-      const res = await api.put('/ca/profile', caForm)
+      const res = caWork.profile?.status === 'verified'
+        ? await api.patch('/ca/profile/pricing', { pricing: caForm.pricing })
+        : await api.put('/ca/profile', caForm)
       setMessage(res.message || 'CA application submitted.')
       loadCAWork()
     } catch (err) {
@@ -541,6 +572,7 @@ export default function CAServicesPage() {
                     <button
                       key={item.key}
                       type="button"
+                      disabled={clientDetailsReady}
                       onClick={() => setClientForm(prev => ({ ...prev, servicePackage: item.key, selectedCA: '' }))}
                       className={`text-left rounded-2xl border p-4 transition-all ${
                         selected ? 'border-primary-600 bg-primary-50 shadow-card' : 'border-gray-100 bg-white hover:border-primary-200'
@@ -554,7 +586,7 @@ export default function CAServicesPage() {
               </div>
             </div>
 
-            <div>
+            {clientDetailsReady && <div>
               <p className="text-xs font-bold text-gray-500 mb-1">2. Select your CA</p>
               <p className="text-sm text-gray-500 mb-3">Compare verified professionals and their charge for {selectedPackage.label}.</p>
               {profilesLoading ? (
@@ -587,7 +619,7 @@ export default function CAServicesPage() {
                   })}
                 </div>
               )}
-            </div>
+            </div>}
 
             <div className="grid md:grid-cols-3 gap-3">
               <input className={inputClass} placeholder="Full name" value={clientForm.clientName} onChange={e => setClientForm(p => ({ ...p, clientName: e.target.value }))} required />
@@ -628,7 +660,7 @@ export default function CAServicesPage() {
               <ToggleGroup options={INCOME_SOURCES} value={clientForm.incomeSources} onChange={incomeSources => setClientForm(p => ({ ...p, incomeSources }))} />
             </div>
 
-            <div className="grid md:grid-cols-4 gap-3">
+            {clientForm.servicePackage === 'simple-salaried' && <div className="grid md:grid-cols-4 gap-3">
               {[
                 ['bankInterest', 'Bank interest'],
                 ['capitalGains', 'Capital gains'],
@@ -641,12 +673,19 @@ export default function CAServicesPage() {
               ].map(([key, label]) => (
                 <input key={key} className={inputClass} type="number" min="0" placeholder={label} value={clientForm[key]} onChange={e => setClientForm(p => ({ ...p, [key]: e.target.value }))} />
               ))}
-            </div>
+            </div>}
 
-            <div className="grid md:grid-cols-2 gap-3">
-              <input className={inputClass} placeholder="GSTIN, if applicable" value={clientForm.gstin} onChange={e => setClientForm(p => ({ ...p, gstin: e.target.value.toUpperCase() }))} />
-              <input className={inputClass} type="number" min="0" placeholder="Business turnover" value={clientForm.turnover} onChange={e => setClientForm(p => ({ ...p, turnover: e.target.value }))} />
-            </div>
+            {clientForm.servicePackage === 'investors-traders' && <div className="grid md:grid-cols-3 gap-3">
+              <input className={inputClass} type="number" min="0" placeholder="Capital gains" value={clientForm.capitalGains} onChange={e => setClientForm(p => ({ ...p, capitalGains: e.target.value }))} required />
+              <input className={inputClass} type="number" min="0" placeholder="Interest / dividend income" value={clientForm.bankInterest} onChange={e => setClientForm(p => ({ ...p, bankInterest: e.target.value }))} />
+              <input className={inputClass} type="number" min="0" placeholder="Foreign income" value={clientForm.foreignIncome} onChange={e => setClientForm(p => ({ ...p, foreignIncome: e.target.value }))} />
+            </div>}
+
+            {['freelancers-small-business', 'corporate-tax-audits'].includes(clientForm.servicePackage) && <div className="grid md:grid-cols-3 gap-3">
+              <input className={inputClass} type="number" min="0" placeholder="Business turnover" value={clientForm.turnover} onChange={e => setClientForm(p => ({ ...p, turnover: e.target.value }))} required />
+              <input className={inputClass} type="number" min="0" placeholder="Business income" value={clientForm.businessIncome} onChange={e => setClientForm(p => ({ ...p, businessIncome: e.target.value }))} required />
+              <input className={inputClass} placeholder="GSTIN" value={clientForm.gstin} onChange={e => setClientForm(p => ({ ...p, gstin: e.target.value.toUpperCase() }))} />
+            </div>}
 
             <div className="grid sm:grid-cols-2 gap-3 text-sm">
               <label className="flex items-center gap-2 text-gray-600">
@@ -662,19 +701,20 @@ export default function CAServicesPage() {
             <textarea className={`${inputClass} min-h-[82px]`} placeholder="Other deductions, tax notice details, questions or special notes" value={clientForm.notes} onChange={e => setClientForm(p => ({ ...p, notes: e.target.value }))} />
 
             <div>
-              <p className="text-xs font-bold text-gray-500 mb-2">Secure document links</p>
+              <p className="text-xs font-bold text-gray-500 mb-1">Required documents for {selectedPackage.label}</p>
+              <p className="text-xs text-gray-500 mb-3">Upload PDF, JPG or PNG files, maximum 10 MB each. These source files are deleted when the CA delivers the completed work.</p>
               <div className="grid md:grid-cols-2 gap-3">
-                {clientForm.documents.map((doc, index) => (
-                  <div key={doc.label} className="grid grid-cols-[0.7fr_1fr] gap-2">
-                    <input className={inputClass} value={doc.label} onChange={e => updateDocument(index, 'label', e.target.value)} />
-                    <input className={inputClass} placeholder="Paste Drive/secure file URL" value={doc.url} onChange={e => updateDocument(index, 'url', e.target.value)} />
-                  </div>
+                {REQUIRED_DOCUMENTS[clientForm.servicePackage].map(label => (
+                  <label key={label} className="rounded-xl border border-gray-100 bg-gray-50 p-3 text-xs font-bold text-gray-700">
+                    <span className="block mb-2">{label}</span>
+                    <input type="file" accept="application/pdf,image/jpeg,image/png" disabled={clientDetailsReady} onChange={e => setDocumentFiles(prev => ({ ...prev, [label]: e.target.files?.[0] || null }))} required={!clientDetailsReady} className="block w-full text-xs font-normal text-gray-500 file:mr-2 file:rounded-lg file:border-0 file:bg-primary-50 file:px-3 file:py-2 file:font-semibold file:text-primary-700" />
+                  </label>
                 ))}
               </div>
             </div>
 
-            <button disabled={submitting === 'client' || !selectedCA} className="btn-primary w-full justify-center py-3">
-              {submitting === 'client' ? 'Submitting...' : selectedCA ? `Continue with ${selectedCA.name} · ${formatPrice(selectedCharge)}` : 'Select a CA to continue'}
+            <button disabled={submitting === 'client' || (clientDetailsReady && !selectedCA)} className="btn-primary w-full justify-center py-3">
+              {submitting === 'client' ? 'Uploading...' : !clientDetailsReady ? 'Upload documents and compare CAs' : selectedCA ? `Pay ${formatPrice(selectedCharge)} and assign ${selectedCA.name}` : 'Select a CA to continue'}
             </button>
           </form>
 
@@ -767,7 +807,7 @@ export default function CAServicesPage() {
             </label>
 
             <button disabled={submitting === 'ca'} className="btn-primary w-full justify-center py-3 bg-eco-700 hover:bg-eco-800">
-              {submitting === 'ca' ? 'Submitting...' : 'Apply for Earnova CA verification'}
+              {submitting === 'ca' ? 'Submitting...' : caWork.profile?.status === 'verified' ? 'Update public CA prices' : 'Apply for Earnova CA verification'}
             </button>
           </form>
           </div>

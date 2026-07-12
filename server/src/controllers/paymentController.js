@@ -295,6 +295,7 @@ export const verifyPayment = async (req, res) => {
         job.razorpayPaymentId = razorpayPaymentId
         job.razorpaySignature = razorpaySignature
         job.paymentStatus = 'paid'
+        job.assignedCA = job.selectedCA
         job.paidAt = new Date()
         job.statusHistory.push({
           status: 'submitted',

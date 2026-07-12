@@ -35,10 +35,23 @@ export const uploadToCloudinary = (buffer, folder) => {
   })
 }
 
+export const uploadDocumentToCloudinary = (buffer, folder, filename) => {
+  return new Promise((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+      { folder, resource_type: 'auto', public_id: `${Date.now()}-${filename.replace(/[^a-zA-Z0-9.-]/g, '-')}` },
+      (error, result) => {
+        if (error) reject(error)
+        else resolve({ secure_url: result.secure_url, public_id: result.public_id, resource_type: result.resource_type })
+      }
+    )
+    stream.end(buffer)
+  })
+}
+
 /**
  * Delete an asset from Cloudinary by public_id.
  */
-export const deleteFromCloudinary = (publicId) =>
-  cloudinary.uploader.destroy(publicId)
+export const deleteFromCloudinary = (publicId, resourceType = 'image') =>
+  cloudinary.uploader.destroy(publicId, { resource_type: resourceType })
 
 export default cloudinary

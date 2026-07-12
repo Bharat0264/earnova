@@ -4,6 +4,7 @@ import CAProfile from '../models/CAProfile.js'
 import CATaxJob from '../models/CATaxJob.js'
 import User from '../models/User.js'
 import Withdrawal from '../models/Withdrawal.js'
+import { deleteFromCloudinary, uploadDocumentToCloudinary } from '../config/cloudinary.js'
 
 const EARNOVA_CA_FEE = 49
 
@@ -31,6 +32,12 @@ const CA_SERVICE_PACKAGES = {
 }
 
 const CA_SERVICE_KEYS = Object.keys(CA_SERVICE_PACKAGES)
+const REQUIRED_DOCUMENTS = {
+  'simple-salaried': ['PAN card', 'Form 16', 'AIS/TIS statement', 'Bank statement'],
+  'investors-traders': ['PAN card', 'AIS/TIS statement', 'Capital gains statement', 'Broker tax P&L', 'Bank statement'],
+  'freelancers-small-business': ['PAN card', 'AIS/TIS statement', 'Bank statement', 'Income and expense statement', 'GST returns or invoices'],
+  'corporate-tax-audits': ['PAN card', 'Financial statements', 'Bank statement', 'GST returns', 'Previous audit report', 'Company registration proof'],
+}
 
 const getPackage = value => CA_SERVICE_PACKAGES[value] ? value : 'simple-salaried'
 
@@ -56,9 +63,21 @@ const cleanDocuments = value => {
     .map(doc => ({
       label: String(doc?.label || '').trim(),
       url: String(doc?.url || '').trim(),
+      publicId: String(doc?.publicId || '').trim(),
+      resourceType: String(doc?.resourceType || 'image').trim(),
     }))
     .filter(doc => doc.label && doc.url)
     .slice(0, 30)
+}
+
+export const uploadCADocument = async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ success: false, message: 'Choose a PDF, JPG, JPEG or PNG file.' })
+    const uploaded = await uploadDocumentToCloudinary(req.file.buffer, `earnova/ca-documents/${req.user._id}`, req.file.originalname)
+    res.status(201).json({ success: true, document: { label: String(req.body.label || req.file.originalname).trim(), url: uploaded.secure_url, publicId: uploaded.public_id, resourceType: uploaded.resource_type } })
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message })
+  }
 }
 
 const toNumber = value => {
@@ -159,7 +178,24 @@ export const getPublicCAProfiles = async (_req, res) => {
       .select('name firmName qualification yearsExperience city state languages professionalBio specializations servicesOffered pricing verifiedAt')
       .sort({ yearsExperience: -1, name: 1 })
       .lean()
+    res.set('Cache-Control', 'no-store')
     res.json({ success: true, profiles, earnovaFee: EARNOVA_CA_FEE, servicePackages: CA_SERVICE_PACKAGES })
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message })
+  }
+}
+
+export const updateCAPricing = async (req, res) => {
+  try {
+    const profile = await CAProfile.findOne({ user: req.user._id })
+    if (!profile) return res.status(404).json({ success: false, message: 'Create your CA profile first.' })
+    if (profile.status !== 'verified') return res.status(403).json({ success: false, message: 'Only verified CAs can publish live pricing.' })
+    const submitted = Array.isArray(req.body.pricing) ? req.body.pricing : []
+    const pricing = CA_SERVICE_KEYS.map(servicePackage => ({ servicePackage, charge: toNumber(submitted.find(item => item?.servicePackage === servicePackage)?.charge) }))
+    if (pricing.some(item => item.charge < EARNOVA_CA_FEE)) return res.status(400).json({ success: false, message: `Enter at least INR ${EARNOVA_CA_FEE} for every sector.` })
+    profile.pricing = pricing
+    await profile.save()
+    res.json({ success: true, profile, message: 'Your public CA prices were updated immediately.' })
   } catch (err) {
     res.status(500).json({ success: false, message: err.message })
   }
@@ -184,6 +220,9 @@ export const createTaxJob = async (req, res) => {
 
     const servicePackage = getPackage(req.body.servicePackage)
     const service = CA_SERVICE_PACKAGES[servicePackage]
+    const documents = cleanDocuments(req.body.documents)
+    const missingDocuments = REQUIRED_DOCUMENTS[servicePackage].filter(label => !documents.some(doc => doc.label === label))
+    if (missingDocuments.length) return res.status(400).json({ success: false, message: `Upload required documents: ${missingDocuments.join(', ')}` })
     const selectedCA = await CAProfile.findOne({ _id: req.body.selectedCA, status: 'verified' })
     if (!selectedCA) return res.status(400).json({ success: false, message: 'Select an available verified CA.' })
     const selectedPricing = selectedCA.pricing.find(item => item.servicePackage === servicePackage)
@@ -197,7 +236,8 @@ export const createTaxJob = async (req, res) => {
     const job = await CATaxJob.create({
       ...req.body,
       client: req.user._id,
-      assignedCA: selectedCA._id,
+      selectedCA: selectedCA._id,
+      assignedCA: isAdminClient ? selectedCA._id : null,
       servicePackage,
       serviceLabel: service.label,
       serviceAmount,
@@ -210,7 +250,7 @@ export const createTaxJob = async (req, res) => {
       pan: String(req.body.pan).toUpperCase().trim(),
       aadhaarLast4: String(req.body.aadhaarLast4 || '').trim().slice(-4),
       incomeSources: splitList(req.body.incomeSources),
-      documents: cleanDocuments(req.body.documents),
+      documents,
       bankInterest: Math.max(toNumber(req.body.bankInterest), 0),
       capitalGains: toNumber(req.body.capitalGains),
       rentalIncome: toNumber(req.body.rentalIncome),
@@ -297,6 +337,7 @@ export const verifyTaxJobPayment = async (req, res) => {
     job.razorpayPaymentId = razorpayPaymentId
     job.razorpaySignature = razorpaySignature
     job.paymentStatus = 'paid'
+    job.assignedCA = job.selectedCA
     job.paidAt = new Date()
     job.statusHistory.push({
       status: 'submitted',
@@ -390,6 +431,31 @@ export const submitAssignedTaxJob = async (req, res) => {
     } else {
       job.statusHistory.push({ status: 'completed', note: 'CA resubmitted completion details.' })
     }
+
+    const sourceDocuments = [...(job.documents || [])]
+    await Promise.allSettled(sourceDocuments.filter(doc => doc.publicId).map(doc => deleteFromCloudinary(doc.publicId, doc.resourceType)))
+    job.documents = []
+    job.clientName = 'PURGED'
+    job.clientEmail = 'purged@earnova.invalid'
+    job.clientWhatsapp = 'PURGED'
+    job.pan = 'PURGED'
+    job.aadhaarLast4 = ''
+    job.assessmentYear = 'PURGED'
+    job.incomeSources = []
+    job.salaryEmployer = ''
+    job.bankInterest = 0
+    job.capitalGains = 0
+    job.rentalIncome = 0
+    job.businessIncome = 0
+    job.foreignIncome = 0
+    job.deductions80C = 0
+    job.deductions80D = 0
+    job.homeLoanInterest = 0
+    job.otherDeductions = ''
+    job.gstin = ''
+    job.turnover = 0
+    job.notes = ''
+    job.sensitiveDataPurgedAt = new Date()
 
     await job.save()
 
