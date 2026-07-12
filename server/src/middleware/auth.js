@@ -44,6 +44,10 @@ export const adminOnly = (req, res, next) => {
 export const requireFeature = (feature) => (req, res, next) => {
   if (req.user?.role === 'admin') return next()
 
+  if (feature === 'businessSolutions' && req.user?.businessAccessExpiresAt && req.user.businessAccessExpiresAt <= new Date()) {
+    return res.status(403).json({ success: false, code: 'SUBSCRIPTION_EXPIRED', feature, message: 'Your Business Solutions subscription has expired.' })
+  }
+
   const access = req.user?.featureAccess
   const storedValue = access instanceof Map ? access.get(feature) : access?.[feature]
   const allowed = storedValue ?? DEFAULT_PUBLIC_ACCESS[feature] ?? false

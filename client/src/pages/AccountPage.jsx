@@ -1,14 +1,16 @@
 import { useState } from 'react'
 import { useSearchParams, Link, Navigate } from 'react-router-dom'
-import { Package, User, MapPin, Heart, LogOut, Zap, Loader2 } from 'lucide-react'
+import { Package, User, MapPin, Heart, LogOut, Zap, Loader2, LayoutDashboard } from 'lucide-react'
 import { OrderHistory } from '../components/account/OrderHistory'
 import { AddressBook } from '../components/account/OrderHistory'
 import ProfileForm from '../components/account/ProfileForm'
 import ProductCard from '../components/products/ProductCard'
 import { useAuth } from '../context/AuthContext'
 import { useCart } from '../context/CartContext'
+import MyServicesDashboard from '../components/account/MyServicesDashboard'
 
 const TABS = [
+  { key: 'services',  label: 'My Services', Icon: LayoutDashboard },
   { key: 'orders',    label: 'My Orders',  Icon: Package },
   { key: 'profile',   label: 'Profile',    Icon: User     },
   { key: 'addresses', label: 'Addresses',  Icon: MapPin },
@@ -23,7 +25,7 @@ export default function AccountPage() {
   const requestedTab = searchParams.get('tab')
   const tab = allowedTabs.some(item => item.key === requestedTab)
     ? requestedTab
-    : 'orders'
+    : 'services'
 
   if (authLoading) {
     return (
@@ -130,6 +132,7 @@ export default function AccountPage() {
 
           {/* ── Main content ── */}
           <div className="flex-1 min-w-0">
+            {tab === 'services'  && <MyServicesDashboard />}
             {tab === 'orders'    && <OrderHistory />}
             {tab === 'profile'   && <ProfileForm />}
             {tab === 'addresses' && (

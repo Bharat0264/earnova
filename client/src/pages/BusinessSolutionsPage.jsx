@@ -288,7 +288,10 @@ export default function BusinessSolutionsPage() {
   const [profile, setProfile] = useState(DEFAULT_PROFILE)
   const [aiQuestion, setAiQuestion] = useState('What should I do this week to increase profit?')
   const [manualSale, setManualSale] = useState(emptyManualSale)
-  const subscribed = isAuthenticated && hasFeature('businessSolutions')
+  const [serverSubscriptionActive, setServerSubscriptionActive] = useState(false)
+  const [workspaceLoaded, setWorkspaceLoaded] = useState(false)
+  const [workspaceStatus, setWorkspaceStatus] = useState('')
+  const subscribed = isAuthenticated && (hasFeature('businessSolutions') || serverSubscriptionActive)
 
   const analytics = useMemo(() => buildAnalytics(orders), [orders])
   const dailyMax = Math.max(...analytics.daily.map(item => item.revenue), 1)
@@ -345,6 +348,45 @@ export default function BusinessSolutionsPage() {
       // Browser storage can fail in private mode; analytics still works for the current session.
     }
   }, [orders, sourceName])
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setServerSubscriptionActive(false)
+      setWorkspaceLoaded(false)
+      return
+    }
+    let cancelled = false
+    api.get('/business-workspace')
+      .then(data => {
+        if (cancelled) return
+        setServerSubscriptionActive(Boolean(data.active))
+        if (data.workspace) {
+          setOrders(Array.isArray(data.workspace.orders) ? data.workspace.orders : [])
+          setSourceName(data.workspace.sourceName || 'Saved business workspace')
+          setProfile(current => ({ ...current, ...(data.workspace.profile || {}) }))
+          setWorkspaceStatus('Workspace restored from your Earnova account.')
+        }
+        setWorkspaceLoaded(true)
+      })
+      .catch(err => {
+        if (!cancelled) {
+          setWorkspaceStatus(err.message)
+          setWorkspaceLoaded(true)
+        }
+      })
+    return () => { cancelled = true }
+  }, [isAuthenticated])
+
+  useEffect(() => {
+    if (!workspaceLoaded || !subscribed) return undefined
+    const timer = setTimeout(() => {
+      setWorkspaceStatus('Saving workspace...')
+      api.put('/business-workspace', { orders, sourceName, profile, lastImportedAt: new Date().toISOString() })
+        .then(() => setWorkspaceStatus('Saved to your Earnova account.'))
+        .catch(err => setWorkspaceStatus(err.message))
+    }, 700)
+    return () => clearTimeout(timer)
+  }, [workspaceLoaded, subscribed, orders, sourceName, profile])
 
   const handleCsv = async event => {
     const file = event.target.files?.[0]
@@ -451,6 +493,7 @@ export default function BusinessSolutionsPage() {
                 </button>
                 <a href="#business-dashboard" className="btn-secondary">Open dashboard</a>
               </div>
+              {isAuthenticated && workspaceStatus && <p className="text-xs text-gray-500 mt-3">{workspaceStatus}</p>}
               <p className="text-xs font-semibold text-eco-700 mt-3">
                 Costs about {formatPrice(dailyCost)} per day. One recovered order can pay for the month.
               </p>

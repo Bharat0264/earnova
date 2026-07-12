@@ -6,6 +6,7 @@ import Product  from '../models/Product.js'
 import CATaxJob from '../models/CATaxJob.js'
 import ProjectListing from '../models/ProjectListing.js'
 import PaymentAttempt from '../models/PaymentAttempt.js'
+import BusinessSubscription from '../models/BusinessSubscription.js'
 import { sendOrderConfirmation } from '../utils/email.js'
 
 const requireRazorpayConfig = () => {
@@ -150,6 +151,31 @@ const BUSINESS_CART_SERVICE = {
   referralCommission: 0,
 }
 
+const activateBusinessSubscription = async ({ user, razorpayOrderId, razorpayPaymentId }) => {
+  const current = await BusinessSubscription.findOne({ user: user._id })
+  const now = new Date()
+  const startsAt = current?.expiresAt && current.expiresAt > now ? current.expiresAt : now
+  const expiresAt = new Date(startsAt.getTime() + 30 * 24 * 60 * 60 * 1000)
+  const subscription = await BusinessSubscription.findOneAndUpdate(
+    { user: user._id },
+    {
+      user: user._id,
+      plan: 'business-solutions-monthly',
+      amount: BUSINESS_SUBSCRIPTION_PRICE,
+      status: 'active',
+      startsAt: now,
+      expiresAt,
+      razorpayOrderId,
+      razorpayPaymentId,
+    },
+    { new: true, upsert: true, runValidators: true, setDefaultsOnInsert: true }
+  )
+  user.featureAccess.set('businessSolutions', true)
+  user.businessAccessExpiresAt = expiresAt
+  await user.save()
+  return subscription
+}
+
 /* ────────────────────────────────────────
    POST /api/payment/create-order
 ────────────────────────────────────────── */
@@ -230,7 +256,9 @@ export const verifyPayment = async (req, res) => {
     /* 2. Resume safely when the browser retries verification. */
     const existing = await Order.findOne({ razorpayPaymentId })
     if (existing && attempt.status === 'fulfilled') {
-      return res.json({ success: true, order: existing, message: 'Payment was already completed.' })
+      const includesBusiness = existing.items?.some(item => item.serviceKey === 'businessSolutions')
+      const refreshedUser = includesBusiness ? await User.findById(req.user._id) : null
+      return res.json({ success: true, order: existing, user: refreshedUser?.toPublicJSON(), message: 'Payment was already completed.' })
     }
 
     /* 3. Calculate amounts */
@@ -298,8 +326,7 @@ export const verifyPayment = async (req, res) => {
     }
 
     if (includesBusinessAccess) {
-      fullUser.featureAccess.set('businessSolutions', true)
-      await fullUser.save()
+      await activateBusinessSubscription({ user: fullUser, razorpayOrderId, razorpayPaymentId })
       order.statusHistory.push({ status: 'processing', note: 'Business Solutions access enabled after Razorpay confirmation.' })
       await order.save()
     }
@@ -500,8 +527,7 @@ export const verifyBusinessSubscription = async (req, res) => {
     const user = await User.findById(req.user._id)
     if (!user) return res.status(404).json({ success: false, message: 'User not found.' })
 
-    user.featureAccess.set('businessSolutions', true)
-    await user.save()
+    const subscriptionRecord = await activateBusinessSubscription({ user, razorpayOrderId, razorpayPaymentId })
 
     res.json({
       success: true,
@@ -511,6 +537,8 @@ export const verifyBusinessSubscription = async (req, res) => {
         amount: BUSINESS_SUBSCRIPTION_PRICE,
         paymentId: razorpayPaymentId,
         status: 'active',
+        startsAt: subscriptionRecord.startsAt,
+        expiresAt: subscriptionRecord.expiresAt,
       },
     })
   } catch (err) {

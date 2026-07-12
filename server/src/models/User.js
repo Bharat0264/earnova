@@ -28,6 +28,7 @@ const userSchema = new mongoose.Schema({
     of: Boolean,
     default: () => ({ ...DEFAULT_PUBLIC_ACCESS }),
   },
+  businessAccessExpiresAt: Date,
 
   /* Referral */
   referralCode:      { type: String, unique: true, sparse: true },
@@ -74,6 +75,9 @@ userSchema.methods.comparePassword = function (candidate) {
 
 userSchema.methods.toPublicJSON = function () {
   const obj = this.toObject({ flattenMaps: true })
+  if (obj.businessAccessExpiresAt && new Date(obj.businessAccessExpiresAt) <= new Date() && obj.role !== 'admin') {
+    obj.featureAccess = { ...(obj.featureAccess || {}), businessSolutions: false }
+  }
   delete obj.password
   delete obj.resetPasswordToken
   delete obj.resetPasswordExpires

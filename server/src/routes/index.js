@@ -10,6 +10,8 @@ import adminRoutes     from './adminRoutes.js'
 import freelanceRoutes from './freelanceRoutes.js'
 import caRoutes        from './caRoutes.js'
 import projectRoutes   from './projectRoutes.js'
+import businessWorkspaceRoutes from './businessWorkspaceRoutes.js'
+import serviceOverviewRoutes from './serviceOverviewRoutes.js'
 
 const router = Router()
 
@@ -25,5 +27,7 @@ router.use('/admin',    adminRoutes)     /* ✅ Phase 6 */
 router.use('/freelance', freelanceRoutes)
 router.use('/ca', caRoutes)
 router.use('/projects', projectRoutes)
+router.use('/business-workspace', businessWorkspaceRoutes)
+router.use('/services', serviceOverviewRoutes)
 
 export default router
