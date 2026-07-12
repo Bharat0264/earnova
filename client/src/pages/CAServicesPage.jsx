@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { BadgeCheck, Briefcase, Calculator, ClipboardCheck, FileCheck2, FileText, Link as LinkIcon, Send, ShieldCheck, Wallet } from 'lucide-react'
+import { BadgeCheck, Briefcase, Calculator, ClipboardCheck, FileCheck2, FileText, Link as LinkIcon, MapPin, Send, ShieldCheck, UserRound, Wallet } from 'lucide-react'
 import AuthModal from '../components/auth/AuthModal'
 import WithdrawalModal from '../components/referral/WithdrawalModal'
 import { useAuth } from '../context/AuthContext'
@@ -11,10 +11,10 @@ import { formatDate, formatPrice } from '../utils/formatters'
 const INCOME_SOURCES = ['Salary', 'Business', 'Capital gains', 'Rental income', 'Foreign income', 'Interest income', 'Freelance income']
 const CA_SPECIALIZATIONS = ['ITR filing', 'GST', 'TDS', 'Bookkeeping', 'Audit support', 'Tax notices', 'Business compliance', 'Financial statements']
 const CA_SERVICE_PACKAGES = [
-  { key: 'simple-salaried', label: 'Simple salaried', amount: 1250, detail: 'For salary income, Form 16 and basic deductions.' },
-  { key: 'investors-traders', label: 'Investors & Traders', amount: 3000, detail: 'For capital gains, trading reports and investment income.' },
-  { key: 'freelancers-small-business', label: 'Freelancers & Small Business', amount: 4250, detail: 'For freelance income, small business books and deductions.' },
-  { key: 'corporate-tax-audits', label: 'Corporate and Tax Audits', amount: 15000, amountMax: 50000, detail: 'Starts at 15000; final audit scope can go up to 50000.' },
+  { key: 'simple-salaried', label: 'Simple salaried', detail: 'For salary income, Form 16 and basic deductions.' },
+  { key: 'investors-traders', label: 'Investors & Traders', detail: 'For capital gains, trading reports and investment income.' },
+  { key: 'freelancers-small-business', label: 'Freelancers & Small Business', detail: 'For freelance income, small business books and deductions.' },
+  { key: 'corporate-tax-audits', label: 'Corporate and Tax Audits', detail: 'For companies, statutory compliance and audit support.' },
 ]
 const EARNOVA_CA_FEE = 49
 const CLIENT_DOCS = [
@@ -39,6 +39,7 @@ const emptyClientForm = {
   assessmentYear: '2026-27',
   filingType: 'itr-filing',
   servicePackage: 'simple-salaried',
+  selectedCA: '',
   incomeSources: [],
   salaryEmployer: '',
   form16Available: false,
@@ -62,12 +63,18 @@ const emptyCAForm = {
   email: '',
   whatsapp: '',
   phone: '',
+  dateOfBirth: '',
+  gender: '',
+  address: '',
+  pincode: '',
   city: '',
   state: '',
   firmName: '',
   membershipNumber: '',
   qualification: '',
   yearsExperience: '',
+  languages: '',
+  professionalBio: '',
   specializations: [],
   servicesOffered: [],
   govtIdType: 'Aadhaar',
@@ -76,6 +83,7 @@ const emptyCAForm = {
   caCertificateUrl: '',
   practiceProofUrl: '',
   consentToVerify: false,
+  pricing: CA_SERVICE_PACKAGES.map(item => ({ servicePackage: item.key, charge: '' })),
 }
 
 function ToggleGroup({ options, value, onChange }) {
@@ -279,10 +287,11 @@ export default function CAServicesPage() {
   const [caWorkLoading, setCAWorkLoading] = useState(false)
   const [completionForms, setCompletionForms] = useState({})
   const [showCAWithdrawal, setShowCAWithdrawal] = useState(false)
+  const [publicCAs, setPublicCAs] = useState([])
+  const [profilesLoading, setProfilesLoading] = useState(true)
   const selectedPackage = CA_SERVICE_PACKAGES.find(item => item.key === clientForm.servicePackage) || CA_SERVICE_PACKAGES[0]
-  const packagePrice = selectedPackage.amountMax && selectedPackage.amountMax !== selectedPackage.amount
-    ? `${formatPrice(selectedPackage.amount)}-${formatPrice(selectedPackage.amountMax)}`
-    : formatPrice(selectedPackage.amount)
+  const selectedCA = publicCAs.find(profile => profile._id === clientForm.selectedCA)
+  const selectedCharge = selectedCA?.pricing?.find(item => item.servicePackage === clientForm.servicePackage)?.charge || 0
 
   const requireLogin = () => {
     if (isAuthenticated) return false
@@ -312,6 +321,13 @@ export default function CAServicesPage() {
   useEffect(() => {
     loadCAWork()
   }, [isAuthenticated]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    api.get('/ca/profiles')
+      .then(res => setPublicCAs(res.profiles || []))
+      .catch(err => setMessage(err.message))
+      .finally(() => setProfilesLoading(false))
+  }, [])
 
   const updateDocument = (index, field, value) => {
     setClientForm(prev => ({
@@ -343,7 +359,7 @@ export default function CAServicesPage() {
           serviceKey: 'caTaxJob',
           serviceRef: res.job._id,
           taxJobId: res.job._id,
-          name: `Earnova CA Services - ${res.job.serviceLabel}`,
+          name: `${res.job.serviceLabel} with ${selectedCA?.name || 'verified CA'}`,
           brand: 'Earnova Services',
           price: res.job.serviceAmount,
           quantity: 1,
@@ -513,38 +529,64 @@ export default function CAServicesPage() {
             <div>
               <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-2 mb-3">
                 <div>
-                  <p className="text-xs font-bold text-gray-500 mb-1">Standard CA payment package</p>
-                  <p className="text-sm font-semibold text-gray-900">Selected price: {packagePrice}</p>
-                  <p className="text-xs text-gray-500 mt-1">Earnova charge is {formatPrice(EARNOVA_CA_FEE)} inside the package price. The remaining amount goes to the verified CA.</p>
+                  <p className="text-xs font-bold text-gray-500 mb-1">1. Choose the service sector</p>
+                  <p className="text-sm font-semibold text-gray-900">Each verified CA sets their own charge.</p>
+                  <p className="text-xs text-gray-500 mt-1">Earnova deducts its usual {formatPrice(EARNOVA_CA_FEE)} from the CA's displayed charge. You pay no extra platform fee.</p>
                 </div>
               </div>
               <div className="grid md:grid-cols-2 gap-3">
                 {CA_SERVICE_PACKAGES.map(item => {
                   const selected = clientForm.servicePackage === item.key
-                  const price = item.amountMax && item.amountMax !== item.amount
-                    ? `${formatPrice(item.amount)}-${formatPrice(item.amountMax)}`
-                    : formatPrice(item.amount)
                   return (
                     <button
                       key={item.key}
                       type="button"
-                      onClick={() => setClientForm(prev => ({ ...prev, servicePackage: item.key }))}
+                      onClick={() => setClientForm(prev => ({ ...prev, servicePackage: item.key, selectedCA: '' }))}
                       className={`text-left rounded-2xl border p-4 transition-all ${
                         selected ? 'border-primary-600 bg-primary-50 shadow-card' : 'border-gray-100 bg-white hover:border-primary-200'
                       }`}
                     >
                       <span className="block font-display font-bold text-gray-900">{item.label}</span>
-                      <span className={`block text-lg font-black mt-1 ${selected ? 'text-primary-800' : 'text-gray-800'}`}>{price}</span>
-                      <span className="block text-xs font-semibold text-eco-700 mt-1">
-                        CA receives {item.amountMax && item.amountMax !== item.amount
-                          ? `${formatPrice(item.amount - EARNOVA_CA_FEE)}-${formatPrice(item.amountMax - EARNOVA_CA_FEE)}`
-                          : formatPrice(item.amount - EARNOVA_CA_FEE)}
-                      </span>
                       <span className="block text-xs text-gray-500 mt-1 leading-relaxed">{item.detail}</span>
                     </button>
                   )
                 })}
               </div>
+            </div>
+
+            <div>
+              <p className="text-xs font-bold text-gray-500 mb-1">2. Select your CA</p>
+              <p className="text-sm text-gray-500 mb-3">Compare verified professionals and their charge for {selectedPackage.label}.</p>
+              {profilesLoading ? (
+                <div className="h-28 rounded-2xl bg-gray-100 animate-pulse" />
+              ) : publicCAs.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-gray-200 p-4 text-sm text-gray-500">No verified CAs have published pricing yet. Please check back soon.</div>
+              ) : (
+                <div className="grid md:grid-cols-2 gap-3">
+                  {publicCAs.map(profile => {
+                    const charge = profile.pricing?.find(item => item.servicePackage === clientForm.servicePackage)?.charge
+                    if (!charge) return null
+                    const selected = clientForm.selectedCA === profile._id
+                    return (
+                      <button key={profile._id} type="button" onClick={() => setClientForm(prev => ({ ...prev, selectedCA: profile._id }))} className={`text-left rounded-2xl border p-4 transition-all ${selected ? 'border-eco-600 bg-eco-50 shadow-card' : 'border-gray-100 hover:border-eco-200'}`}>
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex items-start gap-3">
+                            <span className="w-10 h-10 rounded-xl bg-primary-50 text-primary-700 flex items-center justify-center shrink-0"><UserRound className="w-5 h-5" /></span>
+                            <div>
+                              <p className="font-display font-bold text-gray-900 flex items-center gap-1.5">{profile.name}<BadgeCheck className="w-4 h-4 text-eco-600" /></p>
+                              <p className="text-xs text-gray-500">{profile.qualification} · {profile.yearsExperience || 0} years</p>
+                            </div>
+                          </div>
+                          <p className="font-black text-primary-800">{formatPrice(charge)}</p>
+                        </div>
+                        <p className="flex items-center gap-1 text-xs text-gray-500 mt-3"><MapPin className="w-3 h-3" />{profile.city}, {profile.state}{profile.firmName ? ` · ${profile.firmName}` : ''}</p>
+                        <p className="text-xs text-gray-600 mt-2 line-clamp-2">{profile.professionalBio}</p>
+                        <p className="text-[11px] font-semibold text-eco-700 mt-2">CA receives {formatPrice(charge - EARNOVA_CA_FEE)} after Earnova's {formatPrice(EARNOVA_CA_FEE)} deduction</p>
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
             </div>
 
             <div className="grid md:grid-cols-3 gap-3">
@@ -631,8 +673,8 @@ export default function CAServicesPage() {
               </div>
             </div>
 
-            <button disabled={submitting === 'client'} className="btn-primary w-full justify-center py-3">
-              {submitting === 'client' ? 'Submitting...' : `Submit and add ${formatPrice(selectedPackage.amount)} to cart`}
+            <button disabled={submitting === 'client' || !selectedCA} className="btn-primary w-full justify-center py-3">
+              {submitting === 'client' ? 'Submitting...' : selectedCA ? `Continue with ${selectedCA.name} · ${formatPrice(selectedCharge)}` : 'Select a CA to continue'}
             </button>
           </form>
 
@@ -665,6 +707,13 @@ export default function CAServicesPage() {
               <input className={inputClass} placeholder="Alternate phone" value={caForm.phone} onChange={e => setCAForm(p => ({ ...p, phone: e.target.value }))} />
               <input className={inputClass} placeholder="City" value={caForm.city} onChange={e => setCAForm(p => ({ ...p, city: e.target.value }))} required />
               <input className={inputClass} placeholder="State" value={caForm.state} onChange={e => setCAForm(p => ({ ...p, state: e.target.value }))} required />
+              <input className={inputClass} type="date" aria-label="Date of birth" value={caForm.dateOfBirth} onChange={e => setCAForm(p => ({ ...p, dateOfBirth: e.target.value }))} required />
+              <select className={inputClass} value={caForm.gender} onChange={e => setCAForm(p => ({ ...p, gender: e.target.value }))} required>
+                <option value="">Select gender</option><option>Male</option><option>Female</option><option>Non-binary</option><option>Prefer not to say</option>
+              </select>
+              <input className={`${inputClass} sm:col-span-2`} placeholder="Full residential / office address" value={caForm.address} onChange={e => setCAForm(p => ({ ...p, address: e.target.value }))} required />
+              <input className={inputClass} placeholder="PIN code" inputMode="numeric" value={caForm.pincode} onChange={e => setCAForm(p => ({ ...p, pincode: e.target.value.replace(/\D/g, '').slice(0, 6) }))} required />
+              <input className={inputClass} placeholder="Languages (comma separated)" value={caForm.languages} onChange={e => setCAForm(p => ({ ...p, languages: e.target.value }))} />
             </div>
 
             <div className="grid sm:grid-cols-2 gap-3">
@@ -677,6 +726,25 @@ export default function CAServicesPage() {
             <div>
               <p className="text-xs font-bold text-gray-500 mb-2">Specializations</p>
               <ToggleGroup options={CA_SPECIALIZATIONS} value={caForm.specializations} onChange={specializations => setCAForm(p => ({ ...p, specializations, servicesOffered: specializations }))} />
+            </div>
+
+            <textarea className={`${inputClass} min-h-[90px]`} placeholder="Professional bio: experience, approach and the clients you serve" value={caForm.professionalBio} onChange={e => setCAForm(p => ({ ...p, professionalBio: e.target.value }))} required />
+
+            <div>
+              <p className="text-xs font-bold text-gray-500 mb-1">Your charges for every sector</p>
+              <p className="text-xs text-gray-500 mb-3">These prices will be public. Earnova deducts {formatPrice(EARNOVA_CA_FEE)} from your charge after completed work.</p>
+              <div className="grid sm:grid-cols-2 gap-3">
+                {CA_SERVICE_PACKAGES.map(service => {
+                  const priceIndex = caForm.pricing.findIndex(item => item.servicePackage === service.key)
+                  return (
+                    <label key={service.key} className="rounded-xl border border-gray-100 bg-white p-3">
+                      <span className="block text-xs font-bold text-gray-700 mb-2">{service.label}</span>
+                      <input className={inputClass} type="number" min={EARNOVA_CA_FEE} placeholder="Your total charge" value={caForm.pricing[priceIndex]?.charge || ''} onChange={e => setCAForm(prev => ({ ...prev, pricing: prev.pricing.map((item, index) => index === priceIndex ? { ...item, charge: e.target.value } : item) }))} required />
+                      {Number(caForm.pricing[priceIndex]?.charge) >= EARNOVA_CA_FEE && <span className="block text-[11px] text-eco-700 mt-1">You receive {formatPrice(Number(caForm.pricing[priceIndex].charge) - EARNOVA_CA_FEE)}</span>}
+                    </label>
+                  )
+                })}
+              </div>
             </div>
 
             <div className="grid sm:grid-cols-2 gap-3">

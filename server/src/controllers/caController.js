@@ -30,6 +30,8 @@ const CA_SERVICE_PACKAGES = {
   },
 }
 
+const CA_SERVICE_KEYS = Object.keys(CA_SERVICE_PACKAGES)
+
 const getPackage = value => CA_SERVICE_PACKAGES[value] ? value : 'simple-salaried'
 
 const getRazorpay = () => {
@@ -102,7 +104,8 @@ const getCAWalletTotals = async (profileId, userId) => {
 export const upsertCAProfile = async (req, res) => {
   try {
     const required = [
-      'name', 'email', 'whatsapp', 'city', 'state', 'membershipNumber',
+      'name', 'email', 'whatsapp', 'dateOfBirth', 'gender', 'address', 'pincode', 'city', 'state',
+      'professionalBio', 'membershipNumber',
       'qualification', 'govtIdType', 'idCardUrl', 'govtIdUrl', 'caCertificateUrl',
     ]
     const missing = required.filter(key => !String(req.body[key] || '').trim())
@@ -113,6 +116,15 @@ export const upsertCAProfile = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Verification consent is required.' })
     }
 
+    const submittedPricing = Array.isArray(req.body.pricing) ? req.body.pricing : []
+    const pricing = CA_SERVICE_KEYS.map(servicePackage => {
+      const row = submittedPricing.find(item => item?.servicePackage === servicePackage)
+      return { servicePackage, charge: toNumber(row?.charge) }
+    })
+    if (pricing.some(item => item.charge < EARNOVA_CA_FEE)) {
+      return res.status(400).json({ success: false, message: `Enter a charge of at least INR ${EARNOVA_CA_FEE} for every CA service sector.` })
+    }
+
     const profile = await CAProfile.findOneAndUpdate(
       { user: req.user._id },
       {
@@ -120,8 +132,10 @@ export const upsertCAProfile = async (req, res) => {
         user: req.user._id,
         email: String(req.body.email).toLowerCase().trim(),
         yearsExperience: Math.max(toNumber(req.body.yearsExperience), 0),
+        languages: splitList(req.body.languages),
         specializations: splitList(req.body.specializations),
         servicesOffered: splitList(req.body.servicesOffered),
+        pricing,
         status: 'pending',
         verifiedAt: null,
         verifiedBy: null,
@@ -139,6 +153,18 @@ export const upsertCAProfile = async (req, res) => {
   }
 }
 
+export const getPublicCAProfiles = async (_req, res) => {
+  try {
+    const profiles = await CAProfile.find({ status: 'verified', 'pricing.0': { $exists: true } })
+      .select('name firmName qualification yearsExperience city state languages professionalBio specializations servicesOffered pricing verifiedAt')
+      .sort({ yearsExperience: -1, name: 1 })
+      .lean()
+    res.json({ success: true, profiles, earnovaFee: EARNOVA_CA_FEE, servicePackages: CA_SERVICE_PACKAGES })
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message })
+  }
+}
+
 export const getMyCAProfile = async (req, res) => {
   try {
     const profile = await CAProfile.findOne({ user: req.user._id }).lean()
@@ -150,28 +176,35 @@ export const getMyCAProfile = async (req, res) => {
 
 export const createTaxJob = async (req, res) => {
   try {
-    const required = ['clientName', 'clientEmail', 'clientWhatsapp', 'pan', 'assessmentYear']
+    const required = ['clientName', 'clientEmail', 'clientWhatsapp', 'pan', 'assessmentYear', 'selectedCA']
     const missing = required.filter(key => !String(req.body[key] || '').trim())
     if (missing.length) {
       return res.status(400).json({ success: false, message: `Missing: ${missing.join(', ')}` })
     }
 
     const servicePackage = getPackage(req.body.servicePackage)
-    const pricing = CA_SERVICE_PACKAGES[servicePackage]
+    const service = CA_SERVICE_PACKAGES[servicePackage]
+    const selectedCA = await CAProfile.findOne({ _id: req.body.selectedCA, status: 'verified' })
+    if (!selectedCA) return res.status(400).json({ success: false, message: 'Select an available verified CA.' })
+    const selectedPricing = selectedCA.pricing.find(item => item.servicePackage === servicePackage)
+    if (!selectedPricing || selectedPricing.charge < EARNOVA_CA_FEE) {
+      return res.status(400).json({ success: false, message: 'This CA has not published a valid charge for the selected sector.' })
+    }
+    const serviceAmount = selectedPricing.charge
     const isAdminClient = req.user?.role === 'admin'
-    const caPayoutAmount = Math.max(pricing.amount - EARNOVA_CA_FEE, 0)
-    const caPayoutAmountMax = Math.max(pricing.amountMax - EARNOVA_CA_FEE, 0)
+    const caPayoutAmount = Math.max(serviceAmount - EARNOVA_CA_FEE, 0)
 
     const job = await CATaxJob.create({
       ...req.body,
       client: req.user._id,
+      assignedCA: selectedCA._id,
       servicePackage,
-      serviceLabel: pricing.label,
-      serviceAmount: pricing.amount,
-      serviceAmountMax: pricing.amountMax,
+      serviceLabel: service.label,
+      serviceAmount,
+      serviceAmountMax: serviceAmount,
       earnovaFee: EARNOVA_CA_FEE,
       caPayoutAmount,
-      caPayoutAmountMax,
+      caPayoutAmountMax: caPayoutAmount,
       paymentStatus: isAdminClient ? 'admin-waived' : 'pending',
       clientEmail: String(req.body.clientEmail).toLowerCase().trim(),
       pan: String(req.body.pan).toUpperCase().trim(),
@@ -199,7 +232,7 @@ export const createTaxJob = async (req, res) => {
       success: true,
       job,
       message: isAdminClient
-        ? 'Tax work submitted. Earnova will assign a verified CA after document review.'
+        ? `Tax work submitted and assigned to ${selectedCA.name}.`
         : 'Tax work submitted. Complete Razorpay payment to activate CA review.',
     })
   } catch (err) {
@@ -304,7 +337,7 @@ export const getMyCAWork = async (req, res) => {
     }
 
     const [jobs, withdrawals, walletTotals] = await Promise.all([
-      CATaxJob.find({ assignedCA: profile._id })
+      CATaxJob.find({ assignedCA: profile._id, paymentStatus: { $in: ['paid', 'admin-waived'] } })
         .populate('client', 'name email phone')
         .sort('-updatedAt')
         .lean(),

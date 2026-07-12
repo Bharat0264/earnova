@@ -8,10 +8,12 @@ import {
   getMyCAWork,
   submitAssignedTaxJob,
   requestCAWithdrawal,
+  getPublicCAProfiles,
 } from '../controllers/caController.js'
 
 const router = Router()
 
+router.get('/profiles', getPublicCAProfiles)
 router.use(protect)
 router.get('/profile/me', getMyCAProfile)
 router.put('/profile', upsertCAProfile)
