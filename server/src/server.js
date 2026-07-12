@@ -4,6 +4,7 @@ import morgan      from 'morgan'
 import dotenv      from 'dotenv'
 import { connectDB } from './config/db.js'
 import router      from './routes/index.js'
+import { handleWebhook } from './controllers/paymentController.js'
 
 dotenv.config()
 
@@ -45,6 +46,7 @@ app.use(cors({
   },
   credentials: true,
 }))
+app.post('/api/payment/webhook', express.raw({ type: 'application/json' }), handleWebhook)
 app.use(express.json({ limit: '10mb' }))
 app.use(express.urlencoded({ extended: true }))
 if (process.env.NODE_ENV !== 'test') app.use(morgan('dev'))
@@ -87,6 +89,7 @@ app.get('/api/health', (_req, res) => {
 })
 
 app.get('/api/env-check', (_req, res) => {
+  if (process.env.NODE_ENV === 'production') return res.status(404).json({ success: false, message: 'Route not found' })
   res.json({
     keyIdExists: !!process.env.RAZORPAY_KEY_ID,
     keySecretExists: !!process.env.RAZORPAY_KEY_SECRET,

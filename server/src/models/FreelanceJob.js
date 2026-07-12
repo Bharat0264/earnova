@@ -46,6 +46,7 @@ const freelanceJobSchema = new mongoose.Schema({
   fundedAt: Date,
   completedAt: Date,
   releasedAt: Date,
+  payoutCreditedAt: Date,
   notificationSentAt: Date,
   statusHistory: [statusEventSchema],
 }, { timestamps: true })

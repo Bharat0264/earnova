@@ -161,6 +161,12 @@ export const verifyJobPayment = async (req, res) => {
       .update(`${razorpayOrderId}|${razorpayPaymentId}`).digest('hex')
     if (expected !== razorpaySignature) return res.status(400).json({ success: false, message: 'Payment verification failed.' })
 
+    const { instance } = getRazorpay()
+    const payment = await instance.payments.fetch(razorpayPaymentId)
+    if (payment.order_id !== razorpayOrderId || Number(payment.amount) !== job.totalPayable * 100 || payment.currency !== 'INR' || !['authorized', 'captured'].includes(payment.status)) {
+      return res.status(400).json({ success: false, message: 'Razorpay payment amount or status does not match this freelance job.' })
+    }
+
     job.razorpayPaymentId = razorpayPaymentId
     job.razorpaySignature = razorpaySignature
     job.paymentStatus = 'paid-to-escrow'
@@ -206,6 +212,21 @@ export const releaseCompletedJob = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Only funded, completed work can be released.' })
     }
 
+    const profile = await FreelancerProfile.findById(job.assignedFreelancer)
+    if (!profile?.user) return res.status(400).json({ success: false, message: 'Assign a verified freelancer before releasing payment.' })
+    const payoutTime = new Date()
+    const claimed = await FreelanceJob.findOneAndUpdate(
+      { _id: job._id, payoutCreditedAt: null },
+      { $set: { payoutCreditedAt: payoutTime } },
+      { new: true }
+    )
+    if (!claimed && job.payoutCreditedAt) {
+      return res.json({ success: true, job, message: 'Freelancer wallet was already credited.' })
+    }
+    if (!claimed) return res.status(409).json({ success: false, message: 'Payment release is already being processed.' })
+    await User.findByIdAndUpdate(profile.user, { $inc: { walletBalance: job.freelancerAmount } })
+    job.payoutCreditedAt = payoutTime
+
     job.paymentStatus = 'released'
     job.status = 'completed'
     job.completedAt = job.completedAt || new Date()
@@ -215,7 +236,7 @@ export const releaseCompletedJob = async (req, res) => {
       note: `₹${job.freelancerAmount.toLocaleString('en-IN')} marked as released to the freelancer.`,
     })
     await job.save()
-    res.json({ success: true, job, message: 'Freelancer payment marked as released.' })
+    res.json({ success: true, job, message: 'Freelancer payment released and credited to the wallet.' })
   } catch (err) {
     res.status(500).json({ success: false, message: err.message })
   }

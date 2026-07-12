@@ -5,6 +5,7 @@ import User     from '../models/User.js'
 import Product  from '../models/Product.js'
 import CATaxJob from '../models/CATaxJob.js'
 import ProjectListing from '../models/ProjectListing.js'
+import PaymentAttempt from '../models/PaymentAttempt.js'
 import { sendOrderConfirmation } from '../utils/email.js'
 
 const requireRazorpayConfig = () => {
@@ -175,6 +176,14 @@ export const createRazorpayOrder = async (req, res) => {
       },
     })
 
+    await PaymentAttempt.create({
+      razorpayOrderId: rzpOrder.id,
+      user: req.user._id,
+      amount: rzpOrder.amount,
+      currency: rzpOrder.currency,
+      cartItems: dbCartItems,
+    })
+
     res.json({
       success:  true,
       orderId:  rzpOrder.id,
@@ -199,7 +208,6 @@ export const verifyPayment = async (req, res) => {
       razorpayPaymentId,
       razorpaySignature,
       shippingAddress,
-      cartItems,
     } = req.body
 
     /* 1. Verify Razorpay signature */
@@ -212,14 +220,21 @@ export const verifyPayment = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Payment verification failed. Signature mismatch.' })
     }
 
-    /* 2. Prevent duplicate orders */
+    const attempt = await PaymentAttempt.findOne({ razorpayOrderId, user: req.user._id })
+    if (!attempt) return res.status(404).json({ success: false, message: 'Payment order was not created for this account.' })
+    const payment = await getRazorpay().payments.fetch(razorpayPaymentId)
+    if (payment.order_id !== razorpayOrderId || Number(payment.amount) !== Number(attempt.amount) || payment.currency !== attempt.currency || !['authorized', 'captured'].includes(payment.status)) {
+      return res.status(400).json({ success: false, message: 'Razorpay payment details do not match this order.' })
+    }
+
+    /* 2. Resume safely when the browser retries verification. */
     const existing = await Order.findOne({ razorpayPaymentId })
-    if (existing) {
-      return res.json({ success: true, order: existing, message: 'Order already exists.' })
+    if (existing && attempt.status === 'fulfilled') {
+      return res.json({ success: true, order: existing, message: 'Payment was already completed.' })
     }
 
     /* 3. Calculate amounts */
-    const dbCartItems = await hydrateCartItems(cartItems, req.user._id)
+    const dbCartItems = attempt.cartItems
     const { subtotal, gst, shipping, total } = calcAmounts(dbCartItems)
 
     /* 4. Determine referral info */
@@ -234,7 +249,7 @@ export const verifyPayment = async (req, res) => {
       .map(item => ({ listingId: item.serviceRef, buyerWhatsapp: item.buyerWhatsapp }))
 
     /* 5. Create DB order */
-    const order = await Order.create({
+    const order = existing || await Order.create({
       user:    req.user._id,
       items:   dbCartItems.map(item => ({
         product:  item.product,
@@ -260,14 +275,15 @@ export const verifyPayment = async (req, res) => {
       razorpayOrderId,
       razorpayPaymentId,
       razorpaySignature,
-      status:        'placed',
-      statusHistory: [{ status: 'placed', note: 'Paid via Razorpay' }],
+      status:        'processing',
+      processedAt:   new Date(),
+      statusHistory: [{ status: 'processing', note: 'Payment verified and captured via Razorpay.' }],
       referredBy:    fullUser.referredBy || null,
       memberIncomeRecipient,
     })
 
     /* 6. Credit referral commission */
-    if (fullUser.referredBy) {
+    if (fullUser.referredBy && !order.commissionPaid) {
       const avgCommission = dbCartItems.reduce(
         (s, i) => s + ((i.referralCommission ?? 5) * i.price * i.quantity) / 100, 0
       )
@@ -341,11 +357,22 @@ export const verifyPayment = async (req, res) => {
       }
     }
 
+    order.status = 'processing'
+    order.processedAt = order.processedAt || new Date()
+    await order.save()
+
+    attempt.razorpayPaymentId = razorpayPaymentId
+    attempt.status = 'fulfilled'
+    attempt.paidAt = attempt.paidAt || new Date()
+    attempt.fulfilledAt = new Date()
+    attempt.order = order._id
+    await attempt.save()
+
     /* 7. Send confirmation email (non-blocking) */
     sendOrderConfirmation(order, fullUser)
       .catch(err => console.warn('[Email] order-confirm failed:', err.message))
 
-    res.status(201).json({ success: true, order, user: includesBusinessAccess ? fullUser.toPublicJSON() : undefined })
+    res.status(existing ? 200 : 201).json({ success: true, order, user: includesBusinessAccess ? fullUser.toPublicJSON() : undefined })
   } catch (err) {
     console.error('[Payment] verify failed:', err.message)
     res.status(500).json({ success: false, message: 'Order creation failed: ' + err.message })
@@ -461,6 +488,15 @@ export const verifyBusinessSubscription = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Payment verification failed. Signature mismatch.' })
     }
 
+    const instance = getRazorpay()
+    const [payment, order] = await Promise.all([
+      instance.payments.fetch(razorpayPaymentId),
+      instance.orders.fetch(razorpayOrderId),
+    ])
+    if (payment.order_id !== razorpayOrderId || Number(payment.amount) !== BUSINESS_SUBSCRIPTION_PRICE * 100 || !['authorized', 'captured'].includes(payment.status) || String(order.notes?.userId || '') !== req.user._id.toString()) {
+      return res.status(400).json({ success: false, message: 'Subscription payment does not match this account or plan.' })
+    }
+
     const user = await User.findById(req.user._id)
     if (!user) return res.status(404).json({ success: false, message: 'User not found.' })
 
@@ -486,12 +522,15 @@ export const verifyBusinessSubscription = async (req, res) => {
 export const handleWebhook = async (req, res) => {
   try {
     const signature = req.headers['x-razorpay-signature']
+    if (!signature || !process.env.RAZORPAY_WEBHOOK_SECRET) {
+      return res.status(400).json({ message: 'Webhook signature configuration is missing.' })
+    }
     const expected  = crypto
       .createHmac('sha256', process.env.RAZORPAY_WEBHOOK_SECRET || '')
       .update(req.body)
       .digest('hex')
 
-    if (signature && expected !== signature) {
+    if (expected !== signature) {
       return res.status(400).json({ message: 'Invalid webhook signature' })
     }
 
@@ -499,7 +538,12 @@ export const handleWebhook = async (req, res) => {
 
     switch (event.event) {
       case 'payment.captured': {
-        const paymentId = event.payload.payment.entity.id
+        const paymentEntity = event.payload.payment.entity
+        const paymentId = paymentEntity.id
+        await PaymentAttempt.findOneAndUpdate(
+          { razorpayOrderId: paymentEntity.order_id },
+          { status: 'paid', razorpayPaymentId: paymentId, paidAt: new Date() }
+        )
         await Order.findOneAndUpdate(
           { razorpayPaymentId: paymentId },
           { paymentStatus: 'paid', status: 'processing',
@@ -508,7 +552,12 @@ export const handleWebhook = async (req, res) => {
         break
       }
       case 'payment.failed': {
-        const paymentId = event.payload.payment.entity.id
+        const paymentEntity = event.payload.payment.entity
+        const paymentId = paymentEntity.id
+        await PaymentAttempt.findOneAndUpdate(
+          { razorpayOrderId: paymentEntity.order_id },
+          { status: 'failed', razorpayPaymentId: paymentId }
+        )
         await Order.findOneAndUpdate(
           { razorpayPaymentId: paymentId },
           { paymentStatus: 'failed',

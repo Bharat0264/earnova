@@ -164,6 +164,7 @@ export default function CheckoutPage() {
 
   /* ── Order confirmation screen ── */
   if (step === 4 && order) {
+    const completedServiceOrder = order.items?.length > 0 && order.items.every(item => item.itemType === 'service')
     return (
       <div className="min-h-screen bg-gray-50">
         <div className="section-wrapper py-12">
@@ -171,7 +172,7 @@ export default function CheckoutPage() {
             <div className="w-20 h-20 bg-eco-100 rounded-3xl flex items-center justify-center mx-auto mb-5">
               <CheckCircle2 className="w-10 h-10 text-eco-600" />
             </div>
-            <h1 className="font-display font-bold text-2xl text-gray-900 mb-2">Order Placed! 🎉</h1>
+            <h1 className="font-display font-bold text-2xl text-gray-900 mb-2">{completedServiceOrder ? 'Payment completed successfully' : 'Payment completed and order placed'}</h1>
             <p className="text-gray-500 text-sm mb-6">
               A confirmation email has been sent to <strong>{user?.email}</strong>.
             </p>
@@ -179,7 +180,8 @@ export default function CheckoutPage() {
               <Row label="Order ID"   value={order.orderId} bold />
               <Row label={order.paymentMethod === 'cod' ? 'Amount Due' : 'Amount Paid'} value={formatPrice(order.total)} />
               <Row label="Payment"    value={order.paymentMethod === 'cod' ? 'Pay on Delivery' : 'Razorpay · Paid'} />
-              <Row label="Estimated Delivery" value="5–7 business days" />
+              <Row label="Status" value={completedServiceOrder ? 'Payment complete · Service processing' : 'Payment complete · Order processing'} />
+              {!completedServiceOrder && <Row label="Estimated Delivery" value="5–7 business days" />}
             </div>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <Link to="/account?tab=orders" className="btn-primary flex items-center justify-center gap-2">
