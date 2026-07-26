@@ -26,11 +26,84 @@ export const PRODUCT_PILLARS = [
 ]
 
 export const PUBLIC_NAV_LINKS = [
-  { label: 'Business', to: '/business' },
+  { label: 'Shopping', to: '/products' },
   { label: 'Services', to: '/services' },
+  { label: 'Business', to: '/business' },
   { label: 'Energy', to: '/energy' },
-  { label: 'Marketplace', to: '/marketplace' },
-  { label: 'Pricing', to: '/pricing' },
+  { label: 'Earn & Partner', to: '/referral' },
+]
+
+export const PLATFORM_HUBS = [
+  {
+    key: 'shopping',
+    label: 'Shopping',
+    description: 'Products, projects and purchases in one place.',
+    accent: 'amber',
+    items: [
+      { label: 'Shop all products', description: 'Browse the complete product catalogue', to: '/products', icon: 'store' },
+      { label: 'Solar products', description: 'Panels, inverters and energy essentials', to: '/products?category=solar-panels', icon: 'sun' },
+      { label: 'Projects marketplace', description: 'Buy ready-to-use digital projects', to: '/projects', icon: 'code' },
+      { label: 'B2B bulk orders', description: 'Request business and wholesale supply', to: '/b2b', icon: 'building' },
+      { label: 'Cart', description: 'Review items ready for checkout', to: '/cart', icon: 'cart' },
+      { label: 'My orders', description: 'Track purchases and order history', to: '/account?tab=orders', icon: 'package' },
+    ],
+  },
+  {
+    key: 'services',
+    label: 'Services',
+    description: 'Professional help for every stage of business.',
+    accent: 'violet',
+    items: [
+      { label: 'All services', description: 'Explore every professional service', to: '/services', icon: 'briefcase' },
+      { label: 'Freelancers', description: 'Web, design, marketing and more', to: '/services/freelancers', icon: 'users' },
+      { label: 'CA & tax services', description: 'Compliance, tax and accounting support', to: '/services/ca', icon: 'calculator' },
+      { label: 'Business consulting', description: 'Strategy and operational guidance', to: '/services/business-consulting', icon: 'presentation' },
+      { label: 'My service requests', description: 'View active work and request status', to: '/account?tab=services', icon: 'clipboard' },
+      { label: 'Service marketplace', description: 'Compare available business support', to: '/marketplace', icon: 'search' },
+    ],
+  },
+  {
+    key: 'business',
+    label: 'Business',
+    description: 'Operate, understand and grow your company.',
+    accent: 'blue',
+    items: [
+      { label: 'Business workspace', description: 'Your daily operating overview', to: '/app/overview', icon: 'dashboard' },
+      { label: 'Sales & customers', description: 'Track revenue and relationships', to: '/app/sales', icon: 'chart' },
+      { label: 'Leads', description: 'Manage prospects and follow-ups', to: '/app/leads', icon: 'target' },
+      { label: 'Inventory', description: 'Monitor products and stock levels', to: '/app/inventory', icon: 'boxes' },
+      { label: 'Invoices & expenses', description: 'Keep business finances organized', to: '/app/invoices', icon: 'receipt' },
+      { label: 'Analytics & Business AI', description: 'Turn business data into next actions', to: '/app/analytics', icon: 'sparkles' },
+    ],
+  },
+  {
+    key: 'energy',
+    label: 'Energy',
+    description: 'Solar products, guidance and business solutions.',
+    accent: 'emerald',
+    items: [
+      { label: 'Energy solutions', description: 'Explore residential and commercial options', to: '/energy', icon: 'zap' },
+      { label: 'Solar shopping', description: 'Browse focused energy products', to: '/products?category=solar-panels', icon: 'sun' },
+      { label: 'Subsidy assistance', description: 'Understand available support pathways', to: '/subsidy', icon: 'badge' },
+      { label: 'Commercial procurement', description: 'Request B2B energy supply', to: '/b2b', icon: 'factory' },
+      { label: 'Energy enquiries', description: 'Track your energy service requests', to: '/account?tab=services', icon: 'message' },
+      { label: 'Become an energy partner', description: 'Offer installation and advisory support', to: '/partner/overview', icon: 'handshake' },
+    ],
+  },
+  {
+    key: 'earn',
+    label: 'Earn & Partner',
+    description: 'Sell, refer and build income through Earnova.',
+    accent: 'rose',
+    items: [
+      { label: 'Referral program', description: 'Invite others and track rewards', to: '/referral', icon: 'share' },
+      { label: 'Freelance partner', description: 'Offer professional services', to: '/partner/overview', icon: 'usercheck' },
+      { label: 'Product seller', description: 'List and manage products', to: '/partner/listings', icon: 'tag' },
+      { label: 'Project seller', description: 'Publish digital projects for buyers', to: '/projects', icon: 'laptop' },
+      { label: 'CA or consultant', description: 'Provide trusted business support', to: '/partner/overview', icon: 'shield' },
+      { label: 'Partner dashboard', description: 'Manage listings, work and earnings', to: '/partner/overview', icon: 'wallet' },
+    ],
+  },
 ]
 
 export const ACCOUNT_TYPES = [
@@ -74,4 +147,3 @@ export const APP_NAV_LINKS = [
   { label: 'Notifications', to: '/app/notifications' },
   { label: 'Settings', to: '/app/settings' },
 ]
-

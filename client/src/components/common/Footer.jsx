@@ -3,8 +3,9 @@ import { Mail, MapPin } from 'lucide-react'
 
 const GROUPS = [
   ['Company', [['About', '/about'], ['Pricing', '/pricing'], ['Contact', '/contact'], ['Investors', '/investors']]],
-  ['Products', [['Business', '/business'], ['Business AI', '/business-ai'], ['Energy', '/energy'], ['Marketplace', '/marketplace']]],
-  ['Services', [['Freelancers', '/services/freelancers'], ['CA services', '/services/ca'], ['Consulting', '/services/business-consulting'], ['Projects', '/projects']]],
+  ['Shopping', [['All products', '/products'], ['Solar products', '/products?category=solar-panels'], ['Projects', '/projects'], ['B2B orders', '/b2b']]],
+  ['Services', [['All services', '/services'], ['Freelancers', '/services/freelancers'], ['CA & tax', '/services/ca'], ['Consulting', '/services/business-consulting']]],
+  ['Business & Earn', [['Business workspace', '/app/overview'], ['Business AI', '/business-ai'], ['Energy', '/energy'], ['Earn & Partner', '/referral']]],
   ['Legal', [['Privacy', '/privacy'], ['Terms', '/terms'], ['Refund policy', '/refund-policy']]],
 ]
 
@@ -21,7 +22,7 @@ export default function Footer() {
               <p className="flex items-center gap-2"><MapPin className="h-4 w-4" /> India</p>
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-8 sm:grid-cols-4">
+          <div className="grid grid-cols-2 gap-8 sm:grid-cols-3 xl:grid-cols-5">
             {GROUPS.map(([title, links]) => (
               <div key={title}>
                 <h2 className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">{title}</h2>

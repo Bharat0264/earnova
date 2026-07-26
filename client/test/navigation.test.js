@@ -4,12 +4,21 @@ import {
   ACCOUNT_TYPES,
   APP_NAV_LINKS,
   ONBOARDING_CHECKLISTS,
+  PLATFORM_HUBS,
   PRODUCT_PILLARS,
   PUBLIC_NAV_LINKS,
 } from '../src/config/navigation.js'
 
 test('public navigation exposes the five required destinations', () => {
-  assert.deepEqual(PUBLIC_NAV_LINKS.map(link => link.label), ['Business', 'Services', 'Energy', 'Marketplace', 'Pricing'])
+  assert.deepEqual(PUBLIC_NAV_LINKS.map(link => link.label), ['Shopping', 'Services', 'Business', 'Energy', 'Earn & Partner'])
+})
+
+test('homepage groups every platform destination into five populated hubs', () => {
+  assert.deepEqual(PLATFORM_HUBS.map(hub => hub.key), ['shopping', 'services', 'business', 'energy', 'earn'])
+  for (const hub of PLATFORM_HUBS) {
+    assert.ok(hub.items.length >= 6)
+    assert.ok(hub.items.every(item => item.label && item.description && item.to))
+  }
 })
 
 test('homepage has exactly three primary product pillars', () => {
