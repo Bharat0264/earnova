@@ -5,6 +5,8 @@ import User     from '../models/User.js'
 import Product  from '../models/Product.js'
 import CATaxJob from '../models/CATaxJob.js'
 import ProjectListing from '../models/ProjectListing.js'
+import CommissionRule from '../models/CommissionRule.js'
+import ReferralLedger from '../models/ReferralLedger.js'
 import PaymentAttempt from '../models/PaymentAttempt.js'
 import BusinessSubscription from '../models/BusinessSubscription.js'
 import { sendOrderConfirmation } from '../utils/email.js'
@@ -312,16 +314,27 @@ export const verifyPayment = async (req, res) => {
 
     /* 6. Credit referral commission */
     if (fullUser.referredBy && !order.commissionPaid) {
+      const rule = await CommissionRule.findOne({ key: 'standard-order', active: true }).sort('-version').lean()
+      const rateBps = rule?.rateBps ?? 500
       const avgCommission = dbCartItems.reduce(
-        (s, i) => s + ((i.referralCommission ?? 5) * i.price * i.quantity) / 100, 0
+        (s, i) => s + ((i.referralCommission ?? rateBps / 100) * i.price * i.quantity) / 100, 0
       )
       const commission = Math.round(avgCommission)
-      await User.findByIdAndUpdate(fullUser.referredBy, {
-        $inc: { referralEarnings: commission, walletBalance: commission },
+      const approvalDays = rule?.approvalDays ?? 14
+      await ReferralLedger.updateOne({ order: order._id }, {
+        $setOnInsert: {
+          referrer: fullUser.referredBy,
+          eligibleAmountPaise: Math.round(subtotal * 100),
+          commissionAmountPaise: commission * 100,
+          ruleKey: rule?.key || 'standard-order',
+          ruleVersion: rule?.version || 1,
+          status: 'pending',
+          eligibleAt: new Date(),
+          approveAfter: new Date(Date.now() + approvalDays * 86400000),
+        },
       })
       order.commissionRate   = 5
       order.commissionAmount = commission
-      order.commissionPaid   = true
       await order.save()
     }
 

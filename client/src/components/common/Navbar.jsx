@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
-import { LayoutDashboard, LogOut, Menu, ShoppingCart, UserRound, X } from 'lucide-react'
+import { LayoutDashboard, LogOut, Menu, ShieldCheck, ShoppingCart, UserRound, X } from 'lucide-react'
 import { PUBLIC_NAV_LINKS } from '../../config/navigation'
 import { useAuth } from '../../context/AuthContext'
 import { useCart } from '../../context/CartContext'
@@ -49,6 +49,7 @@ export default function Navbar() {
               <Link to="/app/overview" className="hidden min-h-10 items-center gap-2 rounded-xl px-3 text-sm font-bold text-slate-700 hover:bg-slate-100 sm:flex">
                 <LayoutDashboard className="h-4 w-4" /> Workspace
               </Link>
+              {user?.role === 'admin' && <Link to="/admin" className="hidden min-h-10 items-center gap-2 rounded-xl px-3 text-sm font-bold text-brand-700 hover:bg-brand-50 sm:flex"><ShieldCheck className="h-4 w-4" />Admin</Link>}
               <button type="button" onClick={logout} className="hidden min-h-10 items-center gap-2 rounded-xl px-3 text-sm font-semibold text-slate-600 hover:bg-red-50 hover:text-red-700 md:flex">
                 <LogOut className="h-4 w-4" /> Sign out
               </button>

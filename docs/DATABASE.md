@@ -47,3 +47,9 @@ Phase 2 sales and CSV imports use MongoDB transactions. Sale totals and invoice 
 ## Phase 2 rollout
 
 The new collections are additive and are created by MongoDB when first used. Existing mixed `BusinessWorkspace` documents are preserved and remain readable through the legacy route. Users can create a new tenant workspace without destructive conversion. A later reviewed migration must map legacy imported rows to the normalized product, customer, and sale schemas; do not delete legacy documents during that migration.
+
+## Phases 3 and 4 collections
+
+Marketplace and operations add `ProviderProfile`, `ServiceRequest`, `EnergyEnquiry`, `Notification`, `SupportTicket`, `Plan`, `CommissionRule`, `ReferralLedger`, `PlatformEvent`, and append-only `AuditLog`.
+
+Referral commissions begin as pending ledger entries after verified eligible payments. Each stores its rule key and version. Admin approval is allowed only after the configured period and wallet credit runs inside a MongoDB transaction.

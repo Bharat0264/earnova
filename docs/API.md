@@ -68,3 +68,16 @@ List routes are paginated to a maximum of 100 records per request. Sales, invent
 CSV imports accept only `.csv` files up to 2 MB and 5,000 data rows. Supported import types are `customers`, `products`, `inventory`, `expenses`, and `sales`. Preview before execute. The execute response includes imported, rejected, and duplicate counts plus row-level errors.
 
 Prices, tax, discount, revenue, expenses, and invoice values use integer paise. The API recalculates sale and invoice totals and never accepts a frontend total.
+
+## Marketplace and operations
+
+- Public: `GET /api/operations/providers`, `GET /api/operations/plans`
+- Provider profile: `GET|PUT /api/operations/provider-profile`
+- Service workflow: `/api/operations/service-requests` with proposal, transition, and review subroutes
+- Energy: `GET|POST /api/operations/energy-enquiries`
+- Notifications: `/api/operations/notifications`
+- Support: `/api/operations/support-tickets`
+- Subscription summary: `GET /api/operations/subscription`
+- Privacy-conscious events: `POST /api/operations/events`
+
+Admin operations use `/api/admin/operations/:resource` and `/api/admin/platform-analytics`. They require backend administrator authorization.

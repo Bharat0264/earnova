@@ -22,6 +22,7 @@ const AppOverviewPage = lazy(() => import('./pages/AppOverviewPage'))
 const AppModulePage = lazy(() => import('./pages/AppModulePage'))
 const BusinessRecordsPage = lazy(() => import('./pages/BusinessRecordsPage'))
 const BusinessAIPage = lazy(() => import('./pages/BusinessAIPage'))
+const AppOperationsPage = lazy(() => import('./pages/AppOperationsPage'))
 const PartnerPage = lazy(() => import('./pages/PartnerPage'))
 const AccessPage = lazy(() => import('./pages/AccessPage'))
 const ProductsPage = lazy(() => import('./pages/ProductsPage'))
@@ -72,7 +73,7 @@ function AppRoutes() {
           <Route path="services/freelancers" element={<FreelancePage />} />
           <Route path="services/ca" element={<CAServicesPage />} />
           <Route path="services/business-consulting" element={<PublicPage page="consulting" />} />
-          <Route path="energy" element={<FeatureGate feature="energySolutions"><EnergySolutionsPage /></FeatureGate>} />
+          <Route path="energy" element={<EnergySolutionsPage />} />
           <Route path="marketplace" element={<MarketplacePage />} />
           <Route path="projects" element={<ProjectsPage />} />
           <Route path="pricing" element={<PricingPage />} />
@@ -85,8 +86,8 @@ function AppRoutes() {
           <Route path="register" element={<AuthPage mode="register" />} />
           <Route path="forgot-password" element={<RecoveryPage mode="forgot" />} />
           <Route path="reset-password/:token" element={<RecoveryPage mode="reset" />} />
-          <Route path="products" element={<FeatureGate feature="ecommerce"><ProductsPage /></FeatureGate>} />
-          <Route path="products/:id" element={<FeatureGate feature="ecommerce"><ProductDetailPage /></FeatureGate>} />
+          <Route path="products" element={<ProductsPage />} />
+          <Route path="products/:id" element={<ProductDetailPage />} />
           <Route path="cart" element={<FeatureGate><CartPage /></FeatureGate>} />
           <Route path="checkout" element={<FeatureGate><CheckoutPage /></FeatureGate>} />
           <Route path="b2b" element={<FeatureGate feature="b2bPrograms"><B2BPage /></FeatureGate>} />
@@ -114,7 +115,10 @@ function AppRoutes() {
               <Route key={path} path={path} element={<BusinessRecordsPage module={path} />} />
             ))}
             <Route path="ai" element={<BusinessAIPage />} />
-            {Object.entries(APP_MODULES).filter(([path]) => !['sales', 'customers', 'leads', 'inventory', 'invoices', 'expenses', 'analytics', 'ai'].includes(path)).map(([path, description]) => (
+            <Route path="services" element={<AppOperationsPage module="services" />} />
+            <Route path="notifications" element={<AppOperationsPage module="notifications" />} />
+            <Route path="settings" element={<AppOperationsPage module="settings" />} />
+            {Object.entries(APP_MODULES).filter(([path]) => !['sales', 'customers', 'leads', 'inventory', 'invoices', 'expenses', 'analytics', 'ai', 'services', 'notifications', 'settings'].includes(path)).map(([path, description]) => (
               <Route key={path} path={path} element={<AppModulePage title={path === 'ai' ? 'Business AI' : path[0].toUpperCase() + path.slice(1)} description={description} />} />
             ))}
           </Route>

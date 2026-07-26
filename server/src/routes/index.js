@@ -13,6 +13,7 @@ import projectRoutes   from './projectRoutes.js'
 import businessWorkspaceRoutes from './businessWorkspaceRoutes.js'
 import serviceOverviewRoutes from './serviceOverviewRoutes.js'
 import businessRoutes from './businessRoutes.js'
+import operationsRoutes from './operationsRoutes.js'
 
 const router = Router()
 
@@ -31,5 +32,6 @@ router.use('/projects', projectRoutes)
 router.use('/business-workspace', businessWorkspaceRoutes)
 router.use('/services', serviceOverviewRoutes)
 router.use('/businesses', businessRoutes)
+router.use('/operations', operationsRoutes)
 
 export default router

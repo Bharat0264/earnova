@@ -13,6 +13,7 @@ import {
   getAdminProjectListings,
   updateAdminProjectListing
 } from '../controllers/adminController.js'
+import { getPlatformAnalytics, listAdminOperations, updateAdminOperation } from '../controllers/adminOperationsController.js'
 
 import { protect, adminOnly } from '../middleware/auth.js'
 
@@ -42,5 +43,9 @@ router.patch('/ca-tax-jobs/:id', updateAdminCATaxJob)
 /* Project marketplace */
 router.get('/project-listings', getAdminProjectListings)
 router.patch('/project-listings/:id', updateAdminProjectListing)
+
+router.get('/platform-analytics', getPlatformAnalytics)
+router.get('/operations/:resource', listAdminOperations)
+router.patch('/operations/:resource/:id', updateAdminOperation)
 
 export default router

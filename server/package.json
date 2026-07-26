@@ -13,7 +13,8 @@
     "seed": "node src/data/seed.js",
     "seed:clear": "node src/data/seed.js --clear",
     "create-admin": "node src/data/createAdmin.js",
-    "migrate:onboarding": "node src/data/backfillOnboarding.js"
+    "migrate:onboarding": "node src/data/backfillOnboarding.js",
+    "seed:operations": "node src/data/seedOperations.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
