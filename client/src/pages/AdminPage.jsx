@@ -2,7 +2,7 @@ import { useSearchParams, Navigate, Link } from 'react-router-dom'
 import {
   LayoutDashboard, Package, ShoppingBag, Users,
   Building2, Sun, Wallet, LogOut, Zap, ChevronRight, Briefcase, FileCheck2,
-  Code2, Building, BadgeCheck, ClipboardList, Leaf, Headphones, CreditCard, BarChart3, ScrollText, BadgeIndianRupee,
+  Code2, Building, BadgeCheck, ClipboardList, Leaf, Headphones, CreditCard, BarChart3, ScrollText, BadgeIndianRupee, SlidersHorizontal,
 } from 'lucide-react'
 import { DashboardStats, RevenueChart } from '../components/admin/DashboardStats'
 import OrdersTable      from '../components/admin/OrdersTable'
@@ -15,6 +15,7 @@ import FreelanceJobsTable from '../components/admin/FreelanceJobsTable'
 import CAWorkTable      from '../components/admin/CAWorkTable'
 import ProjectListingsTable from '../components/admin/ProjectListingsTable'
 import AdminOperationsTable, { AdminPlatformAnalytics } from '../components/admin/AdminOperationsTable'
+import PlatformFeeSettings from '../components/admin/PlatformFeeSettings'
 import { useAuth }      from '../context/AuthContext'
 import {
   useAdminStats, useAdminOrders, useAdminProducts,
@@ -85,6 +86,7 @@ export default function AdminPage() {
     { key: 'support', label: 'Support tickets', Icon: Headphones, badge: null },
     { key: 'subscriptions', label: 'Subscriptions', Icon: CreditCard, badge: null },
     { key: 'platform_analytics', label: 'Platform analytics', Icon: BarChart3, badge: null },
+    { key: 'platform_fees', label: 'Platform fees', Icon: SlidersHorizontal, badge: null },
     { key: 'audit', label: 'Audit logs', Icon: ScrollText, badge: null },
     { key: 'referral_ledger', label: 'Referral ledger', Icon: BadgeIndianRupee, badge: null },
   ]
@@ -94,7 +96,7 @@ export default function AdminPage() {
   const PAGE_TITLE = {
     dashboard: 'Dashboard', orders: 'Orders', products: 'Products',
     users: 'Users', freelance: 'Freelance Jobs', ca: 'CA Services', projects: 'Projects', b2b: 'B2B Quotes', subsidy: 'Subsidy Requests', withdrawals: 'Withdrawals',
-    businesses: 'Businesses', providers: 'Provider verification', services_ops: 'Service requests', energy_ops: 'Energy enquiries', support: 'Support tickets', subscriptions: 'Subscriptions', platform_analytics: 'Platform analytics', audit: 'Audit logs', referral_ledger: 'Referral ledger',
+    businesses: 'Businesses', providers: 'Provider verification', services_ops: 'Service requests', energy_ops: 'Energy enquiries', support: 'Support tickets', subscriptions: 'Subscriptions', platform_analytics: 'Platform analytics', platform_fees: 'Platform fees', audit: 'Audit logs', referral_ledger: 'Referral ledger',
   }
 
   return (
@@ -240,6 +242,7 @@ export default function AdminPage() {
           {tab === 'support' && <div className="grid gap-5 lg:grid-cols-2"><Link to="/admin/support" className="rounded-2xl border border-primary-200 bg-primary-50 p-6"><Headphones className="h-6 w-6 text-primary-700" /><h2 className="mt-4 font-display text-xl font-bold text-primary-950">Support operations dashboard</h2><p className="mt-2 text-sm text-primary-800">Review queues, high-priority tickets, security routing and workload without document previews.</p><span className="mt-5 inline-flex font-bold text-primary-700">Open dashboard →</span></Link><Link to="/admin/support/tickets" className="rounded-2xl border border-gray-200 bg-white p-6"><ClipboardList className="h-6 w-6 text-gray-700" /><h2 className="mt-4 font-display text-xl font-bold text-gray-950">Assigned ticket queue</h2><p className="mt-2 text-sm text-gray-600">Inspect customer-visible conversations and separate internal notes.</p><span className="mt-5 inline-flex font-bold text-primary-700">View tickets →</span></Link></div>}
           {tab === 'subscriptions' && <AdminOperationsTable resource="subscriptions" title="Subscriptions" />}
           {tab === 'platform_analytics' && <AdminPlatformAnalytics />}
+          {tab === 'platform_fees' && <PlatformFeeSettings />}
           {tab === 'audit' && <AdminOperationsTable resource="audit" title="Audit logs" />}
           {tab === 'referral_ledger' && <AdminOperationsTable resource="referrals" title="Referral commission ledger" />}
         </main>

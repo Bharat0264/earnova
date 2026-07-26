@@ -16,11 +16,18 @@ const CATEGORIES = [
 ]
 
 const inputClass = 'input-base bg-white'
-const DEFAULT_SERVICE_FEE_RATE = 10
-const HIGH_VALUE_SERVICE_FEE_RATE = 1.5
-const HIGH_VALUE_SERVICE_FEE_THRESHOLD = 2500
-const getServiceFeeRate = amount =>
-  Number(amount) > HIGH_VALUE_SERVICE_FEE_THRESHOLD ? HIGH_VALUE_SERVICE_FEE_RATE : DEFAULT_SERVICE_FEE_RATE
+const fallbackFreelanceFee = {
+  customerFee: { type: 'percentage', value: 10 },
+  providerFee: { type: 'percentage', value: 0 },
+}
+const calculateFee = (amount, fee) => {
+  const base = Number(amount) || 0
+  const value = Number(fee?.value) || 0
+  return fee?.type === 'fixed' ? Math.round(value) : Math.round(base * value / 100)
+}
+const describeFee = fee => fee?.type === 'fixed'
+  ? `₹${Number(fee.value || 0).toLocaleString('en-IN')} fixed`
+  : `${Number(fee?.value || 0)}%`
 
 const initialJob = {
   clientName: '', clientEmail: '', clientWhatsapp: '', company: '',
@@ -58,25 +65,35 @@ function FlowCard({ number, icon: Icon, title, text }) {
   )
 }
 
-function PricingSummary({ amount, paymentExempt = false }) {
+function PricingSummary({ amount, paymentExempt = false, feeSetting = fallbackFreelanceFee, job = null }) {
   const base = Number(amount) || 0
-  const rate = paymentExempt ? 0 : getServiceFeeRate(base)
-  const fee = paymentExempt ? 0 : Math.round(base * rate / 100)
-  const initialPayment = paymentExempt ? 0 : base + fee
-  const feeLabel = paymentExempt ? 'Admin service fee' : `Earnova service fee (${rate}%)`
+  const customerFeeRule = job
+    ? { type: job.customerPlatformFeeType || 'percentage', value: job.customerPlatformFeeValue ?? job.serviceFeeRate ?? 0 }
+    : feeSetting.customerFee
+  const providerFeeRule = job
+    ? { type: job.providerPlatformFeeType || 'percentage', value: job.providerPlatformFeeValue ?? 0 }
+    : feeSetting.providerFee
+  const customerFee = paymentExempt ? 0 : (job?.serviceFee ?? calculateFee(base, customerFeeRule))
+  const providerFee = paymentExempt ? 0 : (job?.providerPlatformFee ?? calculateFee(base, providerFeeRule))
+  const providerPayout = paymentExempt ? base : (job?.providerPayoutAmount ?? Math.max(0, base - providerFee))
+  const initialPayment = paymentExempt ? 0 : base + customerFee
   const totalLabel = paymentExempt ? 'Admin payment required' : 'You fund initially'
   const note = paymentExempt
-    ? 'Admin-created freelance jobs are published without Razorpay escrow payment.'
-    : base > HIGH_VALUE_SERVICE_FEE_THRESHOLD
-      ? 'Earnova securely holds the funds. Jobs above ₹2,500 use only 1.5% Earnova commission.'
-      : 'Earnova securely holds the funds. Jobs above ₹2,500 get reduced 1.5% Earnova commission.'
+    ? 'Admin-created freelance jobs are published without Razorpay payment.'
+    : `The current schedule charges the client ${describeFee(customerFeeRule)} and the freelancer ${describeFee(providerFeeRule)}. These accepted amounts are locked to this job.`
   return (
     <div className="rounded-2xl bg-slate-950 text-white p-5 space-y-3">
       <div className="flex items-center justify-between text-sm text-slate-300">
-        <span>Freelancer receives</span><strong className="text-white">₹{base.toLocaleString('en-IN')}</strong>
+        <span>Agreed work amount</span><strong className="text-white">₹{base.toLocaleString('en-IN')}</strong>
       </div>
       <div className="flex items-center justify-between text-sm text-slate-300">
-        <span>{feeLabel}</span><strong className="text-violet-300">₹{fee.toLocaleString('en-IN')}</strong>
+        <span>Client platform fee ({describeFee(customerFeeRule)})</span><strong className="text-violet-300">₹{customerFee.toLocaleString('en-IN')}</strong>
+      </div>
+      <div className="flex items-center justify-between text-sm text-slate-300">
+        <span>Freelancer platform fee ({describeFee(providerFeeRule)})</span><strong className="text-violet-300">₹{providerFee.toLocaleString('en-IN')}</strong>
+      </div>
+      <div className="flex items-center justify-between text-sm text-slate-300">
+        <span>Freelancer receives</span><strong className="text-emerald-300">₹{providerPayout.toLocaleString('en-IN')}</strong>
       </div>
       <div className="h-px bg-white/10" />
       <div className="flex items-center justify-between">
@@ -137,7 +154,7 @@ function JobLinkView({ jobId, isAuthenticated, requireAuth }) {
             </div>
             <div className="rounded-2xl bg-slate-950 text-white px-4 py-3">
               <p className="text-xs text-slate-300">Freelancer payout</p>
-              <p className="font-display font-bold text-xl">₹{(job.freelancerAmount || 0).toLocaleString('en-IN')}</p>
+              <p className="font-display font-bold text-xl">₹{(job.providerPayoutAmount ?? job.freelancerAmount ?? 0).toLocaleString('en-IN')}</p>
             </div>
           </div>
 
@@ -182,7 +199,7 @@ function JobLinkView({ jobId, isAuthenticated, requireAuth }) {
   )
 }
 
-function HireForm({ user, requireAuth, isAdmin = false }) {
+function HireForm({ user, requireAuth, isAdmin = false, feeSetting }) {
   const [form, setForm] = useState(() => ({
     ...initialJob,
     clientName: user?.name || '',
@@ -284,7 +301,7 @@ function HireForm({ user, requireAuth, isAdmin = false }) {
         <h2 className="font-display text-2xl font-bold text-slate-950 mt-1">{createdJob.title}</h2>
         <p className="text-slate-600 text-sm mt-2">Reference: {createdJob.jobId}</p>
       </div>
-      <PricingSummary amount={createdJob.freelancerAmount} paymentExempt={isAdmin || createdJob.paymentStatus === 'admin-waived'} />
+      <PricingSummary amount={createdJob.freelancerAmount} paymentExempt={isAdmin || createdJob.paymentStatus === 'admin-waived'} feeSetting={feeSetting} job={createdJob} />
       {error && <p className="rounded-xl bg-red-50 p-3 text-sm text-red-600">{error}</p>}
       {isAdmin || createdJob.paymentStatus === 'admin-waived' ? (
         <div className="rounded-2xl bg-emerald-50 border border-emerald-100 p-4 text-sm font-semibold text-emerald-700">
@@ -340,7 +357,7 @@ function HireForm({ user, requireAuth, isAdmin = false }) {
         <Field label="Deadline"><input type="date" className={inputClass} value={form.deadline} onChange={set('deadline')} /></Field>
         <Field label="Freelancer amount" required><input type="number" min="100" className={inputClass} value={form.freelancerAmount} onChange={set('freelancerAmount')} placeholder="₹" required /></Field>
       </div>
-      <PricingSummary amount={form.freelancerAmount} paymentExempt={isAdmin} />
+      <PricingSummary amount={form.freelancerAmount} paymentExempt={isAdmin} feeSetting={feeSetting} />
       {error && <p className="rounded-xl bg-red-50 p-3 text-sm text-red-600">{error}</p>}
       <button disabled={loading} className="btn-primary w-full py-4">
         {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <ArrowRight className="w-5 h-5" />}
@@ -446,10 +463,20 @@ export default function FreelancePage() {
   const [params, setParams] = useSearchParams()
   const { user, isAuthenticated, isAdmin } = useAuth()
   const [showAuth, setShowAuth] = useState(false)
+  const [freelanceFee, setFreelanceFee] = useState(fallbackFreelanceFee)
   const jobId = params.get('job')
   const active = params.get('mode') === 'freelancer' ? 'freelancer' : 'hire'
   const requireAuth = () => setShowAuth(true)
   const tab = mode => setParams(jobId ? { mode, job: jobId } : { mode })
+
+  useEffect(() => {
+    api.get('/fees')
+      .then(data => {
+        const current = (data.fees || []).find(fee => (fee.key || fee.serviceKey) === 'freelance')
+        if (current) setFreelanceFee(current)
+      })
+      .catch(() => {})
+  }, [])
 
   const benefits = useMemo(() => [
     { Icon: LockKeyhole, title: 'Escrow protection', text: 'The hiring party funds the full job before work begins.' },
@@ -497,7 +524,7 @@ export default function FreelancePage() {
 
           <div className="bg-white rounded-[2rem] border border-slate-200 shadow-card p-6 sm:p-9 lg:p-12">
             {active === 'hire'
-              ? <HireForm user={user} requireAuth={requireAuth} isAdmin={isAdmin} />
+              ? <HireForm user={user} requireAuth={requireAuth} isAdmin={isAdmin} feeSetting={freelanceFee} />
               : <FreelancerForm user={user} requireAuth={requireAuth} />}
           </div>
           {!isAuthenticated && (
@@ -514,10 +541,10 @@ export default function FreelancePage() {
           </div>
           <div className="grid md:grid-cols-4 gap-4">
             {[
-              [WalletCards, isAdmin ? 'Admin publishes job' : 'Client funds job', isAdmin ? 'Admin-created jobs are published without Razorpay payment.' : 'Client pays job amount plus Earnova fee. Above ₹2,500, the fee is only 1.5%.'],
+              [WalletCards, isAdmin ? 'Admin publishes job' : 'Client funds job', isAdmin ? 'Admin-created jobs are published without Razorpay payment.' : `Client pays the job amount plus the current ${describeFee(freelanceFee.customerFee)} client-side platform fee.`],
               [LockKeyhole, 'Earnova holds funds', 'The freelancer can work knowing the money is secured.'],
               [Clock3, 'Work is completed', 'The client reviews the agreed deliverables.'],
-              [IndianRupee, 'Freelancer is paid', 'Earnova releases the full agreed freelancer amount.'],
+              [IndianRupee, 'Freelancer is paid', `Earnova releases the agreed amount minus the current ${describeFee(freelanceFee.providerFee)} freelancer-side platform fee.`],
             ].map(([Icon, title, text], index) => (
               <div key={title} className="rounded-2xl bg-slate-50 border border-slate-100 p-5">
                 <div className="flex items-center justify-between">

@@ -1,7 +1,5 @@
 import mongoose from 'mongoose'
 
-const DEFAULT_SERVICE_FEE_RATE = 10
-
 const statusEventSchema = new mongoose.Schema({
   status: String,
   note: String,
@@ -23,8 +21,15 @@ const freelanceJobSchema = new mongoose.Schema({
   deadline: Date,
   workMode: { type: String, enum: ['remote', 'onsite', 'hybrid'], default: 'remote' },
   freelancerAmount: { type: Number, required: true, min: 1 },
-  serviceFeeRate: { type: Number, default: DEFAULT_SERVICE_FEE_RATE, immutable: true },
+  serviceFeeRate: { type: Number, default: 0, immutable: true },
   serviceFee: { type: Number, required: true, min: 0 },
+  feeSettingVersion: { type: Number, default: 1, immutable: true },
+  customerPlatformFeeType: { type: String, enum: ['percentage', 'fixed'], default: 'percentage', immutable: true },
+  customerPlatformFeeValue: { type: Number, default: 0, min: 0, immutable: true },
+  providerPlatformFeeType: { type: String, enum: ['percentage', 'fixed'], default: 'percentage', immutable: true },
+  providerPlatformFeeValue: { type: Number, default: 0, min: 0, immutable: true },
+  providerPlatformFee: { type: Number, default: 0, min: 0, immutable: true },
+  providerPayoutAmount: { type: Number, min: 0, immutable: true },
   totalPayable: { type: Number, required: true, min: 1 },
   currency: { type: String, default: 'INR' },
   paymentStatus: {

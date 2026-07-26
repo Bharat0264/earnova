@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { Check } from 'lucide-react'
 import PageMeta from '../components/common/PageMeta'
+import CurrentFeeSchedule from '../components/fees/CurrentFeeSchedule'
 
 const PLANS = [
   ['Starter', 'For setting up one business workspace', ['Manual data entry', 'Basic dashboard', 'Limited invoices', 'Limited AI questions']],
@@ -32,8 +33,13 @@ export default function PricingPage() {
           ))}
         </div>
         <p className="mt-6 rounded-2xl bg-slate-100 p-4 text-sm text-slate-600">Marketplace service fees or commissions are separate from Business software plans and must be shown before a paid transaction.</p>
+        <div className="mt-14">
+          <p className="eyebrow">Current platform fees</p>
+          <h2 className="mt-3 text-3xl font-bold text-slate-950">What each side pays today</h2>
+          <p className="mt-3 max-w-3xl text-sm leading-relaxed text-slate-600">Earnova shows customer-side and provider-side charges separately. The fee displayed and accepted at transaction time is saved with that transaction even if an administrator changes the schedule later.</p>
+          <CurrentFeeSchedule />
+        </div>
       </section>
     </>
   )
 }
-

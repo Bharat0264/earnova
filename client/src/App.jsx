@@ -94,6 +94,7 @@ function AppRoutes() {
           <Route path="marketplace" element={<MarketplacePage />} />
           <Route path="projects" element={<ProjectsPage />} />
           <Route path="pricing" element={<PricingPage />} />
+          <Route path="fees" element={<PricingPage />} />
           <Route path="about" element={<CompanyPage page="about" />} />
           <Route path="contact" element={<CompanyPage page="contact" />} />
           <Route path="privacy" element={<CompanyPage page="privacy" />} />

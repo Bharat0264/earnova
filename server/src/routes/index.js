@@ -18,6 +18,7 @@ import caOfficeRoutes from './caOfficeRoutes.js'
 import helpRoutes from './helpRoutes.js'
 import supportRoutes from './supportRoutes.js'
 import privateFileRoutes from './privateFileRoutes.js'
+import platformFeeRoutes from './platformFeeRoutes.js'
 
 const router = Router()
 
@@ -41,5 +42,6 @@ router.use('/ca-office', caOfficeRoutes)
 router.use('/help', helpRoutes)
 router.use('/support', supportRoutes)
 router.use('/private-files', privateFileRoutes)
+router.use('/fees', platformFeeRoutes)
 
 export default router

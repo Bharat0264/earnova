@@ -4,13 +4,7 @@ import FreelancerProfile from '../models/FreelancerProfile.js'
 import FreelanceJob from '../models/FreelanceJob.js'
 import User from '../models/User.js'
 import { sendFreelanceJobPostedEmail } from '../utils/email.js'
-
-const DEFAULT_SERVICE_FEE_RATE = 10
-const HIGH_VALUE_SERVICE_FEE_RATE = 1.5
-const HIGH_VALUE_SERVICE_FEE_THRESHOLD = 2500
-
-const getServiceFeeRate = amount =>
-  amount > HIGH_VALUE_SERVICE_FEE_THRESHOLD ? HIGH_VALUE_SERVICE_FEE_RATE : DEFAULT_SERVICE_FEE_RATE
+import { calculateFeeAmount, getCurrentPlatformFee } from '../services/platformFees.js'
 
 const cleanSkills = (value) => {
   const values = Array.isArray(value) ? value : String(value || '').split(',')
@@ -91,15 +85,29 @@ export const createJob = async (req, res) => {
     }
 
     const isAdminClient = req.user?.role === 'admin'
-    const serviceFeeRate = isAdminClient ? 0 : getServiceFeeRate(freelancerAmount)
-    const serviceFee = isAdminClient ? 0 : Math.round(freelancerAmount * serviceFeeRate / 100)
+    const feeSetting = await getCurrentPlatformFee('freelance')
+    const customerFee = isAdminClient ? { type: 'percentage', value: 0 } : feeSetting.customerFee
+    const providerFee = isAdminClient ? { type: 'percentage', value: 0 } : feeSetting.providerFee
+    const serviceFee = calculateFeeAmount(freelancerAmount, customerFee)
+    const providerPlatformFee = calculateFeeAmount(freelancerAmount, providerFee)
+    if (providerPlatformFee >= freelancerAmount) {
+      return res.status(400).json({ success: false, message: 'The current freelancer-side platform fee leaves no provider payout. Ask an administrator to correct it.' })
+    }
+    const providerPayoutAmount = freelancerAmount - providerPlatformFee
     const job = await FreelanceJob.create({
       ...req.body,
       client: req.user._id,
       skills: cleanSkills(req.body.skills),
       freelancerAmount,
-      serviceFeeRate,
+      serviceFeeRate: customerFee.type === 'percentage' ? customerFee.value : 0,
       serviceFee,
+      feeSettingVersion: feeSetting.version,
+      customerPlatformFeeType: customerFee.type,
+      customerPlatformFeeValue: customerFee.value,
+      providerPlatformFeeType: providerFee.type,
+      providerPlatformFeeValue: providerFee.value,
+      providerPlatformFee,
+      providerPayoutAmount,
       totalPayable: freelancerAmount + serviceFee,
       paymentStatus: isAdminClient ? 'admin-waived' : 'pending',
       status: isAdminClient ? 'open' : 'awaiting-payment',
@@ -224,7 +232,8 @@ export const releaseCompletedJob = async (req, res) => {
       return res.json({ success: true, job, message: 'Freelancer wallet was already credited.' })
     }
     if (!claimed) return res.status(409).json({ success: false, message: 'Payment release is already being processed.' })
-    await User.findByIdAndUpdate(profile.user, { $inc: { walletBalance: job.freelancerAmount } })
+    const providerPayoutAmount = job.providerPayoutAmount ?? Math.max(0, job.freelancerAmount - (job.providerPlatformFee || 0))
+    await User.findByIdAndUpdate(profile.user, { $inc: { walletBalance: providerPayoutAmount } })
     job.payoutCreditedAt = payoutTime
 
     job.paymentStatus = 'released'
@@ -233,7 +242,7 @@ export const releaseCompletedJob = async (req, res) => {
     job.releasedAt = new Date()
     job.statusHistory.push({
       status: 'completed',
-      note: `₹${job.freelancerAmount.toLocaleString('en-IN')} marked as released to the freelancer.`,
+      note: `₹${providerPayoutAmount.toLocaleString('en-IN')} marked as released to the freelancer after the snapshotted provider platform fee.`,
     })
     await job.save()
     res.json({ success: true, job, message: 'Freelancer payment released and credited to the wallet.' })

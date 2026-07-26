@@ -21,6 +21,7 @@ import {
 } from '../controllers/adminCAAndSupportController.js'
 
 import { protect, adminOnly } from '../middleware/auth.js'
+import { getPlatformFees, updatePlatformFee } from '../controllers/platformFeeController.js'
 
 const router = Router()
 
@@ -29,6 +30,8 @@ router.use(protect, adminOnly)
 
 /* Dashboard */
 router.get('/stats', getDashboardStats)
+router.get('/fee-settings', getPlatformFees)
+router.patch('/fee-settings/:serviceKey', updatePlatformFee)
 
 /* Users */
 router.get('/users', getAdminUsers)
