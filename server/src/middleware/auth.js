@@ -73,6 +73,14 @@ export const dealerOrAdmin = (req, res, next) => {
   next()
 }
 
+export const supportAgentOnly = (req, res, next) => {
+  if (req.user?.role === 'admin') return next()
+  const access = req.user?.featureAccess
+  const allowed = access instanceof Map ? access.get('supportAgent') : access?.supportAgent
+  if (!allowed) return res.status(403).json({ success: false, message: 'Support-agent access required.' })
+  next()
+}
+
 /**
  * optionalAuth — attaches user if token is present, otherwise continues
  */

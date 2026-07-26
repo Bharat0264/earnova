@@ -143,6 +143,8 @@ export const APP_NAV_LINKS = [
   { label: 'Business AI', to: '/app/ai' },
   { label: 'Orders', to: '/app/orders' },
   { label: 'Services', to: '/app/services' },
+  { label: 'CA Office', to: '/app/ca' },
+  { label: 'Support', to: '/app/support' },
   { label: 'Referrals', to: '/app/referrals' },
   { label: 'Notifications', to: '/app/notifications' },
   { label: 'Settings', to: '/app/settings' },

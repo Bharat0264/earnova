@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom'
 import { Mail, MapPin } from 'lucide-react'
 
 const GROUPS = [
-  ['Company', [['About', '/about'], ['Pricing', '/pricing'], ['Contact', '/contact'], ['Investors', '/investors']]],
+  ['Company', [['About', '/about'], ['Pricing', '/pricing'], ['Contact', '/contact'], ['Help Centre', '/help']]],
   ['Shopping', [['All products', '/products'], ['Solar products', '/products?category=solar-panels'], ['Projects', '/projects'], ['B2B orders', '/b2b']]],
   ['Services', [['All services', '/services'], ['Freelancers', '/services/freelancers'], ['CA & tax', '/services/ca'], ['Consulting', '/services/business-consulting']]],
   ['Business & Earn', [['Business workspace', '/app/overview'], ['Business AI', '/business-ai'], ['Energy', '/energy'], ['Earn & Partner', '/referral']]],

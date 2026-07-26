@@ -14,6 +14,10 @@ import businessWorkspaceRoutes from './businessWorkspaceRoutes.js'
 import serviceOverviewRoutes from './serviceOverviewRoutes.js'
 import businessRoutes from './businessRoutes.js'
 import operationsRoutes from './operationsRoutes.js'
+import caOfficeRoutes from './caOfficeRoutes.js'
+import helpRoutes from './helpRoutes.js'
+import supportRoutes from './supportRoutes.js'
+import privateFileRoutes from './privateFileRoutes.js'
 
 const router = Router()
 
@@ -33,5 +37,9 @@ router.use('/business-workspace', businessWorkspaceRoutes)
 router.use('/services', serviceOverviewRoutes)
 router.use('/businesses', businessRoutes)
 router.use('/operations', operationsRoutes)
+router.use('/ca-office', caOfficeRoutes)
+router.use('/help', helpRoutes)
+router.use('/support', supportRoutes)
+router.use('/private-files', privateFileRoutes)
 
 export default router

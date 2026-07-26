@@ -5,6 +5,7 @@ import { APP_NAV_LINKS } from '../config/navigation'
 import { useAuth } from '../context/AuthContext'
 import { useBusiness } from '../context/BusinessContext'
 import PageMeta from '../components/common/PageMeta'
+import GetHelp from '../components/support/GetHelp'
 
 export default function AppLayout() {
   const [open, setOpen] = useState(false)
@@ -71,6 +72,7 @@ export default function AppLayout() {
           <Outlet />
         </main>
       </div>
+      <GetHelp />
     </div>
   )
 }

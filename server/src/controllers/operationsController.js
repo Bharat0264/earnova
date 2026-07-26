@@ -1,13 +1,15 @@
-import crypto from 'crypto'
 import ProviderProfile from '../models/ProviderProfile.js'
 import ServiceRequest from '../models/ServiceRequest.js'
 import EnergyEnquiry from '../models/EnergyEnquiry.js'
 import Notification from '../models/Notification.js'
 import SupportTicket from '../models/SupportTicket.js'
+import SupportTicketMessage from '../models/SupportTicketMessage.js'
+import SupportStatusHistory from '../models/SupportStatusHistory.js'
 import AuditLog from '../models/AuditLog.js'
 import PlatformEvent from '../models/PlatformEvent.js'
 import Plan from '../models/Plan.js'
 import BusinessSubscription from '../models/BusinessSubscription.js'
+import { createPublicReference } from '../utils/references.js'
 
 const providerTypes = ['freelancer', 'ca_consultant', 'business_consultant', 'project_seller', 'energy_partner']
 const money = value => Number.isFinite(Number(value)) && Number(value) >= 0 ? Math.round(Number(value)) : null
@@ -215,21 +217,27 @@ export const listMyTickets = async (req, res) => {
 export const createTicket = async (req, res) => {
   if (!req.body.category || !req.body.subject || !req.body.description) return res.status(400).json({ success: false, message: 'Category, subject and description are required.' })
   const ticket = await SupportTicket.create({
-    ticketNumber: `SUP-${Date.now().toString(36).toUpperCase()}-${crypto.randomBytes(2).toString('hex').toUpperCase()}`,
+    ticketNumber: createPublicReference('SUP'),
     user: req.user._id,
-    category: req.body.category,
+    serviceCategory: req.body.category === 'account' ? 'account' : 'business',
+    issueCategory: 'Other',
+    supportQueue: req.body.category === 'account' ? 'account_support' : 'business_workspace_support',
     priority: req.body.priority || 'normal',
     subject: req.body.subject,
     description: req.body.description,
   })
+  await Promise.all([
+    SupportTicketMessage.create({ ticket: ticket._id, author: req.user._id, authorType: 'customer', message: req.body.description }),
+    SupportStatusHistory.create({ ticket: ticket._id, previousStatus: null, newStatus: 'submitted', changedBy: req.user._id, actorRole: 'customer', reason: 'Support request submitted.', customerVisible: true }),
+  ])
   res.status(201).json({ success: true, ticket })
 }
 
 export const replyToTicket = async (req, res) => {
   const ticket = await SupportTicket.findOne({ _id: req.params.id, user: req.user._id, status: { $ne: 'closed' } })
   if (!ticket || !String(req.body.message || '').trim()) return res.status(400).json({ success: false, message: 'Open ticket and reply are required.' })
-  ticket.replies.push({ author: req.user._id, message: req.body.message, internal: false })
-  ticket.status = 'open'
+  await SupportTicketMessage.create({ ticket: ticket._id, author: req.user._id, authorType: 'customer', message: req.body.message })
+  ticket.status = 'reopened'
   await ticket.save()
   res.json({ success: true, ticket })
 }

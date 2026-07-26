@@ -14,6 +14,11 @@ import {
   updateAdminProjectListing
 } from '../controllers/adminController.js'
 import { getPlatformAnalytics, listAdminOperations, updateAdminOperation } from '../controllers/adminOperationsController.js'
+import {
+  adminAddFirmMember, adminAssignCaseFirm, adminCAAuditLogs, adminCreateFirm, adminGetSupportTicket,
+  adminListCACases, adminListCAServices, adminListFirmMembers, adminListFirms,
+  adminListSupportTickets, adminSupportDashboard, adminUpdateFirm,
+} from '../controllers/adminCAAndSupportController.js'
 
 import { protect, adminOnly } from '../middleware/auth.js'
 
@@ -47,5 +52,30 @@ router.patch('/project-listings/:id', updateAdminProjectListing)
 router.get('/platform-analytics', getPlatformAnalytics)
 router.get('/operations/:resource', listAdminOperations)
 router.patch('/operations/:resource/:id', updateAdminOperation)
+
+router.get('/ca/firms', adminListFirms)
+router.post('/ca/firms', adminCreateFirm)
+router.patch('/ca/firms/:id', adminUpdateFirm)
+router.post('/ca/firms/:id/members', adminAddFirmMember)
+router.get('/ca/professionals', adminListFirmMembers)
+router.get('/ca/verifications', adminListFirmMembers)
+router.get('/ca/services', adminListCAServices)
+router.get('/ca/cases', adminListCACases)
+router.patch('/ca/cases/:id/firm', adminAssignCaseFirm)
+router.get('/ca/escalations', adminListCACases)
+router.get('/ca/payments', adminListCACases)
+router.get('/ca/reviews', adminListCACases)
+router.get('/ca/audit-logs', adminCAAuditLogs)
+
+router.get('/support', adminSupportDashboard)
+router.get('/support/tickets', adminListSupportTickets)
+router.get('/support/tickets/:id', adminGetSupportTicket)
+router.get('/support/queues', adminSupportDashboard)
+router.get('/support/agents', adminListSupportTickets)
+router.get('/support/escalations', adminListSupportTickets)
+router.get('/support/categories', adminSupportDashboard)
+router.get('/support/articles', adminSupportDashboard)
+router.get('/support/reports', adminSupportDashboard)
+router.get('/support/settings', adminSupportDashboard)
 
 export default router

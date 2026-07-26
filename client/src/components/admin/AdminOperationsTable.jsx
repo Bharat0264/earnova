@@ -5,7 +5,7 @@ const STATUS_OPTIONS = {
   providers: ['pending', 'verified', 'rejected', 'suspended'],
   services: ['open', 'proposal_received', 'accepted', 'in_progress', 'submitted', 'revision_requested', 'completed', 'cancelled', 'disputed'],
   energy: ['new', 'reviewing', 'partner_assigned', 'quote_ready', 'contacted', 'closed', 'cancelled'],
-  support: ['open', 'in_progress', 'waiting_for_customer', 'resolved', 'closed'],
+  support: ['submitted', 'under_review', 'assigned', 'more_information_required', 'waiting_for_customer', 'waiting_for_provider', 'waiting_for_ca_firm', 'waiting_for_payment_review', 'escalated', 'resolved', 'closed', 'reopened', 'rejected_as_duplicate', 'spam_or_abuse'],
   subscriptions: ['trialing', 'active', 'past_due', 'cancelled', 'expired'],
   referrals: ['pending', 'approved', 'reversed'],
 }

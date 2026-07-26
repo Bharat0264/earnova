@@ -5,6 +5,8 @@ import ProviderProfile from '../models/ProviderProfile.js'
 import ServiceRequest from '../models/ServiceRequest.js'
 import EnergyEnquiry from '../models/EnergyEnquiry.js'
 import SupportTicket from '../models/SupportTicket.js'
+import SupportTicketMessage from '../models/SupportTicketMessage.js'
+import SupportInternalNote from '../models/SupportInternalNote.js'
 import BusinessSubscription from '../models/BusinessSubscription.js'
 import AuditLog from '../models/AuditLog.js'
 import PlatformEvent from '../models/PlatformEvent.js'
@@ -70,7 +72,11 @@ export const updateAdminOperation = async (req, res) => {
     if (item) {
       if (req.body.status) item.status = req.body.status
       if (req.body.assignedAgent) item.assignedAgent = req.body.assignedAgent
-      if (req.body.reply) item.replies.push({ author: req.user._id, message: req.body.reply, internal: Boolean(req.body.internal) })
+      if (req.body.reply && req.body.internal) {
+        await SupportInternalNote.create({ ticket: item._id, author: req.user._id, note: req.body.reply })
+      } else if (req.body.reply) {
+        await SupportTicketMessage.create({ ticket: item._id, author: req.user._id, authorType: 'agent', message: req.body.reply })
+      }
       await item.save()
     }
     summary = `Support ticket updated to ${item?.status || 'unknown'}.`

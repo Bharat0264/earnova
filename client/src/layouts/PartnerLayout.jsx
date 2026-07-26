@@ -1,6 +1,7 @@
 import { Link, NavLink, Outlet } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import PageMeta from '../components/common/PageMeta'
+import GetHelp from '../components/support/GetHelp'
 
 const LINKS = [
   ['Overview', '/partner/overview'],
@@ -9,6 +10,7 @@ const LINKS = [
   ['Requests', '/partner/requests'],
   ['Earnings', '/partner/earnings'],
   ['Reviews', '/partner/reviews'],
+  ['Support', '/partner/support'],
   ['Settings', '/partner/settings'],
 ]
 
@@ -32,6 +34,7 @@ export default function PartnerLayout() {
         </nav>
         <Outlet />
       </div>
+      <GetHelp />
     </div>
   )
 }

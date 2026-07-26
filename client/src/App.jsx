@@ -9,6 +9,7 @@ import FeatureGate from './components/common/FeatureGate'
 import PublicLayout from './layouts/PublicLayout'
 import AppLayout from './layouts/AppLayout'
 import PartnerLayout from './layouts/PartnerLayout'
+import FirmLayout from './layouts/FirmLayout'
 
 const HomePage = lazy(() => import('./pages/HomePage'))
 const PublicPage = lazy(() => import('./pages/PublicPage'))
@@ -42,6 +43,16 @@ const CAServicesPage = lazy(() => import('./pages/CAServicesPage'))
 const InvestorsPage = lazy(() => import('./pages/InvestorsPage'))
 const ProjectsPage = lazy(() => import('./pages/ProjectsPage'))
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'))
+const CAServiceDetailPage = lazy(() => import('./pages/CAServiceDetailPage'))
+const CAFirmPage = lazy(() => import('./pages/CAFirmPage'))
+const CAInfoPage = lazy(() => import('./pages/CAInfoPage'))
+const CAWorkspacePage = lazy(() => import('./pages/CAWorkspacePage'))
+const CACasePage = lazy(() => import('./pages/CACasePage'))
+const FirmWorkspacePage = lazy(() => import('./pages/FirmWorkspacePage'))
+const FirmCasePage = lazy(() => import('./pages/FirmCasePage'))
+const HelpCenterPage = lazy(() => import('./pages/HelpCenterPage'))
+const SupportPage = lazy(() => import('./pages/SupportPage'))
+const AdminDomainPage = lazy(() => import('./pages/AdminDomainPage'))
 
 const APP_MODULES = {
   sales: 'Record, search, filter and export authorized sales.',
@@ -72,6 +83,12 @@ function AppRoutes() {
           <Route path="services" element={<PublicPage page="services" />} />
           <Route path="services/freelancers" element={<FreelancePage />} />
           <Route path="services/ca" element={<CAServicesPage />} />
+          <Route path="services/ca/firm/:firmSlug" element={<CAFirmPage />} />
+          <Route path="services/ca/book-consultation" element={<CAInfoPage page="book-consultation" />} />
+          <Route path="services/ca/pricing" element={<CAInfoPage page="pricing" />} />
+          <Route path="services/ca/how-it-works" element={<CAInfoPage page="how-it-works" />} />
+          <Route path="services/ca/faq" element={<CAInfoPage page="faq" />} />
+          <Route path="services/ca/:serviceSlug" element={<CAServiceDetailPage />} />
           <Route path="services/business-consulting" element={<PublicPage page="consulting" />} />
           <Route path="energy" element={<EnergySolutionsPage />} />
           <Route path="marketplace" element={<MarketplacePage />} />
@@ -98,6 +115,12 @@ function AppRoutes() {
           <Route path="forbidden" element={<AccessPage forbidden />} />
           <Route path="account" element={<AccountPage />} />
           <Route path="referral" element={<ReferralPage />} />
+          <Route path="help" element={<HelpCenterPage />} />
+          {['account', 'business', 'ca', 'freelancing', 'orders', 'projects', 'energy', 'payments', 'referrals', 'privacy-security', 'report-abuse'].map(category => (
+            <Route key={category} path={`help/${category}`} element={<HelpCenterPage category={category} />} />
+          ))}
+          <Route path="help/article/:articleSlug" element={<HelpCenterPage article />} />
+          <Route path="help/contact" element={<HelpCenterPage contact />} />
           <Route path="freelance" element={<Navigate to="/services/freelancers" replace />} />
           <Route path="ca-services" element={<Navigate to="/services/ca" replace />} />
           <Route path="energy-solutions" element={<Navigate to="/energy" replace />} />
@@ -116,6 +139,15 @@ function AppRoutes() {
             ))}
             <Route path="ai" element={<BusinessAIPage />} />
             <Route path="services" element={<AppOperationsPage module="services" />} />
+            <Route path="ca" element={<CAWorkspacePage mode="overview" />} />
+            <Route path="ca/cases" element={<CAWorkspacePage mode="cases" />} />
+            <Route path="ca/cases/:caseId" element={<CACasePage />} />
+            {['consultations', 'documents', 'compliance-calendar', 'payments', 'completed', 'settings'].map(path => (
+              <Route key={`ca-${path}`} path={`ca/${path}`} element={<CAWorkspacePage mode={path} />} />
+            ))}
+            <Route path="support" element={<SupportPage />} />
+            <Route path="support/new" element={<SupportPage mode="new" />} />
+            <Route path="support/:ticketId" element={<SupportPage mode="detail" />} />
             <Route path="notifications" element={<AppOperationsPage module="notifications" />} />
             <Route path="settings" element={<AppOperationsPage module="settings" />} />
             {Object.entries(APP_MODULES).filter(([path]) => !['sales', 'customers', 'leads', 'inventory', 'invoices', 'expenses', 'analytics', 'ai', 'services', 'notifications', 'settings'].includes(path)).map(([path, description]) => (
@@ -130,10 +162,31 @@ function AppRoutes() {
             {['overview', 'listings', 'orders', 'requests', 'earnings', 'reviews', 'settings'].map(path => (
               <Route key={path} path={path} element={<PartnerPage title={path[0].toUpperCase() + path.slice(1)} />} />
             ))}
+            <Route path="support" element={<SupportPage />} />
+          </Route>
+        </Route>
+
+        <Route element={<ProtectedRoute />}>
+          <Route path="firm" element={<FirmLayout />}>
+            <Route index element={<FirmWorkspacePage mode="overview" />} />
+            <Route path="cases" element={<FirmWorkspacePage mode="cases" />} />
+            <Route path="cases/:caseId" element={<FirmCasePage />} />
+            {['clients', 'team', 'tasks', 'documents', 'consultations', 'services', 'quotes', 'billing', 'reports', 'support', 'settings'].map(path => (
+              <Route key={path} path={path} element={<FirmWorkspacePage mode={path} />} />
+            ))}
           </Route>
         </Route>
 
         <Route element={<ProtectedRoute adminOnly />}>
+          <Route path="admin/support" element={<AdminDomainPage domain="support" />} />
+          <Route path="admin/support/tickets" element={<AdminDomainPage domain="support" />} />
+          <Route path="admin/support/tickets/:ticketId" element={<AdminDomainPage domain="support" />} />
+          {['queues', 'agents', 'escalations', 'categories', 'articles', 'reports', 'settings'].map(path => (
+            <Route key={`admin-support-${path}`} path={`admin/support/${path}`} element={<AdminDomainPage domain="support" />} />
+          ))}
+          {['firms', 'professionals', 'verifications', 'services', 'cases', 'escalations', 'payments', 'reviews', 'audit-logs'].map(path => (
+            <Route key={`admin-ca-${path}`} path={`admin/ca/${path}`} element={<AdminDomainPage domain="ca" />} />
+          ))}
           <Route path="admin/*" element={<AdminPage />} />
         </Route>
       </Routes>

@@ -1,515 +1,78 @@
-import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { BadgeCheck, Briefcase, Calculator, ClipboardCheck, FileCheck2, FileText, Link as LinkIcon, MapPin, Send, ShieldCheck, UserRound, Wallet } from 'lucide-react'
-import AuthModal from '../components/auth/AuthModal'
-import WithdrawalModal from '../components/referral/WithdrawalModal'
-import { useAuth } from '../context/AuthContext'
-import { useCart } from '../context/CartContext'
+import { useEffect, useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
+import {
+  ArrowRight, BadgeCheck, Briefcase, CalendarClock, CheckCircle2, FileLock2,
+  HelpCircle, Search, ShieldCheck, UsersRound,
+} from 'lucide-react'
+import PageMeta from '../components/common/PageMeta'
 import { api } from '../utils/api'
-import { formatDate, formatPrice } from '../utils/formatters'
 
-const INCOME_SOURCES = ['Salary', 'Business', 'Capital gains', 'Rental income', 'Foreign income', 'Interest income', 'Freelance income']
-const CA_SPECIALIZATIONS = ['ITR filing', 'GST', 'TDS', 'Bookkeeping', 'Audit support', 'Tax notices', 'Business compliance', 'Financial statements']
-const CA_SERVICE_PACKAGES = [
-  { key: 'simple-salaried', label: 'Simple salaried', detail: 'For salary income, Form 16 and basic deductions.' },
-  { key: 'investors-traders', label: 'Investors & Traders', detail: 'For capital gains, trading reports and investment income.' },
-  { key: 'freelancers-small-business', label: 'Freelancers & Small Business', detail: 'For freelance income, small business books and deductions.' },
-  { key: 'corporate-tax-audits', label: 'Corporate and Tax Audits', detail: 'For companies, statutory compliance and audit support.' },
+const PROCESS = [
+  ['Choose a service', 'Review eligibility, included work, documents, pricing basis and handling-time estimate.'],
+  ['Submit requirements', 'Describe the work and select an available verified partner firm when appropriate.'],
+  ['Complete the next action', 'Consult, approve a quote, pay or upload documents only when the case requests it.'],
+  ['Track and receive work', 'Follow case progress, respond to corrections and receive secure deliverables.'],
 ]
-const EARNOVA_CA_FEE = 49
-const REQUIRED_DOCUMENTS = {
-  'simple-salaried': ['PAN card', 'Form 16', 'AIS/TIS statement', 'Bank statement'],
-  'investors-traders': ['PAN card', 'AIS/TIS statement', 'Capital gains statement', 'Broker tax P&L', 'Bank statement'],
-  'freelancers-small-business': ['PAN card', 'AIS/TIS statement', 'Bank statement', 'Income and expense statement', 'GST returns or invoices'],
-  'corporate-tax-audits': ['PAN card', 'Financial statements', 'Bank statement', 'GST returns', 'Previous audit report', 'Company registration proof'],
-}
-
-const inputClass = 'input-base text-sm'
-const emptyClientForm = {
-  clientName: '',
-  clientEmail: '',
-  clientWhatsapp: '',
-  clientType: 'individual',
-  pan: '',
-  aadhaarLast4: '',
-  assessmentYear: '2026-27',
-  filingType: 'itr-filing',
-  servicePackage: 'simple-salaried',
-  selectedCA: '',
-  incomeSources: [],
-  salaryEmployer: '',
-  form16Available: false,
-  bankInterest: '',
-  capitalGains: '',
-  rentalIncome: '',
-  businessIncome: '',
-  foreignIncome: '',
-  deductions80C: '',
-  deductions80D: '',
-  homeLoanInterest: '',
-  otherDeductions: '',
-  gstin: '',
-  turnover: '',
-  booksMaintained: false,
-  documents: [],
-  notes: '',
-}
-const emptyCAForm = {
-  name: '',
-  email: '',
-  whatsapp: '',
-  phone: '',
-  dateOfBirth: '',
-  gender: '',
-  address: '',
-  pincode: '',
-  city: '',
-  state: '',
-  firmName: '',
-  membershipNumber: '',
-  qualification: '',
-  yearsExperience: '',
-  languages: '',
-  professionalBio: '',
-  specializations: [],
-  servicesOffered: [],
-  govtIdType: 'Aadhaar',
-  idCardUrl: '',
-  govtIdUrl: '',
-  caCertificateUrl: '',
-  practiceProofUrl: '',
-  consentToVerify: false,
-  pricing: CA_SERVICE_PACKAGES.map(item => ({ servicePackage: item.key, charge: '' })),
-}
-
-function ToggleGroup({ options, value, onChange }) {
-  const selected = new Set(value)
-  const toggle = item => {
-    const next = new Set(selected)
-    if (next.has(item)) next.delete(item)
-    else next.add(item)
-    onChange([...next])
-  }
-
-  return (
-    <div className="flex flex-wrap gap-2">
-      {options.map(item => (
-        <button
-          key={item}
-          type="button"
-          onClick={() => toggle(item)}
-          className={`px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all ${
-            selected.has(item) ? 'bg-primary-700 text-white border-primary-700' : 'border-gray-200 text-gray-600 hover:border-primary-200'
-          }`}
-        >
-          {item}
-        </button>
-      ))}
-    </div>
-  )
-}
-
-function CAWorkDesk({ isAuthenticated, profile, jobs, withdrawals, walletBalance, totalEarned, loading, completionForms, onChangeCompletion, onSubmitWork, onWithdraw }) {
-  if (!isAuthenticated) {
-    return (
-      <div className="bg-white border border-gray-100 rounded-2xl shadow-card p-5">
-        <p className="text-xs font-bold text-eco-700 uppercase tracking-wide">For assigned CAs</p>
-        <h2 className="font-display font-bold text-xl text-gray-900 mt-1">CA work desk</h2>
-        <p className="text-sm text-gray-500 mt-1">Log in after admin verification to view assigned client details and submit completed work.</p>
-      </div>
-    )
-  }
-
-  const verified = profile?.status === 'verified'
-  const activeJobs = jobs.filter(job => job.status !== 'completed' && job.status !== 'cancelled')
-
-  return (
-    <div className="bg-white border border-gray-100 rounded-2xl shadow-card p-5 space-y-4">
-      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
-        <div>
-          <p className="text-xs font-bold text-eco-700 uppercase tracking-wide">For assigned CAs</p>
-          <h2 className="font-display font-bold text-xl text-gray-900 mt-1">CA work desk</h2>
-          <p className="text-sm text-gray-500 mt-1">
-            {verified
-              ? 'View client details, complete assigned work, and withdraw credited payouts.'
-              : profile
-                ? `Profile status: ${profile.status}. Admin verification is required before work is visible.`
-                : 'Submit your CA profile below. Admin verification is required before work is assigned.'}
-          </p>
-        </div>
-        {verified && walletBalance >= 100 && (
-          <button type="button" onClick={onWithdraw} className="btn-primary justify-center text-sm">
-            <Wallet className="w-4 h-4" />
-            Withdraw {formatPrice(walletBalance)}
-          </button>
-        )}
-      </div>
-
-      {verified && (
-        <>
-          <div className="grid sm:grid-cols-3 gap-3">
-            {[
-              ['Wallet', formatPrice(walletBalance)],
-              ['Total earned', formatPrice(totalEarned || 0)],
-              ['Active jobs', activeJobs.length],
-            ].map(([label, value]) => (
-              <div key={label} className="rounded-xl border border-gray-100 bg-gray-50 p-3">
-                <p className="text-[11px] font-bold uppercase tracking-wide text-gray-400">{label}</p>
-                <p className="font-display font-bold text-lg text-gray-900 mt-1">{loading ? '...' : value}</p>
-              </div>
-            ))}
-          </div>
-
-          <div className="space-y-3">
-            {loading ? (
-              <div className="h-24 rounded-xl bg-gray-100 animate-pulse" />
-            ) : jobs.length === 0 ? (
-              <div className="rounded-xl border border-dashed border-gray-200 p-4 text-sm text-gray-500">
-                No assigned CA work yet.
-              </div>
-            ) : jobs.map(job => {
-              const form = completionForms[job._id] || {}
-              const completed = job.status === 'completed'
-              return (
-                <div key={job._id} className="rounded-xl border border-gray-100 p-4 space-y-3">
-                  <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
-                    <div>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <p className="font-display font-bold text-gray-900">{job.clientName}</p>
-                        <span className="text-[10px] font-bold rounded-full bg-primary-50 text-primary-700 px-2 py-0.5">{job.status?.replaceAll('-', ' ')}</span>
-                        <span className="text-[10px] font-bold rounded-full bg-eco-50 text-eco-700 px-2 py-0.5">{job.paymentStatus}</span>
-                      </div>
-                      <p className="text-xs text-gray-500 mt-1">{job.jobId} · {job.serviceLabel} · {formatDate(job.createdAt)}</p>
-                    </div>
-                    <p className="font-bold text-eco-700">{formatPrice(job.caPayoutAmount || 0)}</p>
-                  </div>
-
-                  <div className="grid sm:grid-cols-2 gap-3 text-xs text-gray-600">
-                    <div className="rounded-lg bg-gray-50 p-3">
-                      <p className="font-bold text-gray-400 mb-1">Client details</p>
-                      <p>{job.clientEmail}</p>
-                      <p>{job.clientWhatsapp}</p>
-                      <p>PAN {job.pan} · AY {job.assessmentYear}</p>
-                      <p>Income: {job.incomeSources?.join(', ') || 'Not set'}</p>
-                    </div>
-                    <div className="rounded-lg bg-gray-50 p-3">
-                      <p className="font-bold text-gray-400 mb-1">Documents</p>
-                      <div className="flex flex-wrap gap-2">
-                        {(job.documents || []).length
-                          ? job.documents.map(doc => (
-                              <a key={`${doc.label}-${doc.url}`} href={doc.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-semibold text-primary-700">
-                                <LinkIcon className="w-3 h-3" />
-                                {doc.label}
-                              </a>
-                            ))
-                          : <span className="text-gray-400">No links submitted.</span>}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="rounded-lg bg-gray-50 p-3 text-xs text-gray-600">
-                    <p className="font-bold text-gray-400 mb-1">Client notes</p>
-                    <p className="whitespace-pre-wrap">{job.notes || 'No notes provided.'}</p>
-                  </div>
-
-                  {!completed ? (
-                    <div className="space-y-2">
-                      <textarea
-                        className="input-base min-h-[72px] text-sm"
-                        placeholder="Completion notes, acknowledgement number, filing summary, or next steps"
-                        value={form.notes || ''}
-                        onChange={event => onChangeCompletion(job._id, 'notes', event.target.value)}
-                      />
-                      <div className="grid sm:grid-cols-[0.8fr_1.2fr] gap-2">
-                        <input className="input-base text-sm" placeholder="Proof label" value={form.documentLabel || ''} onChange={event => onChangeCompletion(job._id, 'documentLabel', event.target.value)} />
-                        <input className="input-base text-sm" placeholder="Completed form / proof URL" value={form.documentUrl || ''} onChange={event => onChangeCompletion(job._id, 'documentUrl', event.target.value)} />
-                      </div>
-                      <button type="button" onClick={() => onSubmitWork(job)} className="btn-primary justify-center w-full text-sm">
-                        <Send className="w-4 h-4" />
-                        Submit completed work and credit wallet
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="rounded-lg bg-eco-50 text-eco-700 px-3 py-2 text-xs font-bold">
-                      Completed. Payout credited {job.caPayoutCreditedAt ? formatDate(job.caPayoutCreditedAt) : 'to wallet'}.
-                    </div>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-
-          {withdrawals.length > 0 && (
-            <div>
-              <p className="text-xs font-bold text-gray-500 mb-2">CA withdrawal requests</p>
-              <div className="space-y-2">
-                {withdrawals.slice(0, 4).map(wd => (
-                  <div key={wd._id} className="flex items-center justify-between rounded-xl bg-gray-50 px-3 py-2 text-xs">
-                    <span className="font-semibold text-gray-800">{formatPrice(wd.amount)} · {wd.upiId}</span>
-                    <span className="font-bold capitalize text-primary-700">{wd.status}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </>
-      )}
-    </div>
-  )
-}
 
 export default function CAServicesPage() {
-  const { isAuthenticated, user, updateUser } = useAuth()
-  const { addToCart } = useCart()
-  const navigate = useNavigate()
-  const [showAuth, setShowAuth] = useState(false)
-  const [clientForm, setClientForm] = useState(() => ({
-    ...emptyClientForm,
-    clientName: user?.name || '',
-    clientEmail: user?.email || '',
-    clientWhatsapp: user?.phone || '',
-  }))
-  const [caForm, setCAForm] = useState(() => ({
-    ...emptyCAForm,
-    name: user?.name || '',
-    email: user?.email || '',
-    whatsapp: user?.phone || '',
-  }))
-  const [submitting, setSubmitting] = useState(null)
-  const [message, setMessage] = useState('')
-  const [createdJob, setCreatedJob] = useState(null)
-  const [paymentDone, setPaymentDone] = useState(false)
-  const [caWork, setCAWork] = useState({ profile: null, jobs: [], withdrawals: [], walletBalance: 0, totalEarned: 0 })
-  const [caWorkLoading, setCAWorkLoading] = useState(false)
-  const [completionForms, setCompletionForms] = useState({})
-  const [showCAWithdrawal, setShowCAWithdrawal] = useState(false)
-  const [publicCAs, setPublicCAs] = useState([])
-  const [profilesLoading, setProfilesLoading] = useState(true)
-  const [clientDetailsReady, setClientDetailsReady] = useState(false)
-  const [documentFiles, setDocumentFiles] = useState({})
-  const selectedPackage = CA_SERVICE_PACKAGES.find(item => item.key === clientForm.servicePackage) || CA_SERVICE_PACKAGES[0]
-  const selectedCA = publicCAs.find(profile => profile._id === clientForm.selectedCA)
-  const selectedCharge = selectedCA?.pricing?.find(item => item.servicePackage === clientForm.servicePackage)?.charge || 0
-
-  const requireLogin = () => {
-    if (isAuthenticated) return false
-    setShowAuth(true)
-    return true
-  }
-
-  const loadCAWork = async () => {
-    if (!isAuthenticated) return
-    setCAWorkLoading(true)
-    try {
-      const res = await api.get('/ca/work/me')
-      setCAWork({
-        profile: res.profile || null,
-        jobs: res.jobs || [],
-        withdrawals: res.withdrawals || [],
-        walletBalance: res.walletBalance || 0,
-        totalEarned: res.totalEarned || 0,
-      })
-    } catch {
-      setCAWork(prev => ({ ...prev, jobs: [], withdrawals: [] }))
-    } finally {
-      setCAWorkLoading(false)
-    }
-  }
+  const [data, setData] = useState({ services: [], firms: [] })
+  const [query, setQuery] = useState('')
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    loadCAWork()
-  }, [isAuthenticated]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  useEffect(() => {
-    api.get('/ca/profiles')
-      .then(res => setPublicCAs(res.profiles || []))
-      .catch(err => setMessage(err.message))
-      .finally(() => setProfilesLoading(false))
+    let active = true
+    Promise.all([
+      api.get('/ca-office/services'),
+      api.get('/ca-office/firms?limit=6'),
+    ]).then(([services, firms]) => {
+      if (active) setData({ services: services.services || [], firms: firms.firms || [] })
+    }).catch(() => {
+      if (active) setData({ services: [], firms: [] })
+    }).finally(() => {
+      if (active) setLoading(false)
+    })
+    return () => { active = false }
   }, [])
 
-  useEffect(() => {
-    if (!caWork.profile) return
-    const profile = caWork.profile
-    setCAForm(prev => ({
-      ...prev,
-      ...profile,
-      dateOfBirth: profile.dateOfBirth ? String(profile.dateOfBirth).slice(0, 10) : '',
-      languages: (profile.languages || []).join(', '),
-      pricing: CA_SERVICE_PACKAGES.map(service => ({ servicePackage: service.key, charge: profile.pricing?.find(item => item.servicePackage === service.key)?.charge || '' })),
-      consentToVerify: Boolean(profile.consentToVerify),
-    }))
-  }, [caWork.profile])
-
-  const submitClientWork = async event => {
-    event.preventDefault()
-    if (requireLogin()) return
-    setSubmitting('client')
-    setMessage('')
-    try {
-      if (!clientDetailsReady) {
-        const requiredLabels = REQUIRED_DOCUMENTS[clientForm.servicePackage]
-        const missing = requiredLabels.filter(label => !documentFiles[label])
-        if (missing.length) throw new Error(`Upload required files: ${missing.join(', ')}`)
-        const documents = []
-        for (const label of requiredLabels) {
-          const formData = new FormData()
-          formData.append('document', documentFiles[label])
-          formData.append('label', label)
-          const uploaded = await api.post('/ca/documents', formData)
-          documents.push(uploaded.document)
-        }
-        setClientForm(prev => ({ ...prev, documents }))
-        setClientDetailsReady(true)
-        setMessage('Documents uploaded securely. Now compare live CA prices and select your CA.')
-        return
-      }
-      const payload = {
-        ...clientForm,
-      }
-      const latest = await api.get('/ca/profiles')
-      setPublicCAs(latest.profiles || [])
-      const latestCA = latest.profiles?.find(profile => profile._id === clientForm.selectedCA)
-      const latestCharge = latestCA?.pricing?.find(item => item.servicePackage === clientForm.servicePackage)?.charge
-      if (!latestCA || !latestCharge) throw new Error('This CA is no longer available. Please select another CA.')
-      if (Number(latestCharge) !== Number(selectedCharge)) {
-        setMessage(`${latestCA.name}'s price changed to ${formatPrice(latestCharge)}. Please review and click again to continue safely.`)
-        return
-      }
-      const res = await api.post('/ca/tax-jobs', payload)
-      setCreatedJob(res.job)
-      setPaymentDone(res.job?.paymentStatus === 'admin-waived' || res.job?.paymentStatus === 'paid')
-      setMessage(res.message || 'Tax work submitted. Complete Razorpay payment from cart to activate CA review.')
-      if (res.job?.paymentStatus === 'admin-waived' || res.job?.paymentStatus === 'paid') {
-        setClientForm(prev => ({ ...emptyClientForm, clientName: prev.clientName, clientEmail: prev.clientEmail, clientWhatsapp: prev.clientWhatsapp }))
-      } else if (res.job?._id) {
-        addToCart({
-          _id: `earnova-ca-service-${res.job._id}`,
-          itemType: 'service',
-          serviceKey: 'caTaxJob',
-          serviceRef: res.job._id,
-          taxJobId: res.job._id,
-          name: `${res.job.serviceLabel} with ${selectedCA?.name || 'verified CA'}`,
-          brand: 'Earnova Services',
-          price: res.job.serviceAmount,
-          quantity: 1,
-          gstRate: 0,
-          category: 'earnova-services',
-          thumbnail: '/favicon.svg',
-        }, 1)
-        navigate('/cart')
-      }
-    } catch (err) {
-      setMessage(err.message)
-    } finally {
-      setSubmitting(null)
-    }
-  }
-
-  const submitCAApplication = async event => {
-    event.preventDefault()
-    if (requireLogin()) return
-    setSubmitting('ca')
-    setMessage('')
-    try {
-      const res = caWork.profile?.status === 'verified'
-        ? await api.patch('/ca/profile/pricing', { pricing: caForm.pricing })
-        : await api.put('/ca/profile', caForm)
-      setMessage(res.message || 'CA application submitted.')
-      loadCAWork()
-    } catch (err) {
-      setMessage(err.message)
-    } finally {
-      setSubmitting(null)
-    }
-  }
-
-  const updateCompletionForm = (jobId, key, value) => {
-    setCompletionForms(prev => ({
-      ...prev,
-      [jobId]: { ...(prev[jobId] || {}), [key]: value },
-    }))
-  }
-
-  const submitCAWork = async job => {
-    const form = completionForms[job._id] || {}
-    setSubmitting(`complete-${job._id}`)
-    setMessage('')
-    try {
-      const completionDocuments = form.documentUrl?.trim()
-        ? [{ label: form.documentLabel?.trim() || 'Completed work proof', url: form.documentUrl.trim() }]
-        : []
-      const res = await api.post(`/ca/tax-jobs/${job._id}/submit-work`, {
-        caNotes: form.notes,
-        completionNotes: form.notes,
-        completionDocuments,
-      })
-      if (res.user) updateUser(res.user)
-      setMessage(res.message || 'Work submitted and CA wallet credited.')
-      setCompletionForms(prev => ({ ...prev, [job._id]: { notes: '', documentLabel: '', documentUrl: '' } }))
-      loadCAWork()
-    } catch (err) {
-      setMessage(err.message)
-    } finally {
-      setSubmitting(null)
-    }
-  }
-
-  const submitCAWithdrawal = async payload => {
-    const res = await api.post('/ca/withdraw', payload)
-    updateUser({ walletBalance: res.newBalance })
-    await loadCAWork()
-    return res
-  }
+  const filtered = useMemo(() => {
+    const needle = query.trim().toLowerCase()
+    if (!needle) return data.services
+    return data.services.filter(service => `${service.name} ${service.category} ${service.summary}`.toLowerCase().includes(needle))
+  }, [data.services, query])
 
   return (
-    <div className="bg-white">
-      <WithdrawalModal
-        isOpen={showCAWithdrawal}
-        onClose={() => setShowCAWithdrawal(false)}
-        walletBalance={caWork.walletBalance || 0}
-        withdrawals={caWork.withdrawals}
-        onSubmit={submitCAWithdrawal}
-      />
-      <section className="border-b border-gray-100 bg-gradient-to-br from-slate-950 via-primary-950 to-emerald-950 text-white">
-        <div className="section-wrapper py-14 lg:py-20 grid lg:grid-cols-[1.05fr_0.95fr] gap-10 items-center">
+    <>
+      <PageMeta title="Online CA Services" path="/services/ca" />
+      <section className="border-b border-slate-200 bg-[linear-gradient(125deg,#f8fafc,#f5f3ff_55%,#ecfdf5)]">
+        <div className="section-wrapper grid gap-10 py-14 lg:grid-cols-[1fr_.8fr] lg:items-center lg:py-20">
           <div>
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs font-bold text-primary-100">
-              <ShieldCheck className="w-4 h-4" />
-              Earnova verified CA network
+            <span className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-white px-3 py-1.5 text-xs font-bold text-emerald-800">
+              <ShieldCheck className="h-3.5 w-3.5" /> Firm-based professional support
+            </span>
+            <h1 className="mt-5 text-4xl font-extrabold tracking-[-0.035em] text-slate-950 sm:text-5xl">Your CA office, completely online.</h1>
+            <p className="mt-5 max-w-2xl text-lg leading-relaxed text-slate-600">Consult verified professionals, securely submit documents, track your work and receive completed deliverables through Earnova.</p>
+            <div className="mt-7 flex flex-col gap-3 sm:flex-row">
+              <a href="#services" className="btn-primary">Find a CA service <ArrowRight className="h-4 w-4" /></a>
+              <Link to="/services/ca/book-consultation" className="btn-secondary">Book a consultation</Link>
             </div>
-            <h1 className="font-display font-extrabold text-3xl sm:text-5xl leading-tight mt-5">
-              ITR, GST, bookkeeping and tax work handled through verified chartered accountants.
-            </h1>
-            <p className="text-primary-100 text-sm sm:text-base mt-4 max-w-2xl">
-              Clients can submit the data a CA needs, Earnova admins manually verify CA credentials, and assigned CAs can review documents, ask for missing information and complete the work.
-            </p>
-            <div className="grid sm:grid-cols-3 gap-3 mt-8">
-              {[
-                ['ITR verification', FileCheck2],
-                ['GST and TDS work', Calculator],
-                ['Business accounts', Briefcase],
-              ].map(([label, Icon]) => (
-                <div key={label} className="rounded-2xl bg-white/10 border border-white/10 p-4">
-                  <Icon className="w-5 h-5 text-eco-300 mb-3" />
-                  <p className="text-sm font-bold">{label}</p>
-                </div>
-              ))}
-            </div>
+            <p className="mt-4 text-xs leading-relaxed text-slate-500">Professional eligibility, scope and authority-dependent timelines are reviewed case by case. Earnova does not guarantee tax savings, approval or completion dates.</p>
           </div>
-
-          <div className="bg-white text-gray-900 rounded-2xl shadow-2xl p-5">
-            <p className="text-xs font-bold text-primary-700 uppercase tracking-wide">CA work checklist</p>
-            <div className="grid gap-3 mt-4">
+          <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-xl shadow-slate-900/5">
+            <p className="text-sm font-bold text-slate-950">Find the right starting point</p>
+            <div className="relative mt-3">
+              <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <input value={query} onChange={event => setQuery(event.target.value)} className="input-base w-full pl-11" placeholder="Search ITR, GST, bookkeeping, registration..." />
+            </div>
+            <div className="mt-5 grid grid-cols-2 gap-3">
               {[
-                'ITR filing, revised return and refund support',
-                'Tax notices, document verification and reply preparation',
-                'GST returns, TDS checks and compliance reminders',
-                'Bookkeeping review, profit and loss, balance sheet support',
-                'Deductions, capital gains and business income analysis',
-              ].map(item => (
-                <div key={item} className="flex items-start gap-3 text-sm">
-                  <ClipboardCheck className="w-4 h-4 text-eco-600 mt-0.5 shrink-0" />
-                  <span>{item}</span>
+                [Briefcase, '15 service areas'],
+                [UsersRound, 'Firm-based teams'],
+                [FileLock2, 'Private document room'],
+                [CalendarClock, 'Trackable next actions'],
+              ].map(([Icon, label]) => (
+                <div key={label} className="rounded-2xl bg-slate-50 p-4">
+                  <Icon className="h-5 w-5 text-brand-700" />
+                  <p className="mt-2 text-xs font-bold text-slate-700">{label}</p>
                 </div>
               ))}
             </div>
@@ -517,319 +80,103 @@ export default function CAServicesPage() {
         </div>
       </section>
 
-      <section className="section-wrapper py-10 space-y-8">
-        {message && (
-          <div className="rounded-2xl border border-primary-100 bg-primary-50 px-4 py-3 text-sm font-semibold text-primary-800">
-            {message}
-          </div>
-        )}
-
-        {createdJob && (
-          <div className={`rounded-2xl border p-5 shadow-card ${paymentDone ? 'border-eco-200 bg-eco-50' : 'border-amber-200 bg-amber-50'}`}>
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-              <div>
-                <p className={`text-xs font-bold uppercase tracking-wide ${paymentDone ? 'text-eco-700' : 'text-amber-700'}`}>
-                  {paymentDone ? 'Payment confirmed' : 'Payment required'}
-                </p>
-                <h2 className="font-display font-bold text-xl text-gray-900 mt-1">
-                  {createdJob.serviceLabel} - {createdJob.jobId}
-                </h2>
-                <p className="text-sm text-gray-600 mt-1">
-                  {paymentDone
-                    ? 'Earnova CA review is active and ready for admin assignment.'
-                    : `This CA request is added to cart. Pay ${formatPrice(createdJob.serviceAmount)} through cart checkout to activate it. Earnova keeps ${formatPrice(createdJob.earnovaFee || EARNOVA_CA_FEE)} from this price; the remaining ${formatPrice(createdJob.caPayoutAmount || Math.max((createdJob.serviceAmount || 0) - EARNOVA_CA_FEE, 0))} goes to the verified CA.`}
-                </p>
-              </div>
-              {!paymentDone && (
-                <button type="button" onClick={() => navigate('/cart')} className="btn-primary justify-center">
-                  Go to cart
-                </button>
-              )}
-            </div>
-          </div>
-        )}
-
-        <div className="grid xl:grid-cols-[1.15fr_0.85fr] gap-8">
-          <form onSubmit={submitClientWork} className="bg-white border border-gray-100 rounded-2xl shadow-card p-5 space-y-5">
-            <div>
-              <p className="text-xs font-bold text-primary-700 uppercase tracking-wide">For clients</p>
-              <h2 className="font-display font-bold text-2xl text-gray-900 mt-1">Submit ITR or accounting work</h2>
-              <p className="text-sm text-gray-500 mt-1">Provide the details and secure document links. Earnova assigns a verified CA after admin review.</p>
-            </div>
-
-            <div>
-              <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-2 mb-3">
-                <div>
-                  <p className="text-xs font-bold text-gray-500 mb-1">1. Choose the service sector</p>
-                  <p className="text-sm font-semibold text-gray-900">Each verified CA sets their own charge.</p>
-                  <p className="text-xs text-gray-500 mt-1">Earnova deducts its usual {formatPrice(EARNOVA_CA_FEE)} from the CA's displayed charge. You pay no extra platform fee.</p>
-                </div>
-              </div>
-              <div className="grid md:grid-cols-2 gap-3">
-                {CA_SERVICE_PACKAGES.map(item => {
-                  const selected = clientForm.servicePackage === item.key
-                  return (
-                    <button
-                      key={item.key}
-                      type="button"
-                      disabled={clientDetailsReady}
-                      onClick={() => setClientForm(prev => ({ ...prev, servicePackage: item.key, selectedCA: '' }))}
-                      className={`text-left rounded-2xl border p-4 transition-all ${
-                        selected ? 'border-primary-600 bg-primary-50 shadow-card' : 'border-gray-100 bg-white hover:border-primary-200'
-                      }`}
-                    >
-                      <span className="block font-display font-bold text-gray-900">{item.label}</span>
-                      <span className="block text-xs text-gray-500 mt-1 leading-relaxed">{item.detail}</span>
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-
-            {clientDetailsReady && <div>
-              <p className="text-xs font-bold text-gray-500 mb-1">2. Select your CA</p>
-              <p className="text-sm text-gray-500 mb-3">Compare verified professionals and their charge for {selectedPackage.label}.</p>
-              {profilesLoading ? (
-                <div className="h-28 rounded-2xl bg-gray-100 animate-pulse" />
-              ) : publicCAs.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-gray-200 p-4 text-sm text-gray-500">No verified CAs have published pricing yet. Please check back soon.</div>
-              ) : (
-                <div className="grid md:grid-cols-2 gap-3">
-                  {publicCAs.map(profile => {
-                    const charge = profile.pricing?.find(item => item.servicePackage === clientForm.servicePackage)?.charge
-                    if (!charge) return null
-                    const selected = clientForm.selectedCA === profile._id
-                    return (
-                      <button key={profile._id} type="button" onClick={() => setClientForm(prev => ({ ...prev, selectedCA: profile._id }))} className={`text-left rounded-2xl border p-4 transition-all ${selected ? 'border-eco-600 bg-eco-50 shadow-card' : 'border-gray-100 hover:border-eco-200'}`}>
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="flex items-start gap-3">
-                            <span className="w-10 h-10 rounded-xl bg-primary-50 text-primary-700 flex items-center justify-center shrink-0"><UserRound className="w-5 h-5" /></span>
-                            <div>
-                              <p className="font-display font-bold text-gray-900 flex items-center gap-1.5">{profile.name}<BadgeCheck className="w-4 h-4 text-eco-600" /></p>
-                              <p className="text-xs text-gray-500">{profile.qualification} · {profile.yearsExperience || 0} years</p>
-                            </div>
-                          </div>
-                          <p className="font-black text-primary-800">{formatPrice(charge)}</p>
-                        </div>
-                        <p className="flex items-center gap-1 text-xs text-gray-500 mt-3"><MapPin className="w-3 h-3" />{profile.city}, {profile.state}{profile.firmName ? ` · ${profile.firmName}` : ''}</p>
-                        <p className="text-xs text-gray-600 mt-2 line-clamp-2">{profile.professionalBio}</p>
-                        <p className="text-[11px] font-semibold text-eco-700 mt-2">CA receives {formatPrice(charge - EARNOVA_CA_FEE)} after Earnova's {formatPrice(EARNOVA_CA_FEE)} deduction</p>
-                      </button>
-                    )
-                  })}
-                </div>
-              )}
-            </div>}
-
-            <div className="grid md:grid-cols-3 gap-3">
-              <input className={inputClass} placeholder="Full name" value={clientForm.clientName} onChange={e => setClientForm(p => ({ ...p, clientName: e.target.value }))} required />
-              <input className={inputClass} placeholder="Email" type="email" value={clientForm.clientEmail} onChange={e => setClientForm(p => ({ ...p, clientEmail: e.target.value }))} required />
-              <input className={inputClass} placeholder="WhatsApp number" value={clientForm.clientWhatsapp} onChange={e => setClientForm(p => ({ ...p, clientWhatsapp: e.target.value }))} required />
-            </div>
-
-            <div className="grid md:grid-cols-4 gap-3">
-              <select className={inputClass} value={clientForm.clientType} onChange={e => setClientForm(p => ({ ...p, clientType: e.target.value }))}>
-                <option value="individual">Individual</option>
-                <option value="business">Business</option>
-                <option value="proprietor">Proprietor</option>
-                <option value="partnership">Partnership</option>
-                <option value="llp">LLP</option>
-                <option value="company">Company</option>
-              </select>
-              <input className={inputClass} placeholder="PAN" value={clientForm.pan} onChange={e => setClientForm(p => ({ ...p, pan: e.target.value.toUpperCase() }))} required />
-              <input className={inputClass} placeholder="Aadhaar last 4 digits" maxLength={4} value={clientForm.aadhaarLast4} onChange={e => setClientForm(p => ({ ...p, aadhaarLast4: e.target.value.replace(/\D/g, '') }))} />
-              <input className={inputClass} placeholder="Assessment year" value={clientForm.assessmentYear} onChange={e => setClientForm(p => ({ ...p, assessmentYear: e.target.value }))} required />
-            </div>
-
-            <div className="grid md:grid-cols-2 gap-3">
-              <select className={inputClass} value={clientForm.filingType} onChange={e => setClientForm(p => ({ ...p, filingType: e.target.value }))}>
-                <option value="itr-filing">ITR filing</option>
-                <option value="itr-revision">ITR revision</option>
-                <option value="tax-notice">Tax notice</option>
-                <option value="gst-filing">GST filing</option>
-                <option value="tds">TDS</option>
-                <option value="bookkeeping">Bookkeeping</option>
-                <option value="audit-support">Audit support</option>
-                <option value="financial-statements">Financial statements</option>
-              </select>
-              <input className={inputClass} placeholder="Employer / business name" value={clientForm.salaryEmployer} onChange={e => setClientForm(p => ({ ...p, salaryEmployer: e.target.value }))} />
-            </div>
-
-            <div>
-              <p className="text-xs font-bold text-gray-500 mb-2">Income sources</p>
-              <ToggleGroup options={INCOME_SOURCES} value={clientForm.incomeSources} onChange={incomeSources => setClientForm(p => ({ ...p, incomeSources }))} />
-            </div>
-
-            {clientForm.servicePackage === 'simple-salaried' && <div className="grid md:grid-cols-4 gap-3">
-              {[
-                ['bankInterest', 'Bank interest'],
-                ['capitalGains', 'Capital gains'],
-                ['rentalIncome', 'Rental income'],
-                ['businessIncome', 'Business income'],
-                ['foreignIncome', 'Foreign income'],
-                ['deductions80C', '80C deductions'],
-                ['deductions80D', '80D deductions'],
-                ['homeLoanInterest', 'Home loan interest'],
-              ].map(([key, label]) => (
-                <input key={key} className={inputClass} type="number" min="0" placeholder={label} value={clientForm[key]} onChange={e => setClientForm(p => ({ ...p, [key]: e.target.value }))} />
-              ))}
-            </div>}
-
-            {clientForm.servicePackage === 'investors-traders' && <div className="grid md:grid-cols-3 gap-3">
-              <input className={inputClass} type="number" min="0" placeholder="Capital gains" value={clientForm.capitalGains} onChange={e => setClientForm(p => ({ ...p, capitalGains: e.target.value }))} required />
-              <input className={inputClass} type="number" min="0" placeholder="Interest / dividend income" value={clientForm.bankInterest} onChange={e => setClientForm(p => ({ ...p, bankInterest: e.target.value }))} />
-              <input className={inputClass} type="number" min="0" placeholder="Foreign income" value={clientForm.foreignIncome} onChange={e => setClientForm(p => ({ ...p, foreignIncome: e.target.value }))} />
-            </div>}
-
-            {['freelancers-small-business', 'corporate-tax-audits'].includes(clientForm.servicePackage) && <div className="grid md:grid-cols-3 gap-3">
-              <input className={inputClass} type="number" min="0" placeholder="Business turnover" value={clientForm.turnover} onChange={e => setClientForm(p => ({ ...p, turnover: e.target.value }))} required />
-              <input className={inputClass} type="number" min="0" placeholder="Business income" value={clientForm.businessIncome} onChange={e => setClientForm(p => ({ ...p, businessIncome: e.target.value }))} required />
-              <input className={inputClass} placeholder="GSTIN" value={clientForm.gstin} onChange={e => setClientForm(p => ({ ...p, gstin: e.target.value.toUpperCase() }))} />
-            </div>}
-
-            <div className="grid sm:grid-cols-2 gap-3 text-sm">
-              <label className="flex items-center gap-2 text-gray-600">
-                <input type="checkbox" checked={clientForm.form16Available} onChange={e => setClientForm(p => ({ ...p, form16Available: e.target.checked }))} />
-                Form 16 available
-              </label>
-              <label className="flex items-center gap-2 text-gray-600">
-                <input type="checkbox" checked={clientForm.booksMaintained} onChange={e => setClientForm(p => ({ ...p, booksMaintained: e.target.checked }))} />
-                Books/accounts maintained
-              </label>
-            </div>
-
-            <textarea className={`${inputClass} min-h-[82px]`} placeholder="Other deductions, tax notice details, questions or special notes" value={clientForm.notes} onChange={e => setClientForm(p => ({ ...p, notes: e.target.value }))} />
-
-            <div>
-              <p className="text-xs font-bold text-gray-500 mb-1">Required documents for {selectedPackage.label}</p>
-              <p className="text-xs text-gray-500 mb-3">Upload PDF, JPG or PNG files, maximum 10 MB each. These source files are deleted when the CA delivers the completed work.</p>
-              <div className="grid md:grid-cols-2 gap-3">
-                {REQUIRED_DOCUMENTS[clientForm.servicePackage].map(label => (
-                  <label key={label} className="rounded-xl border border-gray-100 bg-gray-50 p-3 text-xs font-bold text-gray-700">
-                    <span className="block mb-2">{label}</span>
-                    <input type="file" accept="application/pdf,image/jpeg,image/png" disabled={clientDetailsReady} onChange={e => setDocumentFiles(prev => ({ ...prev, [label]: e.target.files?.[0] || null }))} required={!clientDetailsReady} className="block w-full text-xs font-normal text-gray-500 file:mr-2 file:rounded-lg file:border-0 file:bg-primary-50 file:px-3 file:py-2 file:font-semibold file:text-primary-700" />
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            <button disabled={submitting === 'client' || (clientDetailsReady && !selectedCA)} className="btn-primary w-full justify-center py-3">
-              {submitting === 'client' ? 'Uploading...' : !clientDetailsReady ? 'Upload documents and compare CAs' : selectedCA ? `Pay ${formatPrice(selectedCharge)} and assign ${selectedCA.name}` : 'Select a CA to continue'}
-            </button>
-          </form>
-
-          <div className="space-y-5">
-          <CAWorkDesk
-            isAuthenticated={isAuthenticated}
-            profile={caWork.profile}
-            jobs={caWork.jobs}
-            withdrawals={caWork.withdrawals}
-            walletBalance={caWork.walletBalance}
-            totalEarned={caWork.totalEarned}
-            loading={caWorkLoading}
-            completionForms={completionForms}
-            onChangeCompletion={updateCompletionForm}
-            onSubmitWork={submitCAWork}
-            onWithdraw={() => setShowCAWithdrawal(true)}
-          />
-
-          <form onSubmit={submitCAApplication} className="bg-gray-50 border border-gray-100 rounded-2xl p-5 space-y-5">
-            <div>
-              <p className="text-xs font-bold text-eco-700 uppercase tracking-wide">For chartered accountants</p>
-              <h2 className="font-display font-bold text-2xl text-gray-900 mt-1">Become an Earnova CA</h2>
-              <p className="text-sm text-gray-500 mt-1">Earnova admin manually verifies ID, government proof and CA membership proof before work is assigned.</p>
-            </div>
-
-            <div className="grid sm:grid-cols-2 gap-3">
-              <input className={inputClass} placeholder="Full name" value={caForm.name} onChange={e => setCAForm(p => ({ ...p, name: e.target.value }))} required />
-              <input className={inputClass} type="email" placeholder="Email" value={caForm.email} onChange={e => setCAForm(p => ({ ...p, email: e.target.value }))} required />
-              <input className={inputClass} placeholder="WhatsApp number" value={caForm.whatsapp} onChange={e => setCAForm(p => ({ ...p, whatsapp: e.target.value }))} required />
-              <input className={inputClass} placeholder="Alternate phone" value={caForm.phone} onChange={e => setCAForm(p => ({ ...p, phone: e.target.value }))} />
-              <input className={inputClass} placeholder="City" value={caForm.city} onChange={e => setCAForm(p => ({ ...p, city: e.target.value }))} required />
-              <input className={inputClass} placeholder="State" value={caForm.state} onChange={e => setCAForm(p => ({ ...p, state: e.target.value }))} required />
-              <input className={inputClass} type="date" aria-label="Date of birth" value={caForm.dateOfBirth} onChange={e => setCAForm(p => ({ ...p, dateOfBirth: e.target.value }))} required />
-              <select className={inputClass} value={caForm.gender} onChange={e => setCAForm(p => ({ ...p, gender: e.target.value }))} required>
-                <option value="">Select gender</option><option>Male</option><option>Female</option><option>Non-binary</option><option>Prefer not to say</option>
-              </select>
-              <input className={`${inputClass} sm:col-span-2`} placeholder="Full residential / office address" value={caForm.address} onChange={e => setCAForm(p => ({ ...p, address: e.target.value }))} required />
-              <input className={inputClass} placeholder="PIN code" inputMode="numeric" value={caForm.pincode} onChange={e => setCAForm(p => ({ ...p, pincode: e.target.value.replace(/\D/g, '').slice(0, 6) }))} required />
-              <input className={inputClass} placeholder="Languages (comma separated)" value={caForm.languages} onChange={e => setCAForm(p => ({ ...p, languages: e.target.value }))} />
-            </div>
-
-            <div className="grid sm:grid-cols-2 gap-3">
-              <input className={inputClass} placeholder="Firm name" value={caForm.firmName} onChange={e => setCAForm(p => ({ ...p, firmName: e.target.value }))} />
-              <input className={inputClass} placeholder="CA membership number" value={caForm.membershipNumber} onChange={e => setCAForm(p => ({ ...p, membershipNumber: e.target.value }))} required />
-              <input className={inputClass} placeholder="Qualification" value={caForm.qualification} onChange={e => setCAForm(p => ({ ...p, qualification: e.target.value }))} required />
-              <input className={inputClass} type="number" min="0" placeholder="Years of experience" value={caForm.yearsExperience} onChange={e => setCAForm(p => ({ ...p, yearsExperience: e.target.value }))} />
-            </div>
-
-            <div>
-              <p className="text-xs font-bold text-gray-500 mb-2">Specializations</p>
-              <ToggleGroup options={CA_SPECIALIZATIONS} value={caForm.specializations} onChange={specializations => setCAForm(p => ({ ...p, specializations, servicesOffered: specializations }))} />
-            </div>
-
-            <textarea className={`${inputClass} min-h-[90px]`} placeholder="Professional bio: experience, approach and the clients you serve" value={caForm.professionalBio} onChange={e => setCAForm(p => ({ ...p, professionalBio: e.target.value }))} required />
-
-            <div>
-              <p className="text-xs font-bold text-gray-500 mb-1">Your charges for every sector</p>
-              <p className="text-xs text-gray-500 mb-3">These prices will be public. Earnova deducts {formatPrice(EARNOVA_CA_FEE)} from your charge after completed work.</p>
-              <div className="grid sm:grid-cols-2 gap-3">
-                {CA_SERVICE_PACKAGES.map(service => {
-                  const priceIndex = caForm.pricing.findIndex(item => item.servicePackage === service.key)
-                  return (
-                    <label key={service.key} className="rounded-xl border border-gray-100 bg-white p-3">
-                      <span className="block text-xs font-bold text-gray-700 mb-2">{service.label}</span>
-                      <input className={inputClass} type="number" min={EARNOVA_CA_FEE} placeholder="Your total charge" value={caForm.pricing[priceIndex]?.charge || ''} onChange={e => setCAForm(prev => ({ ...prev, pricing: prev.pricing.map((item, index) => index === priceIndex ? { ...item, charge: e.target.value } : item) }))} required />
-                      {Number(caForm.pricing[priceIndex]?.charge) >= EARNOVA_CA_FEE && <span className="block text-[11px] text-eco-700 mt-1">You receive {formatPrice(Number(caForm.pricing[priceIndex].charge) - EARNOVA_CA_FEE)}</span>}
-                    </label>
-                  )
-                })}
-              </div>
-            </div>
-
-            <div className="grid sm:grid-cols-2 gap-3">
-              <select className={inputClass} value={caForm.govtIdType} onChange={e => setCAForm(p => ({ ...p, govtIdType: e.target.value }))}>
-                <option>Aadhaar</option>
-                <option>PAN</option>
-                <option>Passport</option>
-                <option>Voter ID</option>
-                <option>Driving License</option>
-              </select>
-              <input className={inputClass} placeholder="Earnova/firm ID card URL" value={caForm.idCardUrl} onChange={e => setCAForm(p => ({ ...p, idCardUrl: e.target.value }))} required />
-              <input className={inputClass} placeholder="Government ID document URL" value={caForm.govtIdUrl} onChange={e => setCAForm(p => ({ ...p, govtIdUrl: e.target.value }))} required />
-              <input className={inputClass} placeholder="CA certificate / ICAI proof URL" value={caForm.caCertificateUrl} onChange={e => setCAForm(p => ({ ...p, caCertificateUrl: e.target.value }))} required />
-              <input className={`${inputClass} sm:col-span-2`} placeholder="Practice certificate / authorization proof URL" value={caForm.practiceProofUrl} onChange={e => setCAForm(p => ({ ...p, practiceProofUrl: e.target.value }))} />
-            </div>
-
-            <label className="flex items-start gap-2 text-sm text-gray-600">
-              <input className="mt-1" type="checkbox" checked={caForm.consentToVerify} onChange={e => setCAForm(p => ({ ...p, consentToVerify: e.target.checked }))} />
-              I confirm these details are accurate and allow Earnova admin to manually verify my identity, WhatsApp number and CA membership proof.
-            </label>
-
-            <button disabled={submitting === 'ca'} className="btn-primary w-full justify-center py-3 bg-eco-700 hover:bg-eco-800">
-              {submitting === 'ca' ? 'Submitting...' : caWork.profile?.status === 'verified' ? 'Update public CA prices' : 'Apply for Earnova CA verification'}
-            </button>
-          </form>
-          </div>
+      <section id="services" className="section-wrapper scroll-mt-24 py-14 lg:py-18">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div><p className="eyebrow">Professional services</p><h2 className="section-title mt-2">Choose the work you need.</h2></div>
+          <Link to="/services/ca/pricing" className="text-sm font-bold text-brand-700">How CA pricing works →</Link>
         </div>
+        {loading ? (
+          <div className="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-3">{[1, 2, 3, 4, 5, 6].map(item => <div key={item} className="h-44 animate-pulse rounded-3xl bg-slate-100" />)}</div>
+        ) : (
+          <div className="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {filtered.map(service => (
+              <Link key={service.slug} to={`/services/ca/${service.slug}`} className="surface-card group flex min-h-48 flex-col p-5 hover:-translate-y-0.5 hover:border-brand-300 hover:shadow-lg">
+                <span className="text-xs font-bold uppercase tracking-[.12em] text-brand-700">{service.category}</span>
+                <h3 className="mt-3 text-lg font-extrabold text-slate-950">{service.name}</h3>
+                <p className="mt-2 flex-1 text-sm leading-relaxed text-slate-600">{service.summary}</p>
+                <span className="mt-4 inline-flex items-center gap-1 text-sm font-bold text-brand-700">View details <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" /></span>
+              </Link>
+            ))}
+          </div>
+        )}
+        {!loading && !filtered.length && <p className="mt-8 rounded-2xl bg-slate-50 p-6 text-center text-sm text-slate-500">No service matches that search. Try a broader term or request a consultation.</p>}
+      </section>
 
-        <div className="grid md:grid-cols-4 gap-3">
-          {[
-            ['Verified only', 'Admins approve CA applicants after checking government ID and CA proof.', BadgeCheck],
-            ['Document-first', 'Clients share PAN, AIS/TIS, Form 16, bank and investment proof links.', FileText],
-            ['Trackable work', 'Every tax job has assignment, status, notes and completion tracking.', ClipboardCheck],
-            ['Business-ready', 'Supports GST, TDS, books, audit help and financial statements.', Briefcase],
-          ].map(([title, text, Icon]) => (
-            <div key={title} className="bg-white border border-gray-100 rounded-2xl p-4 shadow-card">
-              <Icon className="w-5 h-5 text-primary-700 mb-3" />
-              <h3 className="font-display font-bold text-gray-900">{title}</h3>
-              <p className="text-xs text-gray-500 mt-1">{text}</p>
-            </div>
-          ))}
+      <section className="border-y border-slate-200 bg-slate-50">
+        <div className="section-wrapper py-14 lg:py-18">
+          <div className="text-center"><p className="eyebrow">How it works</p><h2 className="section-title mt-2">A clear case from request to completion.</h2></div>
+          <ol className="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            {PROCESS.map(([title, text], index) => (
+              <li key={title} className="rounded-3xl border border-slate-200 bg-white p-5">
+                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-700 text-xs font-black text-white">{index + 1}</span>
+                <h3 className="mt-4 font-bold text-slate-950">{title}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-slate-600">{text}</p>
+              </li>
+            ))}
+          </ol>
         </div>
       </section>
 
-      <AuthModal isOpen={showAuth} initialTab="login" onClose={() => setShowAuth(false)} onSuccess={() => setShowAuth(false)} />
-    </div>
+      <section className="section-wrapper grid gap-8 py-14 lg:grid-cols-[.8fr_1.2fr] lg:items-start">
+        <div>
+          <p className="eyebrow">Verified partner firms</p>
+          <h2 className="section-title mt-2">A firm owns the case. Authorized people do the work.</h2>
+          <p className="section-sub">Platform roles and professional designations are kept separate. Earnova labels a team member as a Chartered Accountant only after designation verification.</p>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          {data.firms.length ? data.firms.map(firm => (
+            <Link key={firm.slug} to={`/services/ca/firm/${firm.slug}`} className="surface-card p-5 hover:border-emerald-300">
+              <div className="flex items-center gap-2 text-emerald-700"><BadgeCheck className="h-4 w-4" /><span className="text-xs font-bold">Verified partner firm</span></div>
+              <h3 className="mt-3 font-extrabold text-slate-950">{firm.displayName}</h3>
+              <p className="mt-1 text-sm text-slate-500">{[firm.city, firm.state].filter(Boolean).join(', ') || 'Online service'}</p>
+              <p className="mt-3 text-sm leading-relaxed text-slate-600">{firm.description}</p>
+            </Link>
+          )) : (
+            <div className="surface-card sm:col-span-2 p-6">
+              <p className="font-bold text-slate-900">Firm onboarding is controlled by Earnova admin.</p>
+              <p className="mt-2 text-sm text-slate-600">Only firms verified in the administration workspace appear here. No production firm is invented or auto-approved.</p>
+            </div>
+          )}
+        </div>
+      </section>
+
+      <section className="border-y border-slate-200 bg-slate-950 text-white">
+        <div className="section-wrapper grid gap-8 py-12 lg:grid-cols-2 lg:items-center">
+          <div>
+            <div className="flex items-center gap-2 text-emerald-300"><FileLock2 className="h-5 w-5" /><span className="text-xs font-bold uppercase tracking-[.14em]">Document security</span></div>
+            <h2 className="mt-3 text-2xl font-bold">Sensitive documents do not belong in public links.</h2>
+            <p className="mt-3 text-sm leading-relaxed text-slate-300">The new case room stores file metadata in MongoDB and uses private object storage with short-lived authorized access. Uploads are type-checked, access-controlled and audited.</p>
+          </div>
+          <ul className="grid gap-3 sm:grid-cols-2">
+            {['Private delivery', 'Case ownership checks', 'Version-ready metadata', 'Security scanning state'].map(item => <li key={item} className="flex items-center gap-2 rounded-xl bg-white/5 p-3 text-sm font-semibold"><CheckCircle2 className="h-4 w-4 text-emerald-300" />{item}</li>)}
+          </ul>
+        </div>
+      </section>
+
+      <section className="section-wrapper py-14">
+        <div className="grid gap-5 lg:grid-cols-2">
+          <div className="surface-card p-6">
+            <h2 className="text-xl font-bold text-slate-950">Pricing is scoped before commitment.</h2>
+            <p className="mt-3 text-sm leading-relaxed text-slate-600">Services may use a fixed price, a starting price, a custom quote or a recurring plan. Government fees, professional fees, Earnova fees, taxes and add-ons should be separated in the accepted quote.</p>
+            <Link to="/services/ca/pricing" className="mt-5 inline-flex text-sm font-bold text-brand-700">Read pricing guidance →</Link>
+          </div>
+          <div className="surface-card p-6">
+            <h2 className="flex items-center gap-2 text-xl font-bold text-slate-950"><HelpCircle className="h-5 w-5 text-brand-700" />Need help before starting?</h2>
+            <p className="mt-3 text-sm leading-relaxed text-slate-600">Read common answers, understand escalation options or start a contextual support request.</p>
+            <div className="mt-5 flex flex-wrap gap-3"><Link to="/services/ca/faq" className="btn-secondary">CA FAQs</Link><Link to="/help/ca" className="btn-primary">Get CA help</Link></div>
+          </div>
+        </div>
+        <div className="mx-auto mt-10 max-w-4xl">
+          <h2 className="text-center text-2xl font-bold text-slate-950">Frequently asked questions</h2>
+          <div className="mt-5 space-y-3">
+            {[
+              ['Is a completion date guaranteed?', 'No. Earnova shows a handling-time estimate, while customer readiness, firm review and external-authority processing can change timing.'],
+              ['Is every firm team member a Chartered Accountant?', 'No. Platform role and verified professional designation are separate. Only verified professional designations are shown as such.'],
+              ['Where should I send tax documents?', 'Upload sensitive documents only through the authorized private case room. Do not send them through public links or ordinary email.'],
+            ].map(([question, answer]) => <details key={question} className="rounded-2xl border border-slate-200 bg-white p-5"><summary className="cursor-pointer font-bold text-slate-900">{question}</summary><p className="mt-3 text-sm leading-relaxed text-slate-600">{answer}</p></details>)}
+          </div>
+        </div>
+      </section>
+    </>
   )
 }
