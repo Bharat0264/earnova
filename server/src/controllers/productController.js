@@ -1,6 +1,6 @@
 import Product from '../models/Product.js'
 import { APIFeatures, buildCountFilter } from '../utils/apiFeatures.js'
-import { uploadToCloudinary, deleteFromCloudinary } from '../config/cloudinary.js'
+import { uploadToCloudinary } from '../config/cloudinary.js'
 
 const parseDelimited = (text) => {
   const rows = []
@@ -241,7 +241,7 @@ export const getProducts = async (req, res) => {
         : req.user?.featureAccess?.ecommerce === true)
     const visibleProducts = canViewMemberEarnings
       ? products
-      : products.map(({ referralIncome, ...product }) => product)
+      : products.map(({ referralIncome: _referralIncome, ...product }) => product)
 
     res.json({
       success:  true,

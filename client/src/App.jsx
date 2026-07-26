@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
 import { CartProvider } from './context/CartContext'
+import { BusinessProvider } from './context/BusinessContext'
 import { PageLoader } from './components/common/RouteStates'
 import ProtectedRoute from './components/common/ProtectedRoute'
 import FeatureGate from './components/common/FeatureGate'
@@ -19,6 +20,8 @@ const RecoveryPage = lazy(() => import('./pages/RecoveryPage'))
 const OnboardingPage = lazy(() => import('./pages/OnboardingPage'))
 const AppOverviewPage = lazy(() => import('./pages/AppOverviewPage'))
 const AppModulePage = lazy(() => import('./pages/AppModulePage'))
+const BusinessRecordsPage = lazy(() => import('./pages/BusinessRecordsPage'))
+const BusinessAIPage = lazy(() => import('./pages/BusinessAIPage'))
 const PartnerPage = lazy(() => import('./pages/PartnerPage'))
 const AccessPage = lazy(() => import('./pages/AccessPage'))
 const ProductsPage = lazy(() => import('./pages/ProductsPage'))
@@ -103,11 +106,15 @@ function AppRoutes() {
 
         <Route element={<ProtectedRoute />}>
           <Route path="onboarding" element={<OnboardingPage />} />
-          <Route path="app" element={<AppLayout />}>
+          <Route path="app" element={<BusinessProvider><AppLayout /></BusinessProvider>}>
             <Route index element={<Navigate to="overview" replace />} />
             <Route path="overview" element={<AppOverviewPage />} />
             <Route path="business-dashboard" element={<BusinessSolutionsPage />} />
-            {Object.entries(APP_MODULES).map(([path, description]) => (
+            {['sales', 'customers', 'leads', 'inventory', 'invoices', 'expenses', 'analytics'].map(path => (
+              <Route key={path} path={path} element={<BusinessRecordsPage module={path} />} />
+            ))}
+            <Route path="ai" element={<BusinessAIPage />} />
+            {Object.entries(APP_MODULES).filter(([path]) => !['sales', 'customers', 'leads', 'inventory', 'invoices', 'expenses', 'analytics', 'ai'].includes(path)).map(([path, description]) => (
               <Route key={path} path={path} element={<AppModulePage title={path === 'ai' ? 'Business AI' : path[0].toUpperCase() + path.slice(1)} description={description} />} />
             ))}
           </Route>

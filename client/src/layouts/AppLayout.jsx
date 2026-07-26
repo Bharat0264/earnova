@@ -3,11 +3,13 @@ import { Link, NavLink, Outlet } from 'react-router-dom'
 import { Bell, Menu, PanelLeftClose, Settings, X } from 'lucide-react'
 import { APP_NAV_LINKS } from '../config/navigation'
 import { useAuth } from '../context/AuthContext'
+import { useBusiness } from '../context/BusinessContext'
 import PageMeta from '../components/common/PageMeta'
 
 export default function AppLayout() {
   const [open, setOpen] = useState(false)
   const { user, logout } = useAuth()
+  const { businesses, selectedBusinessId, selectBusiness } = useBusiness()
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -21,7 +23,18 @@ export default function AppLayout() {
             </button>
             <Link to="/" aria-label="Earnova home"><img src="/earnova-logo.png" alt="" className="h-9 w-auto" /></Link>
             <span className="hidden h-6 w-px bg-slate-200 sm:block" />
-            <span className="hidden text-sm font-semibold text-slate-600 sm:block">Business workspace</span>
+            {businesses.length ? (
+              <label className="hidden sm:block">
+                <span className="sr-only">Selected business</span>
+                <select
+                  className="min-h-10 max-w-52 rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm font-bold text-slate-700"
+                  value={selectedBusinessId}
+                  onChange={event => selectBusiness(event.target.value)}
+                >
+                  {businesses.map(business => <option key={business._id} value={business._id}>{business.name}</option>)}
+                </select>
+              </label>
+            ) : <span className="hidden text-sm font-semibold text-slate-600 sm:block">Business workspace</span>}
           </div>
           <div className="flex items-center gap-2">
             <Link to="/app/notifications" className="icon-button" aria-label="Notifications"><Bell className="h-5 w-5" /></Link>
@@ -50,8 +63,8 @@ export default function AppLayout() {
           </nav>
           <div className="mt-6 rounded-2xl bg-brand-50 p-4">
             <PanelLeftClose className="h-5 w-5 text-brand-700" />
-            <p className="mt-3 text-sm font-bold text-slate-900">Phase 1 workspace</p>
-            <p className="mt-1 text-xs leading-relaxed text-slate-600">Foundation and onboarding are active. Business operations will be added as complete vertical slices.</p>
+            <p className="mt-3 text-sm font-bold text-slate-900">Phase 2 operations</p>
+            <p className="mt-1 text-xs leading-relaxed text-slate-600">Customers, sales, stock, expenses, invoices and data-grounded insights share one secure business workspace.</p>
           </div>
         </aside>
         <main id="workspace-content" className="min-w-0 flex-1 p-4 sm:p-6 lg:p-8">
@@ -61,4 +74,3 @@ export default function AppLayout() {
     </div>
   )
 }
-

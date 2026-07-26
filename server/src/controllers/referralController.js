@@ -1,7 +1,6 @@
 import crypto     from 'crypto'
 import Razorpay   from 'razorpay'
 import User       from '../models/User.js'
-import Order      from '../models/Order.js'
 import Referral   from '../models/Referral.js'
 import Withdrawal from '../models/Withdrawal.js'
 

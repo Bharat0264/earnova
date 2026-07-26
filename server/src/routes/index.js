@@ -12,6 +12,7 @@ import caRoutes        from './caRoutes.js'
 import projectRoutes   from './projectRoutes.js'
 import businessWorkspaceRoutes from './businessWorkspaceRoutes.js'
 import serviceOverviewRoutes from './serviceOverviewRoutes.js'
+import businessRoutes from './businessRoutes.js'
 
 const router = Router()
 
@@ -29,5 +30,6 @@ router.use('/ca', caRoutes)
 router.use('/projects', projectRoutes)
 router.use('/business-workspace', businessWorkspaceRoutes)
 router.use('/services', serviceOverviewRoutes)
+router.use('/businesses', businessRoutes)
 
 export default router

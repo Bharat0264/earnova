@@ -22,10 +22,28 @@ Existing records remain readable. Run the onboarding backfill in a controlled en
 
 ## Phase 2 tenant model
 
-Create separate `Business` and `BusinessMember` collections before introducing business IDs to client requests. Every business-owned collection should include an indexed `business` reference. Resolve membership and permission on the server, then scope every query by the authorized business ID.
+Phase 2 adds separate collections for:
+
+- `Business`
+- `BusinessMember`
+- `BusinessCustomer`
+- `BusinessLead`
+- `BusinessProduct`
+- `BusinessSale` with embedded calculated sale items
+- `BusinessExpense`
+- `BusinessInvoice` with embedded calculated invoice items and a customer snapshot
+- `BusinessActivity`
+
+Every business-owned collection includes an indexed `business` reference. The API resolves membership and permission on the server before every business query. Owner, admin, editor, and viewer membership roles are distinct; viewers cannot mutate records.
 
 Do not destructively replace `BusinessWorkspace`. Migrate its mixed data through a versioned import job, preserve the source document, record errors, and reconcile counts before cutover.
 
 ## Financial data
 
 New payment, price, tax, discount, commission, invoice and ledger fields should use integer smallest currency units. Critical transitions require idempotency keys and MongoDB transactions where the deployment supports them.
+
+Phase 2 sales and CSV imports use MongoDB transactions. Sale totals and invoice totals are calculated on the server. Recording a sale decrements inventory and updates the selected customer's order count and recorded lifetime revenue in the same transaction.
+
+## Phase 2 rollout
+
+The new collections are additive and are created by MongoDB when first used. Existing mixed `BusinessWorkspace` documents are preserved and remain readable through the legacy route. Users can create a new tenant workspace without destructive conversion. A later reviewed migration must map legacy imported rows to the normalized product, customer, and sale schemas; do not delete legacy documents during that migration.

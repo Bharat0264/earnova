@@ -25,6 +25,8 @@ Production must provide a strong `JWT_SECRET`, exact `CLIENT_URL` allow-list ent
 8. Verify Razorpay webhook signing against the deployed raw-body endpoint.
 9. Confirm frontend and API logs contain request IDs and no secrets.
 
+For the current release, run `npm run migrate:onboarding` from `server/` once before deploying Phase 2. It is idempotent. Phase 2 business collections are additive and require no destructive migration. Confirm the production MongoDB deployment supports transactions before enabling sale entry and CSV execution.
+
 ## Rollback
 
 Keep the prior frontend artifact and API image/release available. Phase 1 database changes are additive, so rolling application code back does not require destructive schema rollback. Do not delete new user onboarding fields during rollback.
