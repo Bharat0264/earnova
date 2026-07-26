@@ -1,0 +1,45 @@
+SLIDE 1
+Welcome to the Earnova website walkthrough. This demo explains how a customer uses each major service and how the corresponding seller, professional, partner, firm, or administrator receives and manages that work. Earnova brings shopping, professional services, business operations, energy solutions, and earning opportunities into one account, while keeping every workflow traceable and role aware.
+
+SLIDE 2
+Although Earnova supports many services, the core pattern is consistent. First, a user discovers the right area from one of the five home hubs. Second, the user either purchases an item or submits a structured requirement. Third, an authorized seller, professional, partner, or internal team delivers the product or service. Finally, both sides track status, messages, payment, support, and history in the workspace designed for their role.
+
+SLIDE 3
+Start by creating one Earnova account. Customers can register as individuals or business owners. Providers select freelancer, CA or consultant, product seller, or energy partner. The onboarding checklist changes according to that account type. Customers continue through the public site, account area, or business workspace. Providers continue through the Partner dashboard, while members of a verified CA firm can use the dedicated Firm workspace.
+
+SLIDE 4
+For shopping, the customer opens the product catalogue, checks a product page, adds items to the cart, and completes checkout. Order history remains available inside the account. On the provider side, a product seller completes the partner profile and verification, maintains listings, watches incoming orders, and updates fulfilment status. This connects the customer purchase directly to the seller operation without requiring separate accounts or tools.
+
+SLIDE 5
+The Projects marketplace is designed for ready-to-use digital work. A buyer compares approved listings, reviews the scope and price, purchases through the cart, and then receives buyer-only access to the project and live demo. A seller submits the project, supporting media, deliverable information, and demo link. Earnova administrators review the listing before publication, and completed purchases feed the seller payout record.
+
+SLIDE 6
+For freelance work, the customer starts with a service request that explains the category, desired outcome, budget, and timing. Verified freelancers can see matching requests and send a proposal with a message, amount, and delivery days. The customer selects a suitable proposal and follows progress in My Services. The freelancer follows the same job in the Partner workspace through delivery, completion, review, and earnings.
+
+SLIDE 7
+CA and tax services use a verification-first workflow. The customer selects a service or verified firm, creates a case, uploads the required documents, and follows the next action, payment, and completion state. Independent CAs submit professional evidence and work through the Partner area after verification. A CA firm can instead manage cases, clients, team members, tasks, documents, consultations, quotes, and billing from the Firm workspace. Sensitive documents are never treated like public listing media.
+
+SLIDE 8
+Business consulting follows the general service marketplace workflow. A business explains the operational, strategy, or growth problem and the outcome it needs. Verified consultants review suitable requests and send a proposal with a clear message, price, and delivery window. Once chosen, both sides track the same engagement state. This gives the customer visibility while giving the consultant a structured place for active requests, earnings, reviews, and settings.
+
+SLIDE 9
+Energy customers can explore residential and commercial options, browse solar products, or create an energy enquiry. The enquiry records the customer requirement and makes clear that early estimates are approximate until the site and technical needs are reviewed. A verified energy partner maintains capabilities and service areas in the Partner dashboard, receives relevant requests, and proposes the next step such as assessment, supply, advisory work, or installation.
+
+SLIDE 10
+B2B procurement is separate from normal shopping because quantities, pricing, delivery, and commercial terms may need review. The buyer submits organisation details and product requirements. Earnova operations and the appropriate supplier validate the request, prepare the commercial response, and send a quotation. The customer receives the quote and the request remains traceable through its status instead of disappearing into an email-only process.
+
+SLIDE 11
+Subsidy Assistance helps a customer understand a likely support pathway before formal application. The customer enters the required details, reviews the calculated guidance, and can submit a request for additional help. An administrator reviews the request, checks the supporting information, adds notes, and updates the status. The guidance should not be confused with final government approval, which remains with the relevant authority.
+
+SLIDE 12
+The Business workspace is Earnova's operating system for owners. A business can manage sales, customers, leads, inventory, invoices, expenses, analytics, and Business AI from one navigation structure. Team access is scoped to the selected business and membership role, so records do not mix across tenants. Platform administrators can separately review the business identity and trust status without deleting or altering the business's operational records.
+
+SLIDE 13
+The referral program gives a member a shareable referral link and a dashboard for activity, eligible commission, wallet balance, and withdrawals. Earnova records commission states transparently rather than showing only an unexplained balance. Administrators review the referral ledger and withdrawal queue, approve or reject requests, and preserve the payout history. Access to referrals is controlled separately from standard services.
+
+SLIDE 14
+Across all services, the Account area and My Services dashboard give customers a common place for status and recent activity. If help is needed, a categorized support ticket keeps the customer-visible conversation separate from internal notes. Providers work only in their authorized queues. Administrators manage verification, escalations, payments, platform fees, and audit history. This is the common trust layer that connects every customer and provider workflow.
+
+SLIDE 15
+The easiest way to understand Earnova is to start with the role. Customers discover a service, complete the required purchase or request, and track the outcome from Account or the Business workspace. Providers complete onboarding and verification, then work from the Partner or Firm workspace. Administrators manage the trust and operational layer. Together, these role-specific views create one connected platform without exposing controls to the wrong user.
+
