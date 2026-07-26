@@ -17,11 +17,12 @@ import { getPlatformAnalytics, listAdminOperations, updateAdminOperation } from 
 import {
   adminAddFirmMember, adminAssignCaseFirm, adminCAAuditLogs, adminCreateFirm, adminGetSupportTicket,
   adminListCACases, adminListCAServices, adminListFirmMembers, adminListFirms,
-  adminListSupportTickets, adminSupportDashboard, adminUpdateFirm,
+  adminListSupportTickets, adminSupportDashboard, adminUpdateFirm, adminUpdateProfessionalVerification,
 } from '../controllers/adminCAAndSupportController.js'
 
 import { protect, adminOnly } from '../middleware/auth.js'
 import { getPlatformFees, updatePlatformFee } from '../controllers/platformFeeController.js'
+import { listBusinessVerifications, updateBusinessVerification } from '../controllers/adminVerificationController.js'
 
 const router = Router()
 
@@ -37,6 +38,10 @@ router.patch('/fee-settings/:serviceKey', updatePlatformFee)
 router.get('/users', getAdminUsers)
 router.post('/users', createAdminUser)
 router.patch('/users/:id', updateAdminUser)
+
+/* Business identity verification */
+router.get('/business-verifications', listBusinessVerifications)
+router.patch('/business-verifications/:id', updateBusinessVerification)
 
 /* Freelance jobs */
 router.get('/freelance-jobs', getAdminFreelanceJobs)
@@ -62,6 +67,7 @@ router.patch('/ca/firms/:id', adminUpdateFirm)
 router.post('/ca/firms/:id/members', adminAddFirmMember)
 router.get('/ca/professionals', adminListFirmMembers)
 router.get('/ca/verifications', adminListFirmMembers)
+router.patch('/ca/professionals/:id/verification', adminUpdateProfessionalVerification)
 router.get('/ca/services', adminListCAServices)
 router.get('/ca/cases', adminListCACases)
 router.patch('/ca/cases/:id/firm', adminAssignCaseFirm)

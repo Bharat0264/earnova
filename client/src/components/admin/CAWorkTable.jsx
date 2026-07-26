@@ -3,7 +3,7 @@ import { BadgeCheck, ChevronDown, ChevronUp, FileCheck2, Link as LinkIcon, Searc
 import { api } from '../../utils/api'
 import { formatDate, formatPrice } from '../../utils/formatters'
 
-const PROFILE_STATUSES = ['all', 'pending', 'verified', 'paused', 'rejected']
+const PROFILE_STATUSES = ['all', 'pending', 'under-review', 'verified', 'paused', 'rejected']
 const JOB_STATUSES = ['all', 'submitted', 'under-review', 'documents-needed', 'verified', 'filed', 'completed', 'cancelled']
 const STATUS_STYLE = {
   pending: 'bg-amber-50 text-amber-700',
@@ -99,11 +99,18 @@ export default function CAWorkTable({ profiles, taxJobs, caProfiles, loadingProf
 
   return (
     <div className="space-y-4">
+      {view === 'profiles' && (
+        <div className="rounded-2xl border border-eco-200 bg-eco-50 p-5">
+          <h3 className="font-display font-bold text-eco-950">Independent CA verification workflow</h3>
+          <p className="mt-1 text-sm leading-6 text-eco-800">Review the applicant’s identity, ICAI membership details, certificate, practice proof, contact information and consent. Move the application to under review while checks are in progress; verify only after the evidence matches. Use the admin note for evidence checked or the reason for rejection/pausing.</p>
+          <p className="mt-2 text-xs font-semibold text-eco-700">Only verified CA profiles can be assigned client tax jobs. A verified badge confirms Earnova’s document review, not a guarantee of the professional’s advice or outcomes.</p>
+        </div>
+      )}
       <div className="grid lg:grid-cols-[auto_1fr_auto] gap-3 items-center">
         <div className="inline-flex bg-white border border-gray-100 rounded-2xl p-1 shadow-card">
           {[
             ['jobs', 'Tax jobs'],
-            ['profiles', 'CA applicants'],
+            ['profiles', 'CA worker verification'],
           ].map(([key, label]) => (
             <button
               key={key}

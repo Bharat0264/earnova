@@ -87,12 +87,23 @@ export const adminAddFirmMember = async (req, res, next) => {
       User.findOne({ email: String(req.body.email || '').trim().toLowerCase(), isActive: true }),
     ])
     if (!firm || !user) return res.status(404).json({ success: false, message: 'Firm and active Earnova user are required.' })
+    const verifiedByAdmin = req.body.designationVerified === true
+    if (verifiedByAdmin && firm.status !== 'verified') {
+      return res.status(400).json({ success: false, message: 'Verify the CA firm before verifying one of its professionals.' })
+    }
+    const now = new Date()
     const member = await CAFirmMember.findOneAndUpdate(
       { firm: firm._id, user: user._id },
       {
         platformRole: req.body.platformRole,
         professionalDesignation: String(req.body.professionalDesignation || '').trim(),
-        designationVerified: req.body.designationVerified === true,
+        designationVerified: verifiedByAdmin,
+        verificationStatus: verifiedByAdmin ? 'verified' : 'pending',
+        verificationSubmittedAt: now,
+        reviewedAt: verifiedByAdmin ? now : null,
+        reviewedBy: verifiedByAdmin ? req.user._id : null,
+        verifiedAt: verifiedByAdmin ? now : null,
+        verifiedBy: verifiedByAdmin ? req.user._id : null,
         status: 'active',
         joinedAt: new Date(),
         invitedBy: req.user._id,
@@ -112,9 +123,75 @@ export const adminAddFirmMember = async (req, res, next) => {
 
 export const adminListFirmMembers = async (req, res, next) => {
   try {
-    const filter = req.query.firm ? { firm: req.query.firm } : {}
-    const result = await paged(CAFirmMember, filter, req.query, [{ path: 'user', select: 'name email' }, { path: 'firm', select: 'displayName slug' }])
-    res.json({ success: true, professionals: result.records, pagination: result.pagination })
+    const filter = {}
+    if (req.query.firm) filter.firm = req.query.firm
+    if (req.query.status && req.query.status !== 'all') filter.verificationStatus = req.query.status
+    const result = await paged(CAFirmMember, filter, req.query, [
+      { path: 'user', select: 'name email phone' },
+      { path: 'firm', select: 'displayName slug status' },
+      { path: 'reviewedBy', select: 'name email' },
+      { path: 'verifiedBy', select: 'name email' },
+    ])
+    res.json({
+      success: true,
+      professionals: result.records.map(item => ({
+        ...item,
+        verificationStatus: item.verificationStatus || (item.designationVerified ? 'verified' : 'pending'),
+        verificationSubmittedAt: item.verificationSubmittedAt || item.createdAt,
+      })),
+      pagination: result.pagination,
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+
+export const adminUpdateProfessionalVerification = async (req, res, next) => {
+  try {
+    const allowedStatuses = ['pending', 'under_review', 'verified', 'rejected', 'suspended']
+    const status = String(req.body.status || '').trim()
+    const note = String(req.body.note || '').trim()
+    if (!allowedStatuses.includes(status)) {
+      return res.status(400).json({ success: false, message: 'Choose a valid CA professional verification status.' })
+    }
+    if (['rejected', 'suspended'].includes(status) && !note) {
+      return res.status(400).json({ success: false, message: 'A review note is required when rejecting or suspending a CA professional.' })
+    }
+
+    const member = await CAFirmMember.findById(req.params.id).populate('firm', 'displayName status')
+    if (!member) return res.status(404).json({ success: false, message: 'CA professional not found.' })
+    if (status === 'verified' && member.firm?.status !== 'verified') {
+      return res.status(400).json({ success: false, message: 'Verify the CA firm before verifying this professional.' })
+    }
+
+    const now = new Date()
+    member.verificationStatus = status
+    member.verificationNote = note
+    member.reviewedAt = now
+    member.reviewedBy = req.user._id
+    member.designationVerified = status === 'verified'
+    member.verifiedAt = status === 'verified' ? now : null
+    member.verifiedBy = status === 'verified' ? req.user._id : null
+    if (status === 'suspended') member.status = 'suspended'
+    if (status === 'verified' && member.status === 'suspended') member.status = 'active'
+    await member.save()
+
+    await AuditLog.create({
+      actor: req.user._id,
+      action: 'ca_professional.verification_updated',
+      resourceType: 'CAFirmMember',
+      resourceId: member._id,
+      summary: `CA professional verification changed to ${status.replace('_', ' ')}`,
+      requestId: req.id,
+      metadata: { status, firmId: String(member.firm?._id || member.firm) },
+    })
+    await member.populate([
+      { path: 'user', select: 'name email phone' },
+      { path: 'firm', select: 'displayName slug status' },
+      { path: 'reviewedBy', select: 'name email' },
+      { path: 'verifiedBy', select: 'name email' },
+    ])
+    res.json({ success: true, professional: member })
   } catch (error) {
     next(error)
   }

@@ -16,6 +16,7 @@ import CAWorkTable      from '../components/admin/CAWorkTable'
 import ProjectListingsTable from '../components/admin/ProjectListingsTable'
 import AdminOperationsTable, { AdminPlatformAnalytics } from '../components/admin/AdminOperationsTable'
 import PlatformFeeSettings from '../components/admin/PlatformFeeSettings'
+import BusinessVerificationTable from '../components/admin/BusinessVerificationTable'
 import { useAuth }      from '../context/AuthContext'
 import {
   useAdminStats, useAdminOrders, useAdminProducts,
@@ -79,7 +80,7 @@ export default function AdminPage() {
     { key: 'b2b',         label: 'B2B Quotes',      Icon: Building2,        badge: stats?.b2bPending       },
     { key: 'subsidy',     label: 'Subsidy',         Icon: Sun,              badge: stats?.subsidyPending   },
     { key: 'withdrawals', label: 'Withdrawals',     Icon: Wallet,           badge: stats?.withdrawals?.pending },
-    { key: 'businesses', label: 'Businesses', Icon: Building, badge: null },
+    { key: 'businesses', label: 'Business verification', Icon: Building, badge: null },
     { key: 'providers', label: 'Provider verification', Icon: BadgeCheck, badge: null },
     { key: 'services_ops', label: 'Service requests', Icon: ClipboardList, badge: null },
     { key: 'energy_ops', label: 'Energy enquiries', Icon: Leaf, badge: null },
@@ -96,7 +97,7 @@ export default function AdminPage() {
   const PAGE_TITLE = {
     dashboard: 'Dashboard', orders: 'Orders', products: 'Products',
     users: 'Users', freelance: 'Freelance Jobs', ca: 'CA Services', projects: 'Projects', b2b: 'B2B Quotes', subsidy: 'Subsidy Requests', withdrawals: 'Withdrawals',
-    businesses: 'Businesses', providers: 'Provider verification', services_ops: 'Service requests', energy_ops: 'Energy enquiries', support: 'Support tickets', subscriptions: 'Subscriptions', platform_analytics: 'Platform analytics', platform_fees: 'Platform fees', audit: 'Audit logs', referral_ledger: 'Referral ledger',
+    businesses: 'Business verification', providers: 'Provider verification', services_ops: 'Service requests', energy_ops: 'Energy enquiries', support: 'Support tickets', subscriptions: 'Subscriptions', platform_analytics: 'Platform analytics', platform_fees: 'Platform fees', audit: 'Audit logs', referral_ledger: 'Referral ledger',
   }
 
   return (
@@ -235,7 +236,7 @@ export default function AdminPage() {
           {tab === 'b2b'         && <B2BInbox         data={b2b.data}         loading={b2b.loading}         reload={() => { b2b.reload(); reloadStats() }} />}
           {tab === 'subsidy'     && <SubsidyInbox     data={subsidy.data}     loading={subsidy.loading}     reload={() => { subsidy.reload(); reloadStats() }} />}
           {tab === 'withdrawals' && <WithdrawalQueue  data={withdrawals.data} loading={withdrawals.loading} reload={() => { withdrawals.reload(); reloadStats() }} />}
-          {tab === 'businesses' && <AdminOperationsTable resource="businesses" title="Businesses" />}
+          {tab === 'businesses' && <BusinessVerificationTable />}
           {tab === 'providers' && <AdminOperationsTable resource="providers" title="Provider verification" />}
           {tab === 'services_ops' && <AdminOperationsTable resource="services" title="Service requests" />}
           {tab === 'energy_ops' && <AdminOperationsTable resource="energy" title="Energy enquiries" />}

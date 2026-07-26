@@ -9,6 +9,7 @@ import FreelancerProfile from '../models/FreelancerProfile.js'
 import CAProfile from '../models/CAProfile.js'
 import CATaxJob from '../models/CATaxJob.js'
 import ProjectListing from '../models/ProjectListing.js'
+import AuditLog from '../models/AuditLog.js'
 import { DEFAULT_PUBLIC_ACCESS, normalizeFeatureAccess } from '../config/features.js'
 
 /* ────────────────────────────────────────
@@ -548,6 +549,7 @@ export const getAdminCAProfiles = async (req, res) => {
       CAProfile.find(filter)
         .populate('user', 'name email phone role')
         .populate('verifiedBy', 'name email')
+        .populate('reviewedBy', 'name email')
         .sort('-createdAt')
         .skip((page - 1) * limit)
         .limit(limit)
@@ -563,8 +565,16 @@ export const getAdminCAProfiles = async (req, res) => {
 
 export const updateAdminCAProfile = async (req, res) => {
   try {
-    const allowedStatuses = ['pending', 'verified', 'paused', 'rejected']
+    const allowedStatuses = ['pending', 'under-review', 'verified', 'paused', 'rejected']
     const updates = {}
+    const requestedNote = String(req.body.adminNote || '').trim()
+    if (['paused', 'rejected'].includes(req.body.status) && !requestedNote) {
+      const existingProfile = await CAProfile.findById(req.params.id).select('adminNote').lean()
+      if (!existingProfile) return res.status(404).json({ success: false, message: 'CA profile not found.' })
+      if (!existingProfile.adminNote?.trim()) {
+        return res.status(400).json({ success: false, message: 'Add an admin note before pausing or rejecting a CA application.' })
+      }
+    }
 
     if (req.body.status !== undefined) {
       if (!allowedStatuses.includes(req.body.status)) {
@@ -573,9 +583,11 @@ export const updateAdminCAProfile = async (req, res) => {
       updates.status = req.body.status
       updates.verifiedAt = req.body.status === 'verified' ? new Date() : null
       updates.verifiedBy = req.body.status === 'verified' ? req.user._id : null
+      updates.reviewedAt = new Date()
+      updates.reviewedBy = req.user._id
     }
 
-    if (req.body.adminNote !== undefined) updates.adminNote = String(req.body.adminNote || '').trim()
+    if (req.body.adminNote !== undefined) updates.adminNote = requestedNote
 
     if (!Object.keys(updates).length) {
       return res.status(400).json({ success: false, message: 'No valid updates provided.' })
@@ -588,9 +600,19 @@ export const updateAdminCAProfile = async (req, res) => {
     )
       .populate('user', 'name email phone role')
       .populate('verifiedBy', 'name email')
+      .populate('reviewedBy', 'name email')
       .lean()
 
     if (!profile) return res.status(404).json({ success: false, message: 'CA profile not found.' })
+    await AuditLog.create({
+      actor: req.user._id,
+      action: 'ca_profile.verification_updated',
+      resourceType: 'CAProfile',
+      resourceId: profile._id,
+      summary: `CA application review updated${updates.status ? ` to ${updates.status}` : ''}`,
+      requestId: req.id,
+      metadata: { status: updates.status || profile.status },
+    })
     res.json({ success: true, profile })
   } catch (err) {
     res.status(500).json({ success: false, message: err.message })

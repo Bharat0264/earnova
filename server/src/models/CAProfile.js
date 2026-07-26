@@ -38,11 +38,13 @@ const caProfileSchema = new mongoose.Schema({
   consentToVerify: { type: Boolean, required: true },
   status: {
     type: String,
-    enum: ['pending', 'verified', 'paused', 'rejected'],
+    enum: ['pending', 'under-review', 'verified', 'paused', 'rejected'],
     default: 'pending',
     index: true,
   },
   adminNote: { type: String, trim: true },
+  reviewedAt: Date,
+  reviewedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   verifiedAt: Date,
   verifiedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
 }, { timestamps: true })
