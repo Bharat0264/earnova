@@ -87,6 +87,5 @@ productSchema.methods.recalcRating = function () {
 }
 
 productSchema.index({ category: 1, isActive: 1 })
-productSchema.index({ slug: 1 })
 
 export default mongoose.model('Product', productSchema)

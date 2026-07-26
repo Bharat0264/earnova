@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /app/
+Disallow: /partner/
+Disallow: /admin/
+
+Sitemap: https://www.earnova.in/sitemap.xml

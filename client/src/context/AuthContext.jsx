@@ -24,7 +24,7 @@ export function AuthProvider({ children }) {
       .catch(() => {})
       .finally(() => { if (!cancelled) setLoading(false) })
     return () => { cancelled = true }
-  }, []) // eslint-disable-line
+  }, [token])
 
   const saveSession = (tokenVal, userData) => {
     setToken(tokenVal)
@@ -72,6 +72,22 @@ export function AuthProvider({ children }) {
   const updateUser = (updates) =>
     setUser(prev => prev ? { ...prev, ...updates } : null)
 
+  const saveOnboarding = async (payload) => {
+    const res = await fetch(apiUrl('/auth/onboarding'), {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(payload),
+    })
+    const data = await parseJsonResponse(res)
+    if (!res.ok) throw new Error(data?.message || 'Could not save onboarding progress.')
+    if (!data?.user) throw new Error('Invalid onboarding response.')
+    setUser(data.user)
+    return data
+  }
+
   const hasFeature = (feature) => {
     if (user?.role === 'admin') return true
     return user?.featureAccess?.[feature] ?? DEFAULT_PUBLIC_ACCESS[feature] ?? false
@@ -82,7 +98,7 @@ export function AuthProvider({ children }) {
       user, loading, token,
       isAuthenticated: !!user,
       isAdmin: user?.role === 'admin',
-      login, register, logout, updateUser, hasFeature,
+      login, register, logout, updateUser, saveOnboarding, hasFeature,
     }}>
       {children}
     </AuthContext.Provider>

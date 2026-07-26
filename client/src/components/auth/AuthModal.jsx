@@ -132,7 +132,7 @@ function RegisterForm({ onSwitch, onSuccess }) {
     if (!form.name.trim() || form.name.trim().length < 2)  e.name     = 'Name must be at least 2 characters.'
     if (!/\S+@\S+\.\S+/.test(form.email))                  e.email    = 'Enter a valid email address.'
     if (form.phone && !INDIAN_PHONE_RE.test(form.phone))   e.phone    = 'Enter a valid 10-digit Indian mobile number.'
-    if (form.password.length < 6)                          e.password = 'Password must be at least 6 characters.'
+    if (form.password.length < 8)                          e.password = 'Password must be at least 8 characters.'
     return e
   }
 
@@ -178,7 +178,7 @@ function RegisterForm({ onSwitch, onSuccess }) {
         <Input
           type={showPwd ? 'text' : 'password'}
           value={form.password} onChange={set('password')}
-          placeholder="Min. 6 characters"
+          placeholder="Min. 8 characters"
           autoComplete="new-password"
           rightEl={
             <button type="button" onClick={() => setShowPwd(v => !v)}

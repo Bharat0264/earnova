@@ -49,6 +49,5 @@ const b2bQuoteSchema = new mongoose.Schema({
 }, { timestamps: true })
 
 b2bQuoteSchema.index({ createdAt: -1 })
-b2bQuoteSchema.index({ status: 1 })
 
 export default mongoose.model('B2BQuote', b2bQuoteSchema)

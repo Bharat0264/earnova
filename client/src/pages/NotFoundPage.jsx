@@ -1,9 +1,11 @@
 import { Link } from 'react-router-dom'
 import { Home, Zap } from 'lucide-react'
+import PageMeta from '../components/common/PageMeta'
 
 export default function NotFoundPage() {
   return (
     <div className="min-h-[70vh] flex items-center justify-center py-20 px-4">
+      <PageMeta title="Page not found" noIndex />
       <div className="max-w-md w-full text-center">
         <div className="font-display font-extrabold text-[9rem] leading-none text-primary-100 mb-4 select-none">
           404

@@ -3,6 +3,13 @@ import User    from '../models/User.js'
 import { signToken } from '../middleware/auth.js'
 import { sendWelcomeEmail, sendPasswordResetEmail } from '../utils/email.js'
 import { DEFAULT_PUBLIC_ACCESS } from '../config/features.js'
+import {
+  isStrongEnoughPassword,
+  isValidEmail,
+  isValidIndianPhone,
+  normalizeEmail,
+  validateOnboardingPayload,
+} from '../utils/validation.js'
 
 const respond = (res, user, statusCode = 200) => {
   const token = signToken(user._id)
@@ -14,15 +21,18 @@ const respond = (res, user, statusCode = 200) => {
 export const register = async (req, res) => {
   try {
     const name = req.body.name?.trim()
-    const email = req.body.email?.trim().toLowerCase()
+    const email = normalizeEmail(req.body.email)
     const phone = req.body.phone?.trim()
     const { password, referralCode } = req.body
 
     if (!name || !email || !password) {
       return res.status(400).json({ success: false, message: 'Name, email and password are required.' })
     }
-    if (password.length < 6) {
-      return res.status(400).json({ success: false, message: 'Password must be at least 6 characters.' })
+    if (name.length < 2 || name.length > 100 || !isValidEmail(email) || !isValidIndianPhone(phone)) {
+      return res.status(400).json({ success: false, message: 'Enter a valid name, email address and Indian mobile number.' })
+    }
+    if (!isStrongEnoughPassword(password)) {
+      return res.status(400).json({ success: false, message: 'Password must be 8 to 128 characters.' })
     }
     if (await User.exists({ email })) {
       return res.status(409).json({ success: false, message: 'An account with this email already exists.' })
@@ -47,14 +57,15 @@ export const register = async (req, res) => {
     sendWelcomeEmail(user).catch(err => console.warn('[Email] welcome failed:', err.message))
     respond(res, user, 201)
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message })
+    console.error('[Auth register]', err.message)
+    res.status(500).json({ success: false, message: 'Could not create the account.' })
   }
 }
 
 /* ── POST /api/auth/login ── */
 export const login = async (req, res) => {
   try {
-    const email = req.body.email?.trim().toLowerCase()
+    const email = normalizeEmail(req.body.email)
     const { password } = req.body
     if (!email || !password) {
       return res.status(400).json({ success: false, message: 'Email and password are required.' })
@@ -70,7 +81,8 @@ export const login = async (req, res) => {
 
     respond(res, user)
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message })
+    console.error('[Auth login]', err.message)
+    res.status(500).json({ success: false, message: 'Could not sign in.' })
   }
 }
 
@@ -102,8 +114,8 @@ export const updatePassword = async (req, res) => {
     if (!(await user.comparePassword(currentPassword))) {
       return res.status(401).json({ success: false, message: 'Current password is incorrect.' })
     }
-    if (newPassword.length < 6) {
-      return res.status(400).json({ success: false, message: 'New password must be at least 6 characters.' })
+    if (!isStrongEnoughPassword(newPassword)) {
+      return res.status(400).json({ success: false, message: 'New password must be 8 to 128 characters.' })
     }
 
     user.password = newPassword
@@ -164,10 +176,37 @@ export const deleteAddress = async (req, res) => {
   }
 }
 
+/* PUT /api/auth/onboarding */
+export const updateOnboarding = async (req, res) => {
+  try {
+    const result = validateOnboardingPayload(req.body)
+    if (result.error) return res.status(400).json({ success: false, message: result.error })
+
+    const { accountType, goals, status, completedSteps, skippedSteps } = result.value
+    const onboarding = {
+      status,
+      currentStep: Math.min(completedSteps.length, 20),
+      completedSteps,
+      skippedSteps,
+      completedAt: status === 'completed' ? new Date() : undefined,
+    }
+
+    const user = await User.findByIdAndUpdate(
+      req.user._id,
+      { accountType, goals, onboarding },
+      { new: true, runValidators: true }
+    )
+    res.json({ success: true, user: user.toPublicJSON(), message: 'Onboarding progress saved.' })
+  } catch (err) {
+    console.error('[Auth onboarding]', err.message)
+    res.status(500).json({ success: false, message: 'Could not save onboarding progress.' })
+  }
+}
+
 /* ── POST /api/auth/forgot-password ── */
 export const forgotPassword = async (req, res) => {
   try {
-    const user = await User.findOne({ email: req.body.email })
+    const user = await User.findOne({ email: normalizeEmail(req.body.email) })
     /* Don't reveal whether email exists */
     if (!user) {
       return res.json({ success: true, message: 'If that email is registered, a reset link was sent.' })
@@ -207,6 +246,9 @@ export const resetPassword = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Reset link is invalid or has expired.' })
     }
 
+    if (!isStrongEnoughPassword(req.body.password)) {
+      return res.status(400).json({ success: false, message: 'Password must be 8 to 128 characters.' })
+    }
     user.password             = req.body.password
     user.resetPasswordToken   = undefined
     user.resetPasswordExpires = undefined

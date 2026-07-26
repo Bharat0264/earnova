@@ -52,7 +52,7 @@ export default function MyServicesDashboard() {
       <section className="rounded-2xl border border-gray-100 bg-gradient-to-r from-slate-950 to-primary-950 p-5 text-white shadow-card">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div><p className="text-xs font-bold uppercase tracking-wider text-primary-200">Business Solutions</p><h3 className="font-display text-xl font-bold mt-1">{business.active ? 'Subscription active' : 'No active subscription'}</h3><p className="text-sm text-white/65 mt-1">{business.rows || 0} saved rows · {business.sourceName || 'No workspace saved'}{business.subscription?.expiresAt ? ` · Expires ${formatDate(business.subscription.expiresAt)}` : ''}</p></div>
-          <Link to="/business-solutions" className="btn-primary justify-center"><BarChart3 className="w-4 h-4" />Open workspace</Link>
+          <Link to="/app/business-dashboard" className="btn-primary justify-center"><BarChart3 className="w-4 h-4" />Open workspace</Link>
         </div>
       </section>
 

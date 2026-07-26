@@ -1,15 +1,18 @@
-import express     from 'express'
-import cors        from 'cors'
-import morgan      from 'morgan'
-import dotenv      from 'dotenv'
+import express from 'express'
+import cors from 'cors'
+import morgan from 'morgan'
+import dotenv from 'dotenv'
+import mongoose from 'mongoose'
 import { connectDB } from './config/db.js'
-import router      from './routes/index.js'
+import router from './routes/index.js'
 import { handleWebhook } from './controllers/paymentController.js'
+import { requestContext, securityHeaders } from './middleware/security.js'
 
 dotenv.config()
 
-const app  = express()
+const app = express()
 const PORT = process.env.PORT || 5000
+app.set('trust proxy', 1)
 
 const allowedOrigins = [
   'http://localhost:5173',
@@ -20,12 +23,11 @@ const allowedOrigins = [
   'http://127.0.0.1:4173',
   'https://earnova.in',
   'https://www.earnova.in',
-  ...(process.env.CLIENT_URL ? process.env.CLIENT_URL.split(',').map((value) => value.trim()).filter(Boolean) : []),
+  ...(process.env.CLIENT_URL ? process.env.CLIENT_URL.split(',').map(value => value.trim()).filter(Boolean) : []),
 ]
 
-const isDevLocalOrigin = (origin) => {
+const isDevLocalOrigin = origin => {
   if (process.env.NODE_ENV === 'production') return false
-
   try {
     const url = new URL(origin)
     return ['localhost', '127.0.0.1', '::1'].includes(url.hostname)
@@ -34,30 +36,28 @@ const isDevLocalOrigin = (origin) => {
   }
 }
 
-/* ── Middleware ── */
+app.use(requestContext)
+app.use(securityHeaders)
 app.use(cors({
   origin: (origin, callback) => {
     if (!origin || allowedOrigins.includes(origin) || isDevLocalOrigin(origin)) {
       callback(null, true)
       return
     }
-
     callback(new Error('Not allowed by CORS'))
   },
   credentials: true,
 }))
+
 app.post('/api/payment/webhook', express.raw({ type: 'application/json' }), handleWebhook)
-app.use(express.json({ limit: '10mb' }))
+app.use(express.json({ limit: '2mb' }))
 app.use(express.urlencoded({ extended: true }))
 if (process.env.NODE_ENV !== 'test') app.use(morgan('dev'))
 
-/* ── DB ── */
-connectDB()
+if (process.env.NODE_ENV !== 'test') connectDB()
 
-/* ── API routes ── */
 app.use('/api', router)
 
-/* ── Health check ── */
 app.get('/', (_req, res) => {
   res.json({
     success: true,
@@ -65,7 +65,7 @@ app.get('/', (_req, res) => {
     status: 'running',
     frontend: process.env.CLIENT_URL || 'http://127.0.0.1:5173',
     health: '/api/health',
-    message: 'Earnova backend is running. Open the frontend URL to use the application.',
+    readiness: '/api/ready',
   })
 })
 
@@ -75,21 +75,34 @@ app.get('/api', (_req, res) => {
     service: 'Earnova API',
     status: 'running',
     health: '/api/health',
+    readiness: '/api/ready',
   })
 })
 
 app.get('/api/health', (_req, res) => {
   res.json({
-    status:    'OK',
-    service:   'Earnova API',
-    version:   '1.0.0',
+    status: 'OK',
+    service: 'Earnova API',
+    version: '1.1.0',
     timestamp: new Date().toISOString(),
-    env:       process.env.NODE_ENV || 'development',
+    env: process.env.NODE_ENV || 'development',
+  })
+})
+
+app.get('/api/ready', (_req, res) => {
+  const ready = mongoose.connection.readyState === 1
+  res.status(ready ? 200 : 503).json({
+    status: ready ? 'READY' : 'NOT_READY',
+    service: 'Earnova API',
+    database: ready ? 'connected' : 'disconnected',
+    timestamp: new Date().toISOString(),
   })
 })
 
 app.get('/api/env-check', (_req, res) => {
-  if (process.env.NODE_ENV === 'production') return res.status(404).json({ success: false, message: 'Route not found' })
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(404).json({ success: false, message: 'Route not found' })
+  }
   res.json({
     keyIdExists: !!process.env.RAZORPAY_KEY_ID,
     keySecretExists: !!process.env.RAZORPAY_KEY_SECRET,
@@ -98,25 +111,40 @@ app.get('/api/env-check', (_req, res) => {
   })
 })
 
-/* ── 404 ── */
 app.use((_req, res) => {
-  res.status(404).json({ success: false, message: 'Route not found' })
+  res.status(404).json({ success: false, message: 'Route not found', requestId: _req.id })
 })
 
-/* ── Global error handler ── */
-// eslint-disable-next-line no-unused-vars
-app.use((err, _req, res, _next) => {
-  console.error('[ERROR]', err.message)
-  res.status(err.status || 500).json({
+app.use((err, req, res, _next) => {
+  const status = err.status || (err.message === 'Not allowed by CORS' ? 403 : 500)
+  console.error(`[ERROR] requestId=${req.id}`, err.message)
+  res.status(status).json({
     success: false,
-    message: err.message || 'Internal Server Error',
+    message: status >= 500 && process.env.NODE_ENV === 'production'
+      ? 'Internal Server Error'
+      : err.message || 'Internal Server Error',
+    requestId: req.id,
     ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
   })
 })
 
-app.listen(PORT, () => {
-  console.log(`\n🚀  Earnova API  →  http://localhost:${PORT}`)
-  console.log(`📦  Env         →  ${process.env.NODE_ENV || 'development'}\n`)
-})
+let server
+if (process.env.NODE_ENV !== 'test') {
+  server = app.listen(PORT, () => {
+    console.log(`Earnova API listening on port ${PORT}`)
+    console.log(`Environment: ${process.env.NODE_ENV || 'development'}`)
+  })
+
+  const shutdown = signal => {
+    console.log(`${signal} received; shutting down gracefully.`)
+    server.close(async () => {
+      await mongoose.connection.close().catch(() => {})
+      process.exit(0)
+    })
+    setTimeout(() => process.exit(1), 10000).unref()
+  }
+  process.on('SIGTERM', () => shutdown('SIGTERM'))
+  process.on('SIGINT', () => shutdown('SIGINT'))
+}
 
 export default app

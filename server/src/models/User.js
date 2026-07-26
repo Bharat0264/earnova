@@ -15,14 +15,34 @@ const addressSchema = new mongoose.Schema({
   isDefault: { type: Boolean, default: false },
 }, { _id: true })
 
+const onboardingSchema = new mongoose.Schema({
+  status: {
+    type: String,
+    enum: ['not_started', 'in_progress', 'skipped', 'completed'],
+    default: 'not_started',
+  },
+  currentStep: { type: Number, min: 0, default: 0 },
+  completedSteps: [{ type: Number, min: 0 }],
+  skippedSteps: [{ type: Number, min: 0 }],
+  completedAt: Date,
+}, { _id: false })
+
 /* ── Main schema ── */
 const userSchema = new mongoose.Schema({
   name:     { type: String, required: true, trim: true },
   email:    { type: String, required: true, unique: true, lowercase: true, trim: true },
   phone:    { type: String, trim: true },
-  password: { type: String, required: true, minlength: 6 },
+  password: { type: String, required: true, minlength: 8 },
   avatar:   String,
   role:     { type: String, enum: ['customer', 'admin', 'dealer'], default: 'customer' },
+  accountType: {
+    type: String,
+    enum: ['individual', 'business_owner', 'freelancer', 'ca_consultant', 'product_seller', 'energy_partner'],
+    default: 'individual',
+    index: true,
+  },
+  goals: [{ type: String, trim: true, maxlength: 120 }],
+  onboarding: { type: onboardingSchema, default: () => ({}) },
   featureAccess: {
     type: Map,
     of: Boolean,
@@ -85,7 +105,4 @@ userSchema.methods.toPublicJSON = function () {
 }
 
 /* ── Indexes ── */
-userSchema.index({ email: 1 })
-userSchema.index({ referralCode: 1 })
-
 export default mongoose.model('User', userSchema)
