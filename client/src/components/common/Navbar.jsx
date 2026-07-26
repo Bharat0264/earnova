@@ -49,7 +49,11 @@ export default function Navbar() {
               <Link to="/app/overview" className="hidden min-h-10 items-center gap-2 rounded-xl px-3 text-sm font-bold text-slate-700 hover:bg-slate-100 sm:flex">
                 <LayoutDashboard className="h-4 w-4" /> Workspace
               </Link>
-              {user?.role === 'admin' && <Link to="/admin" className="hidden min-h-10 items-center gap-2 rounded-xl px-3 text-sm font-bold text-brand-700 hover:bg-brand-50 sm:flex"><ShieldCheck className="h-4 w-4" />Admin</Link>}
+              {user?.role === 'admin' && (
+                <Link to="/admin" aria-label="Open Admin Panel" className="inline-flex min-h-10 min-w-10 items-center justify-center gap-2 rounded-xl px-2 text-sm font-bold text-brand-700 hover:bg-brand-50 sm:px-3">
+                  <ShieldCheck className="h-4 w-4" /><span className="hidden sm:inline">Admin</span>
+                </Link>
+              )}
               <button type="button" onClick={logout} className="hidden min-h-10 items-center gap-2 rounded-xl px-3 text-sm font-semibold text-slate-600 hover:bg-red-50 hover:text-red-700 md:flex">
                 <LogOut className="h-4 w-4" /> Sign out
               </button>
@@ -84,6 +88,7 @@ export default function Navbar() {
             )}
             <nav className="mt-5 flex flex-1 flex-col gap-1 overflow-y-auto" aria-label="Mobile navigation">
               {PUBLIC_NAV_LINKS.map(link => <NavLink key={link.to} to={link.to} className={({ isActive }) => `rounded-xl px-4 py-3 text-sm font-semibold ${isActive ? 'bg-brand-50 text-brand-800' : 'text-slate-700 hover:bg-slate-50'}`}>{link.label}</NavLink>)}
+              {user?.role === 'admin' && <NavLink to="/admin" className="mt-2 flex items-center gap-2 rounded-xl bg-brand-50 px-4 py-3 text-sm font-bold text-brand-800"><ShieldCheck className="h-4 w-4" />Open Admin Panel</NavLink>}
               {isAuthenticated && <NavLink to="/app/overview" className="mt-2 rounded-xl bg-slate-950 px-4 py-3 text-sm font-bold text-white">Open workspace</NavLink>}
             </nav>
             <div className="border-t border-slate-200 pt-4">
