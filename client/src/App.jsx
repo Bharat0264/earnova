@@ -115,7 +115,7 @@ function AppRoutes() {
           <Route path="unauthorized" element={<AccessPage />} />
           <Route path="forbidden" element={<AccessPage forbidden />} />
           <Route path="account" element={<AccountPage />} />
-          <Route path="referral" element={<ReferralPage />} />
+          <Route path="referral" element={<FeatureGate feature="referrals"><ReferralPage /></FeatureGate>} />
           <Route path="help" element={<HelpCenterPage />} />
           {['account', 'business', 'ca', 'freelancing', 'orders', 'projects', 'energy', 'payments', 'referrals', 'privacy-security', 'report-abuse'].map(category => (
             <Route key={category} path={`help/${category}`} element={<HelpCenterPage category={category} />} />

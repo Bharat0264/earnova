@@ -7,7 +7,7 @@ export const FEATURES = [
   {
     key: 'ecommerce',
     label: 'Shop at Earnova',
-    description: 'Access the product shop, checkout, referral wallet, subsidies and B2B product programs.',
+    description: 'Access the product shop, cart, checkout, orders, and project marketplace purchases.',
   },
   {
     key: 'businessSolutions',
@@ -43,10 +43,10 @@ export const FEATURES = [
 
 export const DEFAULT_PUBLIC_ACCESS = {
   freelancing: true,
-  ecommerce: false,
-  businessSolutions: false,
-  energySolutions: false,
-  caServices: false,
+  ecommerce: true,
+  businessSolutions: true,
+  energySolutions: true,
+  caServices: true,
   b2bPrograms: false,
   subsidies: false,
   referrals: false,

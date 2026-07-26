@@ -197,7 +197,7 @@ export default function UsersTable({ data, loading, reload }) {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
             <h2 className="font-display font-bold text-lg">Create Member</h2>
-            <p className="text-sm text-gray-500 mt-1 mb-5">New members get Freelancing by default. Enable paid or admin-approved services from the dropdown.</p>
+            <p className="text-sm text-gray-500 mt-1 mb-5">New members get Shopping, Freelancing, Business, Energy, and CA services by default. B2B, Subsidies, and Referrals require admin approval.</p>
             <div className="space-y-3">
               <input placeholder="Name" value={form.name} onChange={event => setForm({ ...form, name: event.target.value })} className="input-base" />
               <input type="email" placeholder="Email" value={form.email} onChange={event => setForm({ ...form, email: event.target.value })} className="input-base" />

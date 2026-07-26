@@ -4,8 +4,8 @@ import { protect, adminOnly, requireFeature } from '../middleware/auth.js'
 
 const router = Router()
 
-router.post('/check-eligibility', checkEligibility)                     /* Public */
-router.post('/request',           submitRequest)                        /* Public */
+router.post('/check-eligibility', protect, requireFeature('subsidies'), checkEligibility)
+router.post('/request',           protect, requireFeature('subsidies'), submitRequest)
 router.get('/requests',           protect, adminOnly, requireFeature('subsidies'), getRequests)      /* Admin  */
 router.patch('/requests/:id',     protect, adminOnly, requireFeature('subsidies'), updateRequest)    /* Admin  */
 
