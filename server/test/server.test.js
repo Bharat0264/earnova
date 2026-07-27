@@ -70,4 +70,6 @@ test('Razorpay credentials tolerate safe env-import quoting without exposing sec
   assert.match(paymentControllerSource, /value\.startsWith\(`\$\{name\}=`\)/)
   assert.match(paymentControllerSource, /secret length \$\{keySecret\.length\}/)
   assert.match(paymentControllerSource, /if \(status >= 500\) return 502/)
+  assert.match(paymentControllerSource, /EARNOVA_RAZORPAY_KEY_ID_V2/)
+  assert.match(paymentControllerSource, /source: 'v2'/)
 })

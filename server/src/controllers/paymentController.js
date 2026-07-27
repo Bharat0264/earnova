@@ -20,9 +20,19 @@ const readCredential = (name) => {
   return value
 }
 
+const getRazorpayCredentials = () => {
+  const v2KeyId = readCredential('EARNOVA_RAZORPAY_KEY_ID_V2')
+  const v2KeySecret = readCredential('EARNOVA_RAZORPAY_KEY_SECRET_V2')
+  if (v2KeyId && v2KeySecret) return { keyId: v2KeyId, keySecret: v2KeySecret, source: 'v2' }
+  return {
+    keyId: readCredential('RAZORPAY_KEY_ID'),
+    keySecret: readCredential('RAZORPAY_KEY_SECRET'),
+    source: 'legacy',
+  }
+}
+
 const requireRazorpayConfig = () => {
-  const keyId = readCredential('RAZORPAY_KEY_ID')
-  const keySecret = readCredential('RAZORPAY_KEY_SECRET')
+  const { keyId, keySecret } = getRazorpayCredentials()
 
   if (!keyId || !keySecret) {
     const err = new Error(
@@ -45,11 +55,10 @@ const getRazorpay = () => {
 
 const paymentSetupMessage = (err) => {
   if (err?.statusCode === 401 || err?.status === 401) {
-    const keyId = readCredential('RAZORPAY_KEY_ID')
-    const keySecret = readCredential('RAZORPAY_KEY_SECRET')
+    const { keyId, keySecret, source } = getRazorpayCredentials()
     const mode = keyId.startsWith('rzp_live_') ? 'live' : keyId.startsWith('rzp_test_') ? 'test' : 'invalid'
     const tail = keyId.length >= 4 ? keyId.slice(-4) : 'missing'
-    return `Razorpay authentication failed. Render loaded a ${mode} key ending in ${tail} (ID length ${keyId.length}, secret length ${keySecret.length}). Confirm this matches the active Razorpay pair.`
+    return `Razorpay authentication failed. Render loaded ${source} ${mode} credentials with a key ending in ${tail} (ID length ${keyId.length}, secret length ${keySecret.length}). Confirm this matches the active Razorpay pair.`
   }
   return err.message || 'Could not initiate payment. Please try again.'
 }
