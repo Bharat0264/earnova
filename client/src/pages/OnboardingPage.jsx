@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { ArrowRight, Check, Loader2 } from 'lucide-react'
 import { ACCOUNT_TYPES, ONBOARDING_CHECKLISTS } from '../config/navigation'
 import { useAuth } from '../context/AuthContext'
@@ -8,7 +8,11 @@ import PageMeta from '../components/common/PageMeta'
 export default function OnboardingPage() {
   const { user, saveOnboarding } = useAuth()
   const navigate = useNavigate()
-  const [accountType, setAccountType] = useState(user?.accountType || '')
+  const [searchParams] = useSearchParams()
+  const requestedAccountType = searchParams.get('accountType')
+  const [accountType, setAccountType] = useState(
+    requestedAccountType === 'ca_consultant' ? 'ca_consultant' : (user?.accountType || '')
+  )
   const [completedSteps, setCompletedSteps] = useState(user?.onboarding?.completedSteps || [])
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -85,4 +89,3 @@ export default function OnboardingPage() {
     </main>
   )
 }
-

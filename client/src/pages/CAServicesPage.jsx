@@ -6,6 +6,7 @@ import {
 } from 'lucide-react'
 import PageMeta from '../components/common/PageMeta'
 import { api } from '../utils/api'
+import { useAuth } from '../context/AuthContext'
 
 const PROCESS = [
   ['Choose a service', 'Review eligibility, included work, documents, pricing basis and handling-time estimate.'],
@@ -15,6 +16,7 @@ const PROCESS = [
 ]
 
 export default function CAServicesPage() {
+  const { isAuthenticated, user } = useAuth()
   const [data, setData] = useState({ services: [], firms: [] })
   const [query, setQuery] = useState('')
   const [loading, setLoading] = useState(true)
@@ -39,6 +41,9 @@ export default function CAServicesPage() {
     if (!needle) return data.services
     return data.services.filter(service => `${service.name} ${service.category} ${service.summary}`.toLowerCase().includes(needle))
   }, [data.services, query])
+  const isCA = user?.accountType === 'ca_consultant'
+  const caActionTo = isCA ? '/partner/overview' : isAuthenticated ? '/onboarding?accountType=ca_consultant' : '/register?accountType=ca_consultant'
+  const caActionLabel = isCA ? 'Open CA workspace' : 'Become a CA'
 
   return (
     <>
@@ -54,7 +59,7 @@ export default function CAServicesPage() {
             <div className="mt-7 flex flex-col gap-3 sm:flex-row">
               <a href="#services" className="btn-primary">Find a CA service <ArrowRight className="h-4 w-4" /></a>
               <Link to="/services/ca/book-consultation" className="btn-secondary">Book a consultation</Link>
-              <Link to="/register?accountType=ca_consultant" className="btn-secondary"><UserPlus className="h-4 w-4" />Become a CA</Link>
+              <Link to={caActionTo} className="btn-secondary"><UserPlus className="h-4 w-4" />{caActionLabel}</Link>
             </div>
             <p className="mt-4 text-xs leading-relaxed text-slate-500">Professional eligibility, scope and authority-dependent timelines are reviewed case by case. Earnova does not guarantee tax savings, approval or completion dates.</p>
           </div>
@@ -88,7 +93,7 @@ export default function CAServicesPage() {
             <h2 className="mt-2 text-2xl font-bold text-slate-950">Want to provide CA services on Earnova?</h2>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">Create a normal Earnova account, complete your professional profile and submit it for admin verification. You can accept work only after approval.</p>
           </div>
-          <Link to="/register?accountType=ca_consultant" className="btn-primary mt-5 shrink-0 sm:mt-0"><UserPlus className="h-4 w-4" />Become a CA</Link>
+          <Link to={caActionTo} className="btn-primary mt-5 shrink-0 sm:mt-0"><UserPlus className="h-4 w-4" />{caActionLabel}</Link>
         </div>
       </section>
 

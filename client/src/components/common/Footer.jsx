@@ -19,7 +19,7 @@ export default function Footer() {
             <p className="mt-5 max-w-sm text-sm leading-relaxed text-slate-400">AI-powered business tools, trusted professional services and sustainable energy solutions for Indian businesses.</p>
             <div className="mt-5 space-y-2 text-sm text-slate-400">
               <a href="mailto:earnova.fam@gmail.com" className="flex items-center gap-2 hover:text-white"><Mail className="h-4 w-4" /> earnova.fam@gmail.com</a>
-              <a href="https://www.instagram.com/earnova.in__/" target="_blank" rel="noreferrer" aria-label="Open Earnova on Instagram" className="flex items-center gap-2 hover:text-white"><Instagram className="h-4 w-4" /> @earnova.in__</a>
+              <a href="https://www.instagram.com/earnova.in__?igsh=MXZkZ2hoZmlwM3k0eQ%3D%3D&utm_source=qr" target="_blank" rel="noopener noreferrer" aria-label="Open Earnova on Instagram" className="flex items-center gap-2 hover:text-white"><Instagram className="h-4 w-4" /> @earnova.in__</a>
               <p className="flex items-center gap-2"><MapPin className="h-4 w-4" /> India</p>
             </div>
           </div>
