@@ -59,7 +59,7 @@ async function request(endpoint, opts = {}) {
   const data = await parseJsonResponse(res)
 
   if (!res.ok) {
-    if (res.status === 401) {
+    if (res.status === 401 && ['AUTH_REQUIRED', 'AUTH_INVALID'].includes(data?.code)) {
       localStorage.removeItem('earnova_token')
       window.dispatchEvent(new Event('earnova:auth-expired'))
     }

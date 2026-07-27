@@ -20,3 +20,8 @@ test('product catalogue does not force every listing into solar panels', async (
   assert.match(pageSource, /searchParams\.get\('category'\) \|\| ''/)
   assert.doesNotMatch(pageSource, /products\.filter\(p => p\.category === 'solar-panels'\)/)
 })
+
+test('payment-provider authentication errors cannot clear the customer session', async () => {
+  const apiSource = await readFile(new URL('../src/utils/api.js', import.meta.url), 'utf8')
+  assert.match(apiSource, /\['AUTH_REQUIRED', 'AUTH_INVALID'\]\.includes\(data\?\.code\)/)
+})

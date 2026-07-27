@@ -52,3 +52,14 @@ test('unknown routes return a safe 404 with a request ID', async () => {
   assert.equal(body.message, 'Route not found')
   assert.ok(body.requestId)
 })
+
+test('protected API failures identify actual session expiry', async () => {
+  const response = await fetch(`${baseUrl}/api/payment/create-order`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ cartItems: [] }),
+  })
+  const body = await response.json()
+  assert.equal(response.status, 401)
+  assert.equal(body.code, 'AUTH_REQUIRED')
+})

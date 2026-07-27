@@ -8,7 +8,7 @@ import { DEFAULT_PUBLIC_ACCESS } from '../config/features.js'
 export const protect = async (req, res, next) => {
   const header = req.headers.authorization
   if (!header?.startsWith('Bearer ')) {
-    return res.status(401).json({ success: false, message: 'No token provided.' })
+    return res.status(401).json({ success: false, code: 'AUTH_REQUIRED', message: 'No token provided.' })
   }
 
   const token = header.split(' ')[1]
@@ -18,7 +18,7 @@ export const protect = async (req, res, next) => {
     const user    = await User.findById(decoded.id).select('-password')
 
     if (!user) {
-      return res.status(401).json({ success: false, message: 'User no longer exists.' })
+      return res.status(401).json({ success: false, code: 'AUTH_INVALID', message: 'User no longer exists.' })
     }
     if (!user.isActive) {
       return res.status(403).json({ success: false, message: 'Account is suspended.' })
@@ -27,7 +27,7 @@ export const protect = async (req, res, next) => {
     req.user = user
     next()
   } catch {
-    return res.status(401).json({ success: false, message: 'Invalid or expired token.' })
+    return res.status(401).json({ success: false, code: 'AUTH_INVALID', message: 'Invalid or expired token.' })
   }
 }
 

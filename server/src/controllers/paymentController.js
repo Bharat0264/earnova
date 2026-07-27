@@ -41,6 +41,12 @@ const paymentSetupMessage = (err) => {
   return err.message || 'Could not initiate payment. Please try again.'
 }
 
+const paymentSetupStatus = (err) => {
+  if (err?.statusCode === 401 || err?.status === 401) return 502
+  const status = Number(err?.status || err?.statusCode)
+  return status >= 400 && status < 600 ? status : 500
+}
+
 /* ── Pricing helpers ── */
 const calcAmounts = (cartItems) => {
   const subtotal = cartItems.reduce((s, i) => s + i.price * i.quantity, 0)
@@ -222,7 +228,7 @@ export const createRazorpayOrder = async (req, res) => {
   } catch (err) {
     const message = paymentSetupMessage(err)
     console.error('[Payment] create-order failed:', message)
-    res.status(err.status || err.statusCode || 500).json({ success: false, message })
+    res.status(paymentSetupStatus(err)).json({ success: false, code: 'PAYMENT_PROVIDER_ERROR', message })
   }
 }
 
@@ -507,7 +513,7 @@ export const createBusinessSubscriptionOrder = async (req, res) => {
   } catch (err) {
     const message = paymentSetupMessage(err)
     console.error('[Payment] business subscription create failed:', message)
-    res.status(err.status || err.statusCode || 500).json({ success: false, message })
+    res.status(paymentSetupStatus(err)).json({ success: false, code: 'PAYMENT_PROVIDER_ERROR', message })
   }
 }
 
