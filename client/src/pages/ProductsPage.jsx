@@ -23,7 +23,7 @@ export default function ProductsPage() {
   const [gridCols,     setGridCols]     = useState(3)
 
   const filters = useMemo(() => ({
-    category: 'solar-panels',
+    category: searchParams.get('category') || '',
     brand:    searchParams.get('brand')    || '',
     minPrice: searchParams.get('minPrice') || '',
     maxPrice: searchParams.get('maxPrice') || '',
@@ -35,10 +35,7 @@ export default function ProductsPage() {
   }), [searchParams])
 
   const { products, loading, total } = useProducts(filters)
-  const visibleProducts = useMemo(
-    () => products.filter(p => p.category === 'solar-panels'),
-    [products]
-  )
+  const visibleProducts = products
   const visibleTotal = Math.min(total, visibleProducts.length || total)
 
   const updateFilter = useCallback((key, value) => {
@@ -48,16 +45,6 @@ export default function ProductsPage() {
       return p
     })
   }, [setSearchParams])
-
-  useEffect(() => {
-    if (searchParams.get('category') && searchParams.get('category') !== 'solar-panels') {
-      setSearchParams(prev => {
-        const p = new URLSearchParams(prev)
-        p.set('category', 'solar-panels')
-        return p
-      })
-    }
-  }, [searchParams, setSearchParams])
 
   useEffect(() => {
     const t = setTimeout(() => updateFilter('search', searchInput), 400)
@@ -75,7 +62,7 @@ export default function ProductsPage() {
     filters.maxPrice, filters.rating, filters.inStock,
   ].filter(Boolean).length
 
-  const pageTitle = CATEGORY_LABELS['solar-panels'] || 'Solar Panels'
+  const pageTitle = filters.category ? (CATEGORY_LABELS[filters.category] || 'Products') : 'All Products'
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -121,7 +108,6 @@ export default function ProductsPage() {
                 onChange={updateFilter}
                 onClear={clearFilters}
                 activeCount={activeCount}
-                includeCategories={['solar-panels']}
               />
             </div>
           </aside>
@@ -143,7 +129,7 @@ export default function ProductsPage() {
                     </span>
                   )}
                 </button>
-                <FilterChip label={CATEGORY_LABELS['solar-panels']} locked />
+                {filters.category && <FilterChip label={CATEGORY_LABELS[filters.category] || filters.category} onRemove={() => updateFilter('category', '')} />}
                 {filters.brand && (
                   <FilterChip label={filters.brand} onRemove={() => updateFilter('brand', '')} />
                 )}
@@ -192,7 +178,6 @@ export default function ProductsPage() {
           onChange={updateFilter}
           onClear={() => { clearFilters(); setFilterOpen(false) }}
           activeCount={activeCount}
-          includeCategories={['solar-panels']}
         />
       </Modal>
     </div>

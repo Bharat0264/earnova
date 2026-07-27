@@ -216,9 +216,8 @@ const validateProductPayload = (payload) => {
 ──────────────────────────────────────── */
 export const getProducts = async (req, res) => {
   try {
-    const solarQuery = { ...req.query, category: 'solar-panels' }
-    const base     = Product.find({ isActive: true, category: 'solar-panels' })
-    const features = new APIFeatures(base, solarQuery)
+    const base     = Product.find({ isActive: true })
+    const features = new APIFeatures(base, req.query)
       .filter()
       .search()
       .sort()
@@ -227,7 +226,7 @@ export const getProducts = async (req, res) => {
 
     const [products, total] = await Promise.all([
       features.query.lean(),
-      Product.countDocuments({ ...buildCountFilter(solarQuery), category: 'solar-panels' }),
+      Product.countDocuments(buildCountFilter(req.query)),
     ])
 
     const page  = parseInt(req.query.page,  10) || 1
@@ -264,7 +263,6 @@ export const getProduct = async (req, res) => {
     const product  = await Product.findOne({
       $or: [{ slug }, { _id: slug.match(/^[a-f\d]{24}$/i) ? slug : null }],
       isActive: true,
-      category: 'solar-panels',
     }).lean()
 
     if (!product) {
@@ -302,7 +300,7 @@ export const createProduct = async (req, res) => {
 
 export const getAdminProducts = async (req, res) => {
   try {
-    const products = await Product.find({ category: 'solar-panels' })
+    const products = await Product.find({})
       .sort('-createdAt')
       .select('-__v')
       .lean()
@@ -481,7 +479,7 @@ export const addReview = async (req, res) => {
 ──────────────────────────────────────── */
 export const getFeaturedProducts = async (_req, res) => {
   try {
-    const products = await Product.find({ isActive: true, isFeatured: true, category: 'solar-panels' })
+    const products = await Product.find({ isActive: true, isFeatured: true })
       .sort('-createdAt')
       .limit(8)
       .lean()

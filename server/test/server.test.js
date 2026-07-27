@@ -1,10 +1,12 @@
 import test, { after, before } from 'node:test'
 import assert from 'node:assert/strict'
+import { readFile } from 'node:fs/promises'
 
 process.env.NODE_ENV = 'test'
 process.env.JWT_SECRET = 'test-only-secret-that-is-long-enough'
 
 const { default: app } = await import('../src/server.js')
+const productControllerSource = await readFile(new URL('../src/controllers/productController.js', import.meta.url), 'utf8')
 let server
 let baseUrl
 
@@ -19,6 +21,12 @@ before(async () => {
 
 after(async () => {
   await new Promise(resolve => server.close(resolve))
+})
+
+test('public and admin product queries include every product category', () => {
+  assert.match(productControllerSource, /Product\.find\(\{ isActive: true \}\)/)
+  assert.match(productControllerSource, /Product\.find\(\{\}\)/)
+  assert.doesNotMatch(productControllerSource, /isActive: true, category: 'solar-panels'/)
 })
 
 test('health endpoint returns safe operational metadata and security headers', async () => {
