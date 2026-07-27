@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { Loader2 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import GoogleSignInButton from '../components/auth/GoogleSignInButton'
@@ -7,9 +7,8 @@ import PageMeta from '../components/common/PageMeta'
 
 export default function AuthPage({ mode }) {
   const isRegister = mode === 'register'
-  const { login, register, googleLogin, isAuthenticated, user } = useAuth()
+  const { login, register, googleLogin, isAuthenticated } = useAuth()
   const navigate = useNavigate()
-  const location = useLocation()
   const [searchParams] = useSearchParams()
   const [form, setForm] = useState({ name: '', email: '', phone: '', password: '' })
   const [accountType, setAccountType] = useState(
@@ -18,32 +17,21 @@ export default function AuthPage({ mode }) {
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
-  const destination = resultUser =>
-    resultUser?.role === 'admin'
-      ? '/app/overview'
-      : resultUser?.onboarding?.status === 'completed'
-      ? (location.state?.from || '/app/overview')
-      : '/onboarding'
-
   useEffect(() => {
-    if (!isAuthenticated) return
-    const target = user?.role === 'admin'
-      ? '/app/overview'
-      : user?.onboarding?.status === 'completed'
-      ? (location.state?.from || '/app/overview')
-      : '/onboarding'
-    navigate(target, { replace: true })
-  }, [isAuthenticated, location.state, navigate, user])
+    if (isAuthenticated) navigate('/home', { replace: true })
+  }, [isAuthenticated, navigate])
 
   const submitEmail = async event => {
     event.preventDefault()
     setError('')
     setSubmitting(true)
     try {
-      const result = isRegister
-        ? await register({ ...form, accountType })
-        : await login(form.email, form.password)
-      navigate(destination(result.user), { replace: true })
+      if (isRegister) {
+        await register({ ...form, accountType })
+      } else {
+        await login(form.email, form.password)
+      }
+      navigate('/home', { replace: true })
     } catch (err) {
       setError(err.message)
     } finally {
@@ -56,11 +44,11 @@ export default function AuthPage({ mode }) {
     setSubmitting(true)
     try {
       const referral = JSON.parse(localStorage.getItem('earnova_ref') || 'null')
-      const result = await googleLogin(credential, {
+      await googleLogin(credential, {
         accountType,
         referralCode: referral?.expiry > Date.now() ? referral.code : undefined,
       })
-      navigate(destination(result.user), { replace: true })
+      navigate('/home', { replace: true })
     } catch (err) {
       setError(err.message)
     } finally {
