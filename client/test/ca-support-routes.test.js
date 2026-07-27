@@ -28,6 +28,12 @@ test('CA services exposes a Become a CA path that preselects CA registration', (
   assert.match(onboardingSource, /requestedAccountType === 'ca_consultant'/)
 })
 
+test('login offers PrintBee on the Earnova subdomain', () => {
+  assert.match(authSource, /Print documents with PrintBee/)
+  assert.match(authSource, /https:\/\/printbee\.earnova\.in/)
+  assert.match(authSource, /\/printbee-logo\.png/)
+})
+
 test('Phase 1 exposes Help Centre, customer support and restricted admin routes', () => {
   for (const route of [
     'help/article/:articleSlug',

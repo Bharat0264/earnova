@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
-import { Loader2 } from 'lucide-react'
+import { ExternalLink, Loader2 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import PageMeta from '../components/common/PageMeta'
 
@@ -91,6 +91,22 @@ export default function AuthPage({ mode }) {
               {isRegister ? 'Already have an account?' : 'New to Earnova?'}{' '}
               <Link className="font-bold text-brand-700 hover:underline" to={isRegister ? '/login' : '/register'}>{isRegister ? 'Sign in' : 'Create account'}</Link>
             </p>
+            {!isRegister && (
+              <div className="mt-7 border-t border-slate-200 pt-6">
+                <p className="text-center text-xs font-bold uppercase tracking-[0.16em] text-slate-400">Or use an Earnova service</p>
+                <a
+                  href="https://printbee.earnova.in"
+                  className="group mt-4 flex items-center gap-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 transition hover:border-amber-300 hover:bg-amber-100 focus:outline-none focus:ring-2 focus:ring-amber-300"
+                >
+                  <img src="/printbee-logo.png" alt="" className="h-14 w-14 rounded-xl bg-white object-contain p-1 shadow-sm" />
+                  <span className="min-w-0 flex-1">
+                    <span className="block font-black text-slate-950">Print documents with PrintBee</span>
+                    <span className="mt-1 block text-sm leading-relaxed text-slate-600">Upload A4 documents, pay online and get them delivered.</span>
+                  </span>
+                  <ExternalLink className="h-5 w-5 shrink-0 text-amber-700 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+                </a>
+              </div>
+            )}
           </form>
         </div>
       </section>
