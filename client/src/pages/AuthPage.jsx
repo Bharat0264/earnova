@@ -20,7 +20,7 @@ export default function AuthPage({ mode }) {
 
   const destination = resultUser =>
     resultUser?.role === 'admin'
-      ? '/admin'
+      ? '/app/overview'
       : resultUser?.onboarding?.status === 'completed'
       ? (location.state?.from || '/app/overview')
       : '/onboarding'
@@ -28,7 +28,7 @@ export default function AuthPage({ mode }) {
   useEffect(() => {
     if (!isAuthenticated) return
     const target = user?.role === 'admin'
-      ? '/admin'
+      ? '/app/overview'
       : user?.onboarding?.status === 'completed'
       ? (location.state?.from || '/app/overview')
       : '/onboarding'
