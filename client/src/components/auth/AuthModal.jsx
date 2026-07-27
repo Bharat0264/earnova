@@ -110,10 +110,10 @@ function RegisterForm({ onSwitch, onSuccess }) {
     try {
       const stored = JSON.parse(localStorage.getItem('earnova_ref'))
       if (stored && stored.expiry > Date.now()) {
-        return { name: '', email: '', phone: '', password: '', referralCode: stored.code }
+        return { name: '', email: '', phone: '', password: '', referralCode: stored.code, accountType: 'individual' }
       }
     } catch {}
-    return { name: '', email: '', phone: '', password: '', referralCode: '' }
+    return { name: '', email: '', phone: '', password: '', referralCode: '', accountType: 'individual' }
   })
   const [showPwd,  setShowPwd]  = useState(false)
   const [showRef,  setShowRef]  = useState(() => {
@@ -159,6 +159,14 @@ function RegisterForm({ onSwitch, onSuccess }) {
           {errors.general}
         </div>
       )}
+
+      <Field label="Register as">
+        <select className="input-base" value={form.accountType} onChange={set('accountType')}>
+          <option value="individual">Normal account</option>
+          <option value="ca_consultant">Chartered Accountant (CA)</option>
+        </select>
+        {form.accountType === 'ca_consultant' && <p className="mt-1 text-xs leading-relaxed text-amber-700">Complete your professional profile after signup. You can accept work only after admin approval.</p>}
+      </Field>
 
       <Field label="Full Name" error={errors.name}>
         <Input value={form.name} onChange={set('name')} placeholder="Raju Sharma" autoComplete="name" />

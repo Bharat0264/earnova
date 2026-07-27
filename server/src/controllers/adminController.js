@@ -330,6 +330,7 @@ export const createAdminUser = async (req, res) => {
       phone,
       password,
       role = 'customer',
+      accountType = 'individual',
       featureAccess
     } = req.body
 
@@ -357,6 +358,7 @@ export const createAdminUser = async (req, res) => {
       phone,
       password,
       role,
+      accountType: accountType === 'ca_consultant' ? 'ca_consultant' : 'individual',
       featureAccess: normalizeFeatureAccess(featureAccess, DEFAULT_PUBLIC_ACCESS),
       isActive: true
     })

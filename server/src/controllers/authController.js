@@ -24,6 +24,7 @@ export const register = async (req, res) => {
     const email = normalizeEmail(req.body.email)
     const phone = req.body.phone?.trim()
     const { password, referralCode } = req.body
+    const accountType = req.body.accountType === 'ca_consultant' ? 'ca_consultant' : 'individual'
 
     if (!name || !email || !password) {
       return res.status(400).json({ success: false, message: 'Name, email and password are required.' })
@@ -51,6 +52,7 @@ export const register = async (req, res) => {
       password,
       referredBy,
       role: 'customer',
+      accountType,
       featureAccess: DEFAULT_PUBLIC_ACCESS,
     })
 

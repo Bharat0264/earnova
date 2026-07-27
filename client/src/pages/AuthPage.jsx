@@ -9,7 +9,7 @@ export default function AuthPage({ mode }) {
   const { login, register, isAuthenticated, user } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
-  const [form, setForm] = useState({ name: '', email: '', phone: '', password: '' })
+  const [form, setForm] = useState({ name: '', email: '', phone: '', password: '', accountType: 'individual' })
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
@@ -56,6 +56,18 @@ export default function AuthPage({ mode }) {
             <div className="mt-6 space-y-4">
               {isRegister && (
                 <>
+                  <fieldset>
+                    <legend className="text-sm font-bold text-slate-700">Register as</legend>
+                    <div className="mt-2 grid grid-cols-2 gap-2">
+                      {[['individual', 'Normal account'], ['ca_consultant', 'Chartered Accountant (CA)']].map(([value, label]) => (
+                        <label key={value} className={`cursor-pointer rounded-xl border p-3 text-sm font-semibold ${form.accountType === value ? 'border-brand-500 bg-brand-50 text-brand-800' : 'border-slate-200 text-slate-600'}`}>
+                          <input type="radio" name="accountType" value={value} checked={form.accountType === value} onChange={update('accountType')} className="mr-2 accent-violet-700" />
+                          {label}
+                        </label>
+                      ))}
+                    </div>
+                    {form.accountType === 'ca_consultant' && <p className="mt-2 text-xs leading-relaxed text-amber-700">Your account will be created normally. Complete your professional profile after signup, then wait for admin approval before accepting work.</p>}
+                  </fieldset>
                   <label className="form-field"><span>Full name</span><input className="input-base" value={form.name} onChange={update('name')} autoComplete="name" required minLength={2} /></label>
                   <label className="form-field"><span>Mobile number <small>(optional)</small></span><input className="input-base" value={form.phone} onChange={update('phone')} autoComplete="tel" inputMode="tel" /></label>
                 </>

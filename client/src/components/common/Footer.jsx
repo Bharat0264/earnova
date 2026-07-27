@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { Mail, MapPin } from 'lucide-react'
+import { Instagram, Mail, MapPin } from 'lucide-react'
 
 const GROUPS = [
   ['Company', [['About', '/about'], ['Pricing', '/pricing'], ['Current fees', '/fees'], ['Contact', '/contact'], ['Help Centre', '/help']]],
@@ -18,7 +18,8 @@ export default function Footer() {
             <Link to="/"><img src="/earnova-logo.png" alt="Earnova" className="h-11 w-auto rounded bg-white/95 px-2" /></Link>
             <p className="mt-5 max-w-sm text-sm leading-relaxed text-slate-400">AI-powered business tools, trusted professional services and sustainable energy solutions for Indian businesses.</p>
             <div className="mt-5 space-y-2 text-sm text-slate-400">
-              <a href="mailto:support@earnova.in" className="flex items-center gap-2 hover:text-white"><Mail className="h-4 w-4" /> support@earnova.in</a>
+              <a href="mailto:earnova.fam@gmail.com" className="flex items-center gap-2 hover:text-white"><Mail className="h-4 w-4" /> earnova.fam@gmail.com</a>
+              <a href="https://www.instagram.com/earnova.in__/" target="_blank" rel="noreferrer" aria-label="Open Earnova on Instagram" className="flex items-center gap-2 hover:text-white"><Instagram className="h-4 w-4" /> @earnova.in__</a>
               <p className="flex items-center gap-2"><MapPin className="h-4 w-4" /> India</p>
             </div>
           </div>

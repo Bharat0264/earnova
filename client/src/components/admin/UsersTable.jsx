@@ -16,6 +16,7 @@ const emptyForm = () => ({
   phone: '',
   password: '',
   role: 'customer',
+  accountType: 'individual',
   featureAccess: { ...DEFAULT_PUBLIC_ACCESS },
 })
 
@@ -104,7 +105,7 @@ export default function UsersTable({ data, loading, reload }) {
           </div>
         </div>
         <button onClick={() => setShowCreate(true)} className="flex items-center justify-center gap-2 bg-primary-700 text-white px-4 py-2 rounded-xl text-sm font-semibold">
-          <Plus className="w-4 h-4" /> Create Member
+          <Plus className="w-4 h-4" /> Add Member / CA
         </button>
       </div>
 
@@ -196,13 +197,20 @@ export default function UsersTable({ data, loading, reload }) {
       {showCreate && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
-            <h2 className="font-display font-bold text-lg">Create Member</h2>
-            <p className="text-sm text-gray-500 mt-1 mb-5">New members get Shopping, Freelancing, Business, Energy, and CA services by default. B2B, Subsidies, and Referrals require admin approval.</p>
+            <h2 className="font-display font-bold text-lg">Add Member / CA</h2>
+            <p className="text-sm text-gray-500 mt-1 mb-5">A CA account must still complete its professional profile and pass admin verification before it can accept work.</p>
             <div className="space-y-3">
               <input placeholder="Name" value={form.name} onChange={event => setForm({ ...form, name: event.target.value })} className="input-base" />
               <input type="email" placeholder="Email" value={form.email} onChange={event => setForm({ ...form, email: event.target.value })} className="input-base" />
               <input placeholder="Phone" value={form.phone} onChange={event => setForm({ ...form, phone: event.target.value })} className="input-base" />
               <input type="password" placeholder="Password" value={form.password} onChange={event => setForm({ ...form, password: event.target.value })} className="input-base" />
+              <label className="form-field">
+                Account type
+                <select value={form.accountType} onChange={event => setForm({ ...form, accountType: event.target.value })} className="input-base">
+                  <option value="individual">Normal member</option>
+                  <option value="ca_consultant">Chartered Accountant (CA)</option>
+                </select>
+              </label>
               <select value={form.role} onChange={event => setForm({ ...form, role: event.target.value })} className="input-base">
                 <option value="customer">Member</option><option value="dealer">Dealer</option>
               </select>
@@ -234,7 +242,7 @@ export default function UsersTable({ data, loading, reload }) {
             </div>
             <div className="flex gap-2 mt-5">
               <button onClick={() => setShowCreate(false)} className="flex-1 border rounded-xl py-2.5">Cancel</button>
-              <button onClick={createMember} className="flex-1 bg-primary-700 text-white rounded-xl py-2.5 font-semibold">Create Member</button>
+              <button onClick={createMember} className="flex-1 bg-primary-700 text-white rounded-xl py-2.5 font-semibold">Add Account</button>
             </div>
           </div>
         </div>

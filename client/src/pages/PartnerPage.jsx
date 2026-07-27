@@ -53,6 +53,7 @@ export default function PartnerPage({ title }) {
   }
 
   return <div><p className="eyebrow">Partner workspace</p><h1 className="mt-2 text-3xl font-bold">{title}</h1>{message && <p className="mt-4 rounded-xl bg-brand-50 p-4 text-sm font-semibold text-brand-800">{message}</p>}
+    {user?.accountType === 'ca_consultant' && profile?.verificationStatus !== 'verified' && <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-5"><p className="font-bold text-amber-950">{profile ? 'Admin approval pending' : 'Complete your CA profile'}</p><p className="mt-1 text-sm leading-6 text-amber-800">{profile ? 'Earnova admin is reviewing your professional details. Work and proposals will become available after approval.' : 'Submit the professional profile below. It will be sent to the admin for review before you can accept work.'}</p></div>}
     {(title === 'Overview' || title === 'Settings') && <form onSubmit={save} className="mt-6 surface-card p-6"><div className="flex justify-between gap-3"><h2 className="text-xl font-bold">Provider profile</h2><span className="status-badge status-info">{profile?.verificationStatus || 'not submitted'}</span></div><div className="mt-4 grid gap-3 sm:grid-cols-2">
       <label className="form-field">Professional title<input required className="input-base" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} /></label>
       <label className="form-field">Location<input className="input-base" value={form.location} onChange={e => setForm({ ...form, location: e.target.value })} /></label>
