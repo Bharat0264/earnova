@@ -12,7 +12,7 @@ const getApiBase = () => {
   const hostname = globalThis.location?.hostname
 
   if (hostname === 'earnova.in' || hostname === 'www.earnova.in') {
-    return '/api'
+    return normalizeApiBase(import.meta.env.VITE_API_BASE || 'https://earnova-71uh.onrender.com/api')
   }
 
   return normalizeApiBase(import.meta.env.VITE_API_BASE)

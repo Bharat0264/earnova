@@ -25,3 +25,9 @@ test('payment-provider authentication errors cannot clear the customer session',
   const apiSource = await readFile(new URL('../src/utils/api.js', import.meta.url), 'utf8')
   assert.match(apiSource, /\['AUTH_REQUIRED', 'AUTH_INVALID'\]\.includes\(data\?\.code\)/)
 })
+
+test('production bypasses the intermittent Vercel API rewrite', async () => {
+  const apiSource = await readFile(new URL('../src/utils/api.js', import.meta.url), 'utf8')
+  assert.match(apiSource, /https:\/\/earnova-71uh\.onrender\.com\/api/)
+  assert.doesNotMatch(apiSource, /hostname === 'www\.earnova\.in'\) \{\s*return '\/api'/)
+})
