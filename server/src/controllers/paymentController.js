@@ -11,9 +11,18 @@ import PaymentAttempt from '../models/PaymentAttempt.js'
 import BusinessSubscription from '../models/BusinessSubscription.js'
 import { sendOrderConfirmation } from '../utils/email.js'
 
+const readCredential = (name) => {
+  let value = String(process.env[name] || '').trim()
+  if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+    value = value.slice(1, -1).trim()
+  }
+  if (value.startsWith(`${name}=`)) value = value.slice(name.length + 1).trim()
+  return value
+}
+
 const requireRazorpayConfig = () => {
-  const keyId = process.env.RAZORPAY_KEY_ID?.trim()
-  const keySecret = process.env.RAZORPAY_KEY_SECRET?.trim()
+  const keyId = readCredential('RAZORPAY_KEY_ID')
+  const keySecret = readCredential('RAZORPAY_KEY_SECRET')
 
   if (!keyId || !keySecret) {
     const err = new Error(
@@ -36,7 +45,11 @@ const getRazorpay = () => {
 
 const paymentSetupMessage = (err) => {
   if (err?.statusCode === 401 || err?.status === 401) {
-    return 'Razorpay authentication failed. Check RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET in server/.env.'
+    const keyId = readCredential('RAZORPAY_KEY_ID')
+    const keySecret = readCredential('RAZORPAY_KEY_SECRET')
+    const mode = keyId.startsWith('rzp_live_') ? 'live' : keyId.startsWith('rzp_test_') ? 'test' : 'invalid'
+    const tail = keyId.length >= 4 ? keyId.slice(-4) : 'missing'
+    return `Razorpay authentication failed. Render loaded a ${mode} key ending in ${tail} (ID length ${keyId.length}, secret length ${keySecret.length}). Confirm this matches the active Razorpay pair.`
   }
   return err.message || 'Could not initiate payment. Please try again.'
 }

@@ -7,6 +7,7 @@ process.env.JWT_SECRET = 'test-only-secret-that-is-long-enough'
 
 const { default: app } = await import('../src/server.js')
 const productControllerSource = await readFile(new URL('../src/controllers/productController.js', import.meta.url), 'utf8')
+const paymentControllerSource = await readFile(new URL('../src/controllers/paymentController.js', import.meta.url), 'utf8')
 let server
 let baseUrl
 
@@ -62,4 +63,10 @@ test('protected API failures identify actual session expiry', async () => {
   const body = await response.json()
   assert.equal(response.status, 401)
   assert.equal(body.code, 'AUTH_REQUIRED')
+})
+
+test('Razorpay credentials tolerate safe env-import quoting without exposing secrets', () => {
+  assert.match(paymentControllerSource, /value\.slice\(1, -1\)\.trim\(\)/)
+  assert.match(paymentControllerSource, /value\.startsWith\(`\$\{name\}=`\)/)
+  assert.match(paymentControllerSource, /secret length \$\{keySecret\.length\}/)
 })
