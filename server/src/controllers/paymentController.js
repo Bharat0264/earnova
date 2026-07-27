@@ -57,7 +57,8 @@ const paymentSetupMessage = (err) => {
 const paymentSetupStatus = (err) => {
   if (err?.statusCode === 401 || err?.status === 401) return 502
   const status = Number(err?.status || err?.statusCode)
-  return status >= 400 && status < 600 ? status : 500
+  if (status >= 500) return 502
+  return status >= 400 ? status : 500
 }
 
 /* ── Pricing helpers ── */
