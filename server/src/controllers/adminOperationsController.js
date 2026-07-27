@@ -31,12 +31,61 @@ export const listAdminOperations = async (req, res) => {
   if (!config) return res.status(404).json({ success: false, message: 'Admin resource not found.' })
   const page = Math.max(1, Number(req.query.page) || 1)
   const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 30))
-  const query = config.model.find({}).sort(config.sort).skip((page - 1) * limit).limit(limit)
+  const filter = req.params.resource === 'providers' && req.query.providerType
+    ? { providerType: req.query.providerType }
+    : {}
+  const query = config.model.find(filter).sort(config.sort).skip((page - 1) * limit).limit(limit)
   if (config.populate) {
     for (const path of config.populate.split(' ')) query.populate(path === 'owner' ? safeUser : { path, select: 'name email title providerType' })
   }
-  const [items, total] = await Promise.all([query.lean(), config.model.countDocuments()])
+  const [items, total] = await Promise.all([query.lean(), config.model.countDocuments(filter)])
   res.json({ success: true, items, total, page })
+}
+
+export const createAdminCAAccount = async (req, res) => {
+  try {
+    const name = String(req.body.name || '').trim()
+    const email = String(req.body.email || '').trim().toLowerCase()
+    const password = String(req.body.password || '')
+    const description = String(req.body.description || '').trim()
+    if (name.length < 2 || !email.includes('@') || password.length < 8 || !description) {
+      return res.status(400).json({ success: false, message: 'Name, valid email, password (minimum 8 characters) and professional description are required.' })
+    }
+    if (await User.exists({ email })) return res.status(409).json({ success: false, message: 'An account with this email already exists.' })
+
+    const user = await User.create({
+      name, email, password,
+      phone: String(req.body.phone || '').trim(),
+      role: 'customer',
+      accountType: 'ca_consultant',
+    })
+    try {
+      const verified = req.body.verificationStatus === 'verified'
+      const profile = await ProviderProfile.create({
+        user: user._id,
+        providerType: 'ca_consultant',
+        title: String(req.body.title || 'Chartered Accountant').trim(),
+        description,
+        skills: Array.isArray(req.body.skills) ? req.body.skills.slice(0, 30) : [],
+        categories: Array.isArray(req.body.categories) ? req.body.categories.slice(0, 20) : [],
+        location: String(req.body.location || '').trim(),
+        experienceYears: Math.max(0, Number(req.body.experienceYears) || 0),
+        pricingMethod: 'quote',
+        availability: 'available',
+        verificationStatus: verified ? 'verified' : 'pending',
+        verifiedBy: verified ? req.user._id : undefined,
+        verifiedAt: verified ? new Date() : undefined,
+        adminNote: 'Created manually by Earnova admin.',
+      })
+      await AuditLog.create({ actor: req.user._id, action: 'admin.ca.created', resourceType: 'ProviderProfile', resourceId: profile._id, summary: `Created CA account for ${name}.`, requestId: req.id })
+      return res.status(201).json({ success: true, user: user.toPublicJSON(), profile })
+    } catch (error) {
+      await User.findByIdAndDelete(user._id)
+      throw error
+    }
+  } catch (error) {
+    return res.status(400).json({ success: false, message: error.message || 'Could not create the CA account.' })
+  }
 }
 
 export const updateAdminOperation = async (req, res) => {

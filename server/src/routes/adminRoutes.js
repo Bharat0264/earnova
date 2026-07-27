@@ -13,7 +13,7 @@ import {
   getAdminProjectListings,
   updateAdminProjectListing
 } from '../controllers/adminController.js'
-import { getPlatformAnalytics, listAdminOperations, updateAdminOperation } from '../controllers/adminOperationsController.js'
+import { createAdminCAAccount, getPlatformAnalytics, listAdminOperations, updateAdminOperation } from '../controllers/adminOperationsController.js'
 import {
   adminAddFirmMember, adminAssignCaseFirm, adminCAAuditLogs, adminCreateFirm, adminGetSupportTicket,
   adminListCACases, adminListCAServices, adminListFirmMembers, adminListFirms,
@@ -49,6 +49,7 @@ router.patch('/freelance-jobs/:id', updateAdminFreelanceJob)
 
 /* CA verification and tax work */
 router.get('/ca-profiles', getAdminCAProfiles)
+router.post('/ca/accounts', createAdminCAAccount)
 router.patch('/ca-profiles/:id', updateAdminCAProfile)
 router.get('/ca-tax-jobs', getAdminCATaxJobs)
 router.patch('/ca-tax-jobs/:id', updateAdminCATaxJob)
