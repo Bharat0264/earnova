@@ -12,7 +12,7 @@ import { useAuth } from '../context/AuthContext'
 import { useCart } from '../context/CartContext'
 import { formatPrice } from '../utils/formatters'
 
-const PLAN_PRICE = 19
+const PLAN_PRICE = 49
 const BUSINESS_CART_ITEM = {
   _id: 'earnova-business-solutions-monthly',
   itemType: 'service',
@@ -275,7 +275,7 @@ function NumberInput({ label, value, onChange, min = 0, max, suffix }) {
 }
 
 export default function BusinessSolutionsPage() {
-  const { isAuthenticated, hasFeature } = useAuth()
+  const { isAuthenticated, isAdmin } = useAuth()
   const { addToCart } = useCart()
   const navigate = useNavigate()
   const [showAuth, setShowAuth] = useState(false)
@@ -291,7 +291,7 @@ export default function BusinessSolutionsPage() {
   const [serverSubscriptionActive, setServerSubscriptionActive] = useState(false)
   const [workspaceLoaded, setWorkspaceLoaded] = useState(false)
   const [workspaceStatus, setWorkspaceStatus] = useState('')
-  const subscribed = isAuthenticated && (hasFeature('businessSolutions') || serverSubscriptionActive)
+  const subscribed = isAuthenticated && (isAdmin || serverSubscriptionActive)
 
   const analytics = useMemo(() => buildAnalytics(orders), [orders])
   const dailyMax = Math.max(...analytics.daily.map(item => item.revenue), 1)
@@ -1010,7 +1010,7 @@ export default function BusinessSolutionsPage() {
             </SectionCard>
             <SectionCard
               title="Subscription"
-              subtitle="₹19/month unlocks live integrations, AI reports and export actions."
+              subtitle="₹49/month unlocks live integrations, AI reports and export actions."
               action={!subscribed && <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 text-xs font-bold"><LockKeyhole className="w-3.5 h-3.5" /> Locked</span>}
             >
               <div className="space-y-3 mb-5">

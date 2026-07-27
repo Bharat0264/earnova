@@ -9,7 +9,7 @@ test('new client sessions expose standard services and keep three programs restr
   assert.deepEqual(DEFAULT_PUBLIC_ACCESS, {
     freelancing: true,
     ecommerce: true,
-    businessSolutions: true,
+    businessSolutions: false,
     energySolutions: true,
     caServices: true,
     b2bPrograms: false,

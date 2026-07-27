@@ -167,7 +167,7 @@ const hasEcommerceMemberBenefits = (user) => {
   return access instanceof Map ? access.get('ecommerce') === true : access?.ecommerce === true
 }
 
-const BUSINESS_SUBSCRIPTION_PRICE = 19
+const BUSINESS_SUBSCRIPTION_PRICE = 49
 const BUSINESS_CART_SERVICE = {
   _id: 'earnova-business-solutions-monthly',
   itemType: 'service',

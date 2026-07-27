@@ -6,13 +6,7 @@ const hasActiveAccess = (user, subscription) => user?.role === 'admin' || (
 )
 
 const getSubscription = async user => {
-  let subscription = await BusinessSubscription.findOne({ user: user._id })
-  const storedAccess = user.featureAccess instanceof Map ? user.featureAccess.get('businessSolutions') : user.featureAccess?.businessSolutions
-  if (!subscription && storedAccess) {
-    const startsAt = new Date()
-    subscription = await BusinessSubscription.create({ user: user._id, amount: 0, status: 'active', startsAt, expiresAt: new Date(startsAt.getTime() + 30 * 24 * 60 * 60 * 1000) })
-  }
-  return subscription
+  return BusinessSubscription.findOne({ user: user._id })
 }
 
 export const getBusinessWorkspace = async (req, res) => {

@@ -12,7 +12,7 @@ export const FEATURE_KEYS = [
 export const DEFAULT_PUBLIC_ACCESS = {
   freelancing: true,
   ecommerce: true,
-  businessSolutions: true,
+  businessSolutions: false,
   energySolutions: true,
   caServices: true,
   b2bPrograms: false,
