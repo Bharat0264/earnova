@@ -1,12 +1,11 @@
 import crypto  from 'crypto'
+import { OAuth2Client } from 'google-auth-library'
 import User    from '../models/User.js'
 import { signToken } from '../middleware/auth.js'
 import { sendWelcomeEmail, sendPasswordResetEmail } from '../utils/email.js'
 import { DEFAULT_PUBLIC_ACCESS } from '../config/features.js'
 import {
   isStrongEnoughPassword,
-  isValidEmail,
-  isValidIndianPhone,
   normalizeEmail,
   validateOnboardingPayload,
 } from '../utils/validation.js'
@@ -17,50 +16,72 @@ const respond = (res, user, statusCode = 200) => {
 }
 
 /* ── POST /api/auth/register ── */
-/* ── POST /api/auth/register ── */
 export const register = async (req, res) => {
+  res.status(410).json({
+    success: false,
+    message: 'New accounts must be created with Google. Existing users can still sign in with email and password.',
+  })
+}
+
+/* POST /api/auth/google */
+export const googleLogin = async (req, res) => {
   try {
-    const name = req.body.name?.trim()
-    const email = normalizeEmail(req.body.email)
-    const phone = req.body.phone?.trim()
-    const { password, referralCode } = req.body
-    const accountType = req.body.accountType === 'ca_consultant' ? 'ca_consultant' : 'individual'
-
-    if (!name || !email || !password) {
-      return res.status(400).json({ success: false, message: 'Name, email and password are required.' })
+    const { credential, referralCode } = req.body
+    const clientId = process.env.GOOGLE_CLIENT_ID?.trim()
+    if (!clientId) {
+      return res.status(503).json({ success: false, message: 'Google sign-in is not configured on the server.' })
     }
-    if (name.length < 2 || name.length > 100 || !isValidEmail(email) || !isValidIndianPhone(phone)) {
-      return res.status(400).json({ success: false, message: 'Enter a valid name, email address and Indian mobile number.' })
-    }
-    if (!isStrongEnoughPassword(password)) {
-      return res.status(400).json({ success: false, message: 'Password must be 8 to 128 characters.' })
-    }
-    if (await User.exists({ email })) {
-      return res.status(409).json({ success: false, message: 'An account with this email already exists.' })
+    if (!credential) {
+      return res.status(400).json({ success: false, message: 'Google credential is required.' })
     }
 
-    let referredBy
-    if (referralCode) {
-      const referrer = await User.findOne({ referralCode: referralCode.trim().toUpperCase() })
-      referredBy = referrer?._id
-    }
-
-    const user = await User.create({
-      name,
-      email,
-      phone,
-      password,
-      referredBy,
-      role: 'customer',
-      accountType,
-      featureAccess: DEFAULT_PUBLIC_ACCESS,
+    const ticket = await new OAuth2Client(clientId).verifyIdToken({
+      idToken: credential,
+      audience: clientId,
     })
+    const profile = ticket.getPayload()
+    if (!profile?.sub || !profile.email || !profile.email_verified) {
+      return res.status(401).json({ success: false, message: 'Google could not verify this email address.' })
+    }
 
-    sendWelcomeEmail(user).catch(err => console.warn('[Email] welcome failed:', err.message))
-    respond(res, user, 201)
+    const email = normalizeEmail(profile.email)
+    let user = await User.findOne({ $or: [{ googleSub: profile.sub }, { email }] }).select('+googleSub')
+    let isNew = false
+
+    if (user) {
+      if (!user.googleSub) user.googleSub = profile.sub
+      if (!user.avatar && profile.picture) user.avatar = profile.picture
+      user.isVerified = true
+      await user.save()
+    } else {
+      let referredBy
+      if (referralCode) {
+        const referrer = await User.findOne({ referralCode: referralCode.trim().toUpperCase() })
+        referredBy = referrer?._id
+      }
+      user = await User.create({
+        name: profile.name?.trim() || email.split('@')[0],
+        email,
+        avatar: profile.picture,
+        googleSub: profile.sub,
+        authProvider: 'google',
+        isVerified: true,
+        referredBy,
+        role: 'customer',
+        accountType: req.body.accountType === 'ca_consultant' ? 'ca_consultant' : 'individual',
+        featureAccess: DEFAULT_PUBLIC_ACCESS,
+      })
+      isNew = true
+      sendWelcomeEmail(user).catch(err => console.warn('[Email] welcome failed:', err.message))
+    }
+
+    if (!user.isActive) {
+      return res.status(403).json({ success: false, message: 'Your account has been suspended. Contact support.' })
+    }
+    respond(res, user, isNew ? 201 : 200)
   } catch (err) {
-    console.error('[Auth register]', err.message)
-    res.status(500).json({ success: false, message: 'Could not create the account.' })
+    console.error('[Auth Google]', err.message)
+    res.status(401).json({ success: false, message: 'Google sign-in failed. Please try again.' })
   }
 }
 

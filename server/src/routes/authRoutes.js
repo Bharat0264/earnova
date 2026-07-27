@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import {
-  register, login, getMe, updateProfile, updatePassword,
+  register, login, googleLogin, getMe, updateProfile, updatePassword,
   addAddress, updateAddress, deleteAddress,
   forgotPassword, resetPassword, updateOnboarding,
 } from '../controllers/authController.js'
@@ -15,6 +15,7 @@ const resetLimiter = createRateLimit({ windowMs: 60 * 60 * 1000, max: 6, message
 router.post('/register', authLimiter, register)
 
 router.post('/login', authLimiter, login)
+router.post('/google', authLimiter, googleLogin)
 router.post('/forgot-password', resetLimiter, forgotPassword)
 router.post('/reset-password/:token', resetLimiter, resetPassword)
 

@@ -77,7 +77,8 @@ function AppRoutes() {
     <Suspense fallback={<PageLoader label="Loading Earnova" />}>
       <Routes>
         <Route element={<PublicLayout />}>
-          <Route index element={<HomePage />} />
+          <Route index element={<AuthPage mode="login" />} />
+          <Route path="home" element={<HomePage />} />
           <Route path="business" element={<PublicPage page="business" />} />
           <Route path="business-ai" element={<PublicPage page="businessAi" />} />
           <Route path="services" element={<PublicPage page="services" />} />

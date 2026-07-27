@@ -58,7 +58,21 @@ export function AuthProvider({ children }) {
     return data
   }
 
+  const googleLogin = async (credential, options = {}) => {
+    const res = await fetch(apiUrl('/auth/google'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ credential, ...options }),
+    })
+    const data = await parseJsonResponse(res)
+    if (!res.ok) throw new Error(data?.message || 'Google sign-in failed')
+    if (!data?.token || !data?.user) throw new Error('Google sign-in failed')
+    saveSession(data.token, data.user)
+    return data
+  }
+
   const logout = () => {
+    window.google?.accounts?.id?.disableAutoSelect()
     setUser(null)
     setToken(null)
     localStorage.removeItem('earnova_token')
@@ -98,7 +112,7 @@ export function AuthProvider({ children }) {
       user, loading, token,
       isAuthenticated: !!user,
       isAdmin: user?.role === 'admin',
-      login, register, logout, updateUser, saveOnboarding, hasFeature,
+      login, register, googleLogin, logout, updateUser, saveOnboarding, hasFeature,
     }}>
       {children}
     </AuthContext.Provider>

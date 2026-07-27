@@ -32,7 +32,9 @@ const userSchema = new mongoose.Schema({
   name:     { type: String, required: true, trim: true },
   email:    { type: String, required: true, unique: true, lowercase: true, trim: true },
   phone:    { type: String, trim: true },
-  password: { type: String, required: true, minlength: 8 },
+  password: { type: String, minlength: 8, select: false },
+  googleSub: { type: String, unique: true, sparse: true, index: true, select: false },
+  authProvider: { type: String, enum: ['local', 'google'], default: 'local' },
   avatar:   String,
   role:     { type: String, enum: ['customer', 'admin', 'dealer'], default: 'customer' },
   accountType: {
@@ -76,7 +78,7 @@ const userSchema = new mongoose.Schema({
 /* ── Hooks ── */
 userSchema.pre('save', async function (next) {
   /* Hash password */
-  if (this.isModified('password')) {
+  if (this.password && this.isModified('password')) {
     this.password = await bcrypt.hash(this.password, 12)
   }
   /* Auto-generate referral code on first save */
@@ -90,6 +92,7 @@ userSchema.pre('save', async function (next) {
 
 /* ── Methods ── */
 userSchema.methods.comparePassword = function (candidate) {
+  if (!this.password) return false
   return bcrypt.compare(candidate, this.password)
 }
 
@@ -99,6 +102,7 @@ userSchema.methods.toPublicJSON = function () {
     obj.featureAccess = { ...(obj.featureAccess || {}), businessSolutions: false }
   }
   delete obj.password
+  delete obj.googleSub
   delete obj.resetPasswordToken
   delete obj.resetPasswordExpires
   return obj
