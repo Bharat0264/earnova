@@ -7,11 +7,11 @@ import PageMeta from '../components/common/PageMeta'
 
 export default function AuthPage({ mode }) {
   const isRegister = mode === 'register'
-  const { login, googleLogin, isAuthenticated, user } = useAuth()
+  const { login, register, googleLogin, isAuthenticated, user } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const [searchParams] = useSearchParams()
-  const [form, setForm] = useState({ email: '', password: '' })
+  const [form, setForm] = useState({ name: '', email: '', phone: '', password: '' })
   const [accountType, setAccountType] = useState(
     searchParams.get('accountType') === 'ca_consultant' ? 'ca_consultant' : 'individual'
   )
@@ -19,24 +19,30 @@ export default function AuthPage({ mode }) {
   const [submitting, setSubmitting] = useState(false)
 
   const destination = resultUser =>
-    resultUser?.onboarding?.status === 'completed'
+    resultUser?.role === 'admin'
+      ? '/admin'
+      : resultUser?.onboarding?.status === 'completed'
       ? (location.state?.from || '/app/overview')
       : '/onboarding'
 
   useEffect(() => {
     if (!isAuthenticated) return
-    const target = user?.onboarding?.status === 'completed'
+    const target = user?.role === 'admin'
+      ? '/admin'
+      : user?.onboarding?.status === 'completed'
       ? (location.state?.from || '/app/overview')
       : '/onboarding'
     navigate(target, { replace: true })
   }, [isAuthenticated, location.state, navigate, user])
 
-  const submitPassword = async event => {
+  const submitEmail = async event => {
     event.preventDefault()
     setError('')
     setSubmitting(true)
     try {
-      const result = await login(form.email, form.password)
+      const result = isRegister
+        ? await register({ ...form, accountType })
+        : await login(form.email, form.password)
       navigate(destination(result.user), { replace: true })
     } catch (err) {
       setError(err.message)
@@ -76,7 +82,7 @@ export default function AuthPage({ mode }) {
           <div className="p-6 sm:p-10">
             <h2 className="text-2xl font-bold text-slate-950">{isRegister ? 'Create account' : 'Sign in'}</h2>
             <p className="mt-2 text-sm text-slate-600">
-              {isRegister ? 'New accounts are created securely with Google.' : 'Continue with Google, or use your existing Earnova password.'}
+              {isRegister ? 'Create your account with email or continue securely with Google.' : 'Continue with Google, or use your Earnova password.'}
             </p>
             {error && <div className="mt-5 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700" role="alert">{error}</div>}
 
@@ -99,24 +105,26 @@ export default function AuthPage({ mode }) {
               <GoogleSignInButton onCredential={submitGoogle} disabled={submitting} />
             </div>
 
-            {!isRegister && (
-              <>
-                <div className="my-6 flex items-center gap-3 text-xs font-semibold uppercase tracking-wide text-slate-400">
-                  <span className="h-px flex-1 bg-slate-200" />Existing account<span className="h-px flex-1 bg-slate-200" />
-                </div>
-                <form onSubmit={submitPassword} noValidate>
+            <div className="my-6 flex items-center gap-3 text-xs font-semibold uppercase tracking-wide text-slate-400">
+              <span className="h-px flex-1 bg-slate-200" />or use email<span className="h-px flex-1 bg-slate-200" />
+            </div>
+            <form onSubmit={submitEmail} noValidate>
                   <div className="space-y-4">
+                    {isRegister && (
+                      <>
+                        <label className="form-field"><span>Full name</span><input className="input-base" value={form.name} onChange={event => setForm(current => ({ ...current, name: event.target.value }))} autoComplete="name" minLength={2} required /></label>
+                        <label className="form-field"><span>Mobile number <small>(optional)</small></span><input className="input-base" type="tel" value={form.phone} onChange={event => setForm(current => ({ ...current, phone: event.target.value }))} autoComplete="tel" /></label>
+                      </>
+                    )}
                     <label className="form-field"><span>Email address</span><input className="input-base" type="email" value={form.email} onChange={event => setForm(current => ({ ...current, email: event.target.value }))} autoComplete="email" required /></label>
-                    <label className="form-field"><span>Password</span><input className="input-base" type="password" value={form.password} onChange={event => setForm(current => ({ ...current, password: event.target.value }))} autoComplete="current-password" required /></label>
+                    <label className="form-field"><span>Password</span><input className="input-base" type="password" value={form.password} onChange={event => setForm(current => ({ ...current, password: event.target.value }))} autoComplete={isRegister ? 'new-password' : 'current-password'} minLength={8} required /></label>
                   </div>
-                  <Link to="/forgot-password" className="mt-3 inline-block text-sm font-bold text-brand-700 hover:underline">Forgot password?</Link>
+                  {!isRegister && <Link to="/forgot-password" className="mt-3 inline-block text-sm font-bold text-brand-700 hover:underline">Forgot password?</Link>}
                   <button type="submit" disabled={submitting} className="btn-primary mt-6 w-full">
                     {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
-                    {submitting ? 'Please wait…' : 'Sign in with existing password'}
+                    {submitting ? 'Please wait…' : isRegister ? 'Create account with email' : 'Sign in with email'}
                   </button>
-                </form>
-              </>
-            )}
+            </form>
 
             <p className="mt-5 text-center text-sm text-slate-600">
               {isRegister ? 'Already have an account?' : 'New to Earnova?'}{' '}

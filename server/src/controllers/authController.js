@@ -6,6 +6,8 @@ import { sendWelcomeEmail, sendPasswordResetEmail } from '../utils/email.js'
 import { DEFAULT_PUBLIC_ACCESS } from '../config/features.js'
 import {
   isStrongEnoughPassword,
+  isValidEmail,
+  isValidIndianPhone,
   normalizeEmail,
   validateOnboardingPayload,
 } from '../utils/validation.js'
@@ -17,10 +19,47 @@ const respond = (res, user, statusCode = 200) => {
 
 /* ── POST /api/auth/register ── */
 export const register = async (req, res) => {
-  res.status(410).json({
-    success: false,
-    message: 'New accounts must be created with Google. Existing users can still sign in with email and password.',
-  })
+  try {
+    const name = req.body.name?.trim()
+    const email = normalizeEmail(req.body.email)
+    const phone = req.body.phone?.trim()
+    const { password, referralCode } = req.body
+    const accountType = req.body.accountType === 'ca_consultant' ? 'ca_consultant' : 'individual'
+
+    if (!name || !email || !password) {
+      return res.status(400).json({ success: false, message: 'Name, email and password are required.' })
+    }
+    if (name.length < 2 || name.length > 100 || !isValidEmail(email) || !isValidIndianPhone(phone)) {
+      return res.status(400).json({ success: false, message: 'Enter a valid name, email address and Indian mobile number.' })
+    }
+    if (!isStrongEnoughPassword(password)) {
+      return res.status(400).json({ success: false, message: 'Password must be 8 to 128 characters.' })
+    }
+    if (await User.exists({ email })) {
+      return res.status(409).json({ success: false, message: 'An account with this email already exists.' })
+    }
+
+    let referredBy
+    if (referralCode) {
+      const referrer = await User.findOne({ referralCode: referralCode.trim().toUpperCase() })
+      referredBy = referrer?._id
+    }
+    const user = await User.create({
+      name,
+      email,
+      phone,
+      password,
+      referredBy,
+      role: 'customer',
+      accountType,
+      featureAccess: DEFAULT_PUBLIC_ACCESS,
+    })
+    sendWelcomeEmail(user).catch(err => console.warn('[Email] welcome failed:', err.message))
+    respond(res, user, 201)
+  } catch (err) {
+    console.error('[Auth register]', err.message)
+    res.status(500).json({ success: false, message: 'Could not create the account.' })
+  }
 }
 
 /* POST /api/auth/google */

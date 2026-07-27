@@ -44,8 +44,9 @@ function LoginForm({ onSwitch, onSuccess }) {
 }
 
 function RegisterForm({ onSwitch, onSuccess }) {
-  const { googleLogin } = useAuth()
+  const { register, googleLogin } = useAuth()
   const [accountType, setAccountType] = useState('individual')
+  const [form, setForm] = useState({ name: '', email: '', phone: '', password: '' })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -55,6 +56,25 @@ function RegisterForm({ onSwitch, onSuccess }) {
     try {
       const referral = JSON.parse(localStorage.getItem('earnova_ref') || 'null')
       await googleLogin(credential, {
+        accountType,
+        referralCode: referral?.expiry > Date.now() ? referral.code : undefined,
+      })
+      onSuccess?.()
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const submitEmail = async event => {
+    event.preventDefault()
+    setError('')
+    setLoading(true)
+    try {
+      const referral = JSON.parse(localStorage.getItem('earnova_ref') || 'null')
+      await register({
+        ...form,
         accountType,
         referralCode: referral?.expiry > Date.now() ? referral.code : undefined,
       })
@@ -77,8 +97,20 @@ function RegisterForm({ onSwitch, onSuccess }) {
         </select>
       </label>
       {accountType === 'ca_consultant' && <p className="text-xs leading-relaxed text-amber-700">Complete your professional profile after signup. You can accept work only after admin approval.</p>}
-      <p className="text-sm text-gray-600">New accounts are created securely with Google.</p>
       <GoogleSignInButton onCredential={submitGoogle} disabled={loading} />
+      <div className="flex items-center gap-3 text-xs font-semibold uppercase text-gray-400">
+        <span className="h-px flex-1 bg-gray-200" />or use email<span className="h-px flex-1 bg-gray-200" />
+      </div>
+      <form onSubmit={submitEmail} className="space-y-3">
+        <label className="form-field"><span>Full name</span><input className="input-base" value={form.name} onChange={event => setForm(current => ({ ...current, name: event.target.value }))} autoComplete="name" minLength={2} required /></label>
+        <label className="form-field"><span>Email address</span><input className="input-base" type="email" value={form.email} onChange={event => setForm(current => ({ ...current, email: event.target.value }))} autoComplete="email" required /></label>
+        <label className="form-field"><span>Mobile number <small>(optional)</small></span><input className="input-base" type="tel" value={form.phone} onChange={event => setForm(current => ({ ...current, phone: event.target.value }))} autoComplete="tel" /></label>
+        <label className="form-field"><span>Password</span><input className="input-base" type="password" value={form.password} onChange={event => setForm(current => ({ ...current, password: event.target.value }))} autoComplete="new-password" minLength={8} required /></label>
+        <button type="submit" disabled={loading} className="btn-primary flex w-full items-center justify-center gap-2 py-3">
+          {loading && <Loader2 className="h-4 w-4 animate-spin" />}
+          Create account with email
+        </button>
+      </form>
       <p className="text-center text-sm text-gray-500">Already have an account? <button type="button" onClick={onSwitch} className="font-semibold text-primary-600 hover:underline">Sign in</button></p>
     </div>
   )
