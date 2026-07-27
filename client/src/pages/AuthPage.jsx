@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { Loader2 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import PageMeta from '../components/common/PageMeta'
@@ -9,7 +9,14 @@ export default function AuthPage({ mode }) {
   const { login, register, isAuthenticated, user } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
-  const [form, setForm] = useState({ name: '', email: '', phone: '', password: '', accountType: 'individual' })
+  const [searchParams] = useSearchParams()
+  const [form, setForm] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    password: '',
+    accountType: searchParams.get('accountType') === 'ca_consultant' ? 'ca_consultant' : 'individual',
+  })
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
