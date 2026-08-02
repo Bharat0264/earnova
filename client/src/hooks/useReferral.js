@@ -5,6 +5,8 @@ import {
   MOCK_WITHDRAWALS, MOCK_LEADERBOARD,
 } from '../data/mockReferrals'
 
+const DEMO_MODE = import.meta.env.VITE_DEMO_MODE === 'true'
+
 export function useReferral(enabled = true) {
   const [stats,        setStats]        = useState(null)
   const [transactions, setTransactions] = useState([])
@@ -30,11 +32,10 @@ export function useReferral(enabled = true) {
       setLeaderboard(lb.leaderboard  || [])
     } catch (err) {
       setError(err.message)
-      /* Fall back to mock data so UI is always populated */
-      setStats(MOCK_REFERRAL_STATS)
-      setTransactions(MOCK_TRANSACTIONS)
-      setWithdrawals(MOCK_WITHDRAWALS)
-      setLeaderboard(MOCK_LEADERBOARD)
+      setStats(DEMO_MODE ? MOCK_REFERRAL_STATS : null)
+      setTransactions(DEMO_MODE ? MOCK_TRANSACTIONS : [])
+      setWithdrawals(DEMO_MODE ? MOCK_WITHDRAWALS : [])
+      setLeaderboard(DEMO_MODE ? MOCK_LEADERBOARD : [])
     } finally {
       setLoading(false)
     }

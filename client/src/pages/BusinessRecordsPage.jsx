@@ -203,7 +203,10 @@ function CsvImportPanel({ businessId, module, onImported }) {
     setError('')
     try {
       const response = await fetch(apiUrl(`/businesses/${businessId}/imports/${importType}/template`), {
-        headers: { Authorization: `Bearer ${localStorage.getItem('earnova_token')}` },
+        credentials: 'include',
+        headers: localStorage.getItem('earnova_token')
+          ? { Authorization: `Bearer ${localStorage.getItem('earnova_token')}` }
+          : {},
       })
       if (!response.ok) throw new Error('Could not download the template.')
       const url = URL.createObjectURL(await response.blob())

@@ -6,24 +6,28 @@ import {
 } from '../data/mockAdmin'
 import { MOCK_PRODUCTS } from '../data/mockProducts'
 
+const DEMO_MODE = import.meta.env.VITE_DEMO_MODE === 'true'
+
 export function useAdminStats() {
   const [stats,   setStats]   = useState(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
 
   const load = useCallback(async () => {
     setLoading(true)
     try {
       const data = await api.get('/admin/stats')
       setStats(data.stats)
-    } catch {
-      setStats(MOCK_ADMIN_STATS)
+    } catch (err) {
+      setStats(DEMO_MODE ? MOCK_ADMIN_STATS : null)
+      setError(err.message)
     } finally {
       setLoading(false)
     }
   }, [])
 
   useEffect(() => { load() }, [load])
-  return { stats, loading, reload: load }
+  return { stats, loading, error, isDemo: DEMO_MODE && !!error, reload: load }
 }
 
 function makeTableHook(apiPath, mockData) {
@@ -31,27 +35,31 @@ function makeTableHook(apiPath, mockData) {
     const [data,    setData]    = useState([])
     const [total,   setTotal]   = useState(0)
     const [loading, setLoading] = useState(true)
+    const [error, setError] = useState(null)
 
     const key = JSON.stringify(params)
 
     const load = useCallback(async () => {
       setLoading(true)
+      setError(null)
       try {
         const qs  = new URLSearchParams(params).toString()
         const res = await api.get(`${apiPath}${qs ? '?' + qs : ''}`)
         const arr = res.orders || res.users || res.quotes || res.requests || res.withdrawals || res.products || res.listings || []
         setData(arr)
         setTotal(res.total || arr.length)
-      } catch {
-        setData(mockData)
-        setTotal(mockData.length)
+      } catch (err) {
+        const fallback = DEMO_MODE ? mockData : []
+        setData(fallback)
+        setTotal(fallback.length)
+        setError(err.message)
       } finally {
         setLoading(false)
       }
     }, [key]) // eslint-disable-line
 
     useEffect(() => { load() }, [load])
-    return { data, total, loading, reload: load }
+    return { data, total, loading, error, isDemo: DEMO_MODE && !!error, reload: load }
   }
 }
 
@@ -73,6 +81,7 @@ export function useAdminFreelanceJobs(params = {}) {
 
   const load = useCallback(async () => {
     setLoading(true)
+    setError(null)
     try {
       const qs = new URLSearchParams(params).toString()
       const res = await api.get(`/admin/freelance-jobs${qs ? '?' + qs : ''}`)

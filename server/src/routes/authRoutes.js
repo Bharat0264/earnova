@@ -2,7 +2,7 @@ import { Router } from 'express'
 import {
   register, login, googleLogin, getMe, updateProfile, updatePassword,
   addAddress, updateAddress, deleteAddress,
-  forgotPassword, resetPassword, updateOnboarding,
+  forgotPassword, resetPassword, updateOnboarding, logout,
 } from '../controllers/authController.js'
 import { protect } from '../middleware/auth.js'
 import { createRateLimit } from '../middleware/security.js'
@@ -18,6 +18,7 @@ router.post('/login', authLimiter, login)
 router.post('/google', authLimiter, googleLogin)
 router.post('/forgot-password', resetLimiter, forgotPassword)
 router.post('/reset-password/:token', resetLimiter, resetPassword)
+router.post('/logout', logout)
 
 /* Protected */
 router.get('/me', protect, getMe)

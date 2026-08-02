@@ -2,26 +2,39 @@ import jwt   from 'jsonwebtoken'
 import User  from '../models/User.js'
 import { DEFAULT_PUBLIC_ACCESS } from '../config/features.js'
 
+const readCookie = (req, name) => {
+  const cookies = req.headers.cookie || ''
+  const match = cookies.split(';').map(value => value.trim()).find(value => value.startsWith(`${name}=`))
+  return match ? decodeURIComponent(match.slice(name.length + 1)) : null
+}
+
+const readToken = req => {
+  const header = req.headers.authorization
+  if (header?.startsWith('Bearer ')) return header.slice(7)
+  return readCookie(req, process.env.AUTH_COOKIE_NAME || 'earnova_session')
+}
+
 /**
  * Protect — verifies JWT and attaches req.user
  */
 export const protect = async (req, res, next) => {
-  const header = req.headers.authorization
-  if (!header?.startsWith('Bearer ')) {
+  const token = readToken(req)
+  if (!token) {
     return res.status(401).json({ success: false, code: 'AUTH_REQUIRED', message: 'No token provided.' })
   }
 
-  const token = header.split(' ')[1]
-
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET)
-    const user    = await User.findById(decoded.id).select('-password')
+    const user = await User.findById(decoded.id).select('+sessionVersion')
 
     if (!user) {
       return res.status(401).json({ success: false, code: 'AUTH_INVALID', message: 'User no longer exists.' })
     }
     if (!user.isActive) {
       return res.status(403).json({ success: false, message: 'Account is suspended.' })
+    }
+    if ((decoded.sessionVersion ?? 0) !== (user.sessionVersion ?? 0)) {
+      return res.status(401).json({ success: false, code: 'AUTH_INVALID', message: 'Session has been revoked.' })
     }
 
     req.user = user
@@ -85,13 +98,13 @@ export const supportAgentOnly = (req, res, next) => {
  * optionalAuth — attaches user if token is present, otherwise continues
  */
 export const optionalAuth = async (req, res, next) => {
-  const header = req.headers.authorization
-  if (!header?.startsWith('Bearer ')) { return next() }
+  const token = readToken(req)
+  if (!token) return next()
 
   try {
-    const token   = header.split(' ')[1]
     const decoded = jwt.verify(token, process.env.JWT_SECRET)
-    req.user      = await User.findById(decoded.id).select('-password')
+    const user = await User.findById(decoded.id).select('+sessionVersion')
+    if (user && (decoded.sessionVersion ?? 0) === (user.sessionVersion ?? 0)) req.user = user
   } catch { /* ignore invalid token in optional routes */ }
 
   next()
@@ -100,7 +113,7 @@ export const optionalAuth = async (req, res, next) => {
 /**
  * Helper to sign a JWT
  */
-export const signToken = (userId) =>
-  jwt.sign({ id: userId }, process.env.JWT_SECRET, {
+export const signToken = (userId, sessionVersion = 0) =>
+  jwt.sign({ id: userId, sessionVersion }, process.env.JWT_SECRET, {
     expiresIn: process.env.JWT_EXPIRES_IN || '7d',
   })

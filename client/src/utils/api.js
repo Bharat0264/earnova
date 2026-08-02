@@ -36,9 +36,14 @@ export async function parseJsonResponse(res) {
 
 const getToken = () => localStorage.getItem('earnova_token')
 
+const DEFAULT_TIMEOUT_MS = 15000
+
 async function request(endpoint, opts = {}) {
   const token = getToken()
   const isFormData = opts.body instanceof FormData
+  const controller = new AbortController()
+  const timeoutMs = opts.timeoutMs ?? DEFAULT_TIMEOUT_MS
+  const timeout = setTimeout(() => controller.abort(), timeoutMs)
 
   const headers = {
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -55,8 +60,30 @@ async function request(endpoint, opts = {}) {
       ? opts.body
       : JSON.stringify(opts.body)
 
-  const res  = await fetch(apiUrl(endpoint), { ...opts, headers, body })
-  const data = await parseJsonResponse(res)
+  let res
+  let data
+  try {
+    res = await fetch(apiUrl(endpoint), {
+      ...opts,
+      headers,
+      body,
+      credentials: 'include',
+      signal: opts.signal ?? controller.signal,
+    })
+    data = await parseJsonResponse(res)
+  } catch (error) {
+    if (error.name === 'AbortError') {
+      const timeoutError = new Error('The request timed out. Please try again.')
+      timeoutError.code = 'REQUEST_TIMEOUT'
+      throw timeoutError
+    }
+    const networkError = new Error('Unable to reach Earnova. Check your connection and try again.')
+    networkError.code = 'NETWORK_ERROR'
+    networkError.cause = error
+    throw networkError
+  } finally {
+    clearTimeout(timeout)
+  }
 
   if (!res.ok) {
     if (res.status === 401 && ['AUTH_REQUIRED', 'AUTH_INVALID'].includes(data?.code)) {
