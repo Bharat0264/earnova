@@ -9,6 +9,7 @@ const onboardingSource = await readFile(new URL('../src/pages/OnboardingPage.jsx
 const customerCaseSource = await readFile(new URL('../src/pages/CACasePage.jsx', import.meta.url), 'utf8')
 const firmCaseSource = await readFile(new URL('../src/pages/FirmCasePage.jsx', import.meta.url), 'utf8')
 const workspaceSource = await readFile(new URL('../src/pages/CAWorkspacePage.jsx', import.meta.url), 'utf8')
+const serviceDetailSource = await readFile(new URL('../src/pages/CAServiceDetailPage.jsx', import.meta.url), 'utf8')
 
 test('Phase 1 exposes the required CA public and protected route families', () => {
   for (const route of [
@@ -58,4 +59,5 @@ test('CA cases use free intake followed by a CA quote and Earnova payment', () =
   assert.match(workspaceSource, /not connected to the Income Tax Department/i)
   assert.match(customerCaseSource, /personalized ITR checklist/i)
   assert.match(firmCaseSource, /Structured ITR profile/)
+  assert.match(serviceDetailSource, /Quote after CA reviews your requirements/)
 })

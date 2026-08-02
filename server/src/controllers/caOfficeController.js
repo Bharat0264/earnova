@@ -27,6 +27,14 @@ const pageParams = query => ({
 
 const publicServiceFields = 'slug name category summary whoNeedsIt eligibility deliverables exclusions requiredDocuments pricingMode startingPrice handlingTime externalDependency addOns consultationRequired refundPolicy faq workflowKey'
 const publicFirmFields = 'slug displayName description city state serviceSlugs verificationSummary verifiedAt acceptingCases'
+const normalizeServicePricing = service => {
+  const item = service?.toObject ? service.toObject() : { ...service }
+  if (item.slug === 'income-tax-return-filing') {
+    item.pricingMode = 'quote'
+    delete item.startingPrice
+  }
+  return item
+}
 
 const findService = async slug => {
   const stored = await CAService.findOne({ slug, active: true })
@@ -106,7 +114,7 @@ export const listCAServices = async (req, res, next) => {
         .map(item => ({ ...item, active: true }))
     }
     res.set('Cache-Control', 'public, max-age=120')
-    res.json({ success: true, services })
+    res.json({ success: true, services: services.map(normalizeServicePricing) })
   } catch (error) {
     next(error)
   }
@@ -119,7 +127,7 @@ export const getCAService = async (req, res, next) => {
     if (!service) return res.status(404).json({ success: false, message: 'CA service not found.' })
     const firms = await CAFirm.find({ status: 'verified', acceptingCases: true, serviceSlugs: req.params.serviceSlug })
       .select(publicFirmFields).sort({ displayName: 1 }).limit(12).lean()
-    res.json({ success: true, service, firms })
+    res.json({ success: true, service: normalizeServicePricing(service), firms })
   } catch (error) {
     next(error)
   }

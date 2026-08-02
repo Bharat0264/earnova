@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import mongoose from 'mongoose'
-import { SUPPORT_ISSUES } from '../src/config/caSupport.js'
+import { CA_SERVICE_CATALOG, SUPPORT_ISSUES } from '../src/config/caSupport.js'
 import { PRIVATE_DOCUMENT_MAX_BYTES } from '../src/config/uploads.js'
 import SupportTicket from '../src/models/SupportTicket.js'
 import SupportInternalNote from '../src/models/SupportInternalNote.js'
@@ -72,6 +72,9 @@ test('support internal notes are held in a separate model from customer tickets'
 })
 
 test('CA case intake keeps WhatsApp private and supports quote-first payment states', () => {
+  const itrService = CA_SERVICE_CATALOG.find(service => service.slug === 'income-tax-return-filing')
+  assert.equal(itrService.pricingMode, 'quote')
+  assert.equal(itrService.startingPrice, undefined)
   assert.equal(CACase.schema.path('contactWhatsapp').options.select, false)
   assert.ok(CACase.schema.path('quote.professionalFeePaise'))
   assert.ok(CACase.schema.path('quote.totalPaise'))
