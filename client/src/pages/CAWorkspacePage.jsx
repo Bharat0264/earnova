@@ -27,6 +27,8 @@ export default function CAWorkspacePage({ mode = 'overview' }) {
   const [firms, setFirms] = useState([])
   const [loading, setLoading] = useState(true)
   const [message, setMessage] = useState('')
+  const [intakeFiles, setIntakeFiles] = useState([])
+  const [submitting, setSubmitting] = useState(false)
   const [form, setForm] = useState({
     serviceSlug: searchParams.get('start') || '',
     firmId: '',
@@ -72,15 +74,34 @@ export default function CAWorkspacePage({ mode = 'overview' }) {
   const submit = async event => {
     event.preventDefault()
     setMessage('')
+    setSubmitting(true)
     try {
       const data = await api.post('/ca-office/cases', form)
+      const uploadResults = []
+      for (const file of intakeFiles) {
+        const body = new FormData()
+        body.append('document', file)
+        body.append('documentType', file.name)
+        try {
+          await api.post(`/private-files/ca-cases/${data.case._id}/documents`, body)
+          uploadResults.push({ file, uploaded: true })
+        } catch (error) {
+          uploadResults.push({ file, uploaded: false, error: error.message })
+        }
+      }
       setCases(prev => [data.case, ...prev])
       setSearchParams({})
       setForm({ serviceSlug: '', firmId: '', intakeSummary: '', contactPhone: '', contactWhatsapp: '', pan: '', taxIntake: { assessmentYear: '2026-27', taxpayerType: 'individual', residentialStatus: 'resident', incomeSources: [], deductionClaims: [], filingReason: 'regular', hasForm16: false, hasAisTis: false, hasCapitalGains: false, hasForeignAssets: false, taxPosition: 'not_sure', declarationAccepted: false } })
       setStep(1)
-      setMessage(`Case ${data.case.reference} was created.`)
+      setIntakeFiles([])
+      const failed = uploadResults.filter(result => !result.uploaded)
+      setMessage(failed.length
+        ? `Case ${data.case.reference} was created. ${uploadResults.length - failed.length} document(s) uploaded; ${failed.length} failed. Open the case to retry.`
+        : `Case ${data.case.reference} was created with ${uploadResults.length} document(s) securely uploaded.`)
     } catch (error) {
       setMessage(error.message)
+    } finally {
+      setSubmitting(false)
     }
   }
 
@@ -123,7 +144,7 @@ export default function CAWorkspacePage({ mode = 'overview' }) {
               <label className="text-sm font-bold text-slate-700">Why are you filing?<select className="input-base mt-2 w-full" value={form.taxIntake.filingReason} onChange={e => setForm(p => ({ ...p, taxIntake: { ...p.taxIntake, filingReason: e.target.value } }))}><option value="regular">Regular return</option><option value="refund">Claim refund</option><option value="loss_carry_forward">Carry forward loss</option><option value="notice">Respond to notice</option><option value="revised">Revised return</option><option value="not_sure">Not sure</option></select></label>
               <label className="text-sm font-bold text-slate-700">Expected position<select className="input-base mt-2 w-full" value={form.taxIntake.taxPosition} onChange={e => setForm(p => ({ ...p, taxIntake: { ...p.taxIntake, taxPosition: e.target.value } }))}><option value="not_sure">Let CA calculate</option><option value="refund_expected">Refund expected</option><option value="tax_payable">Tax may be payable</option></select></label>
             </div>}
-            {isItr && step === 3 && <div className="sm:col-span-2"><h3 className="font-bold text-slate-900">Document readiness</h3><p className="mt-1 text-sm text-slate-500">You can create the case now and upload these securely afterward.</p><div className="mt-3 grid gap-2 sm:grid-cols-2">{[['hasForm16','I have Form 16'],['hasAisTis','I have AIS / TIS'],['hasCapitalGains','I have capital-gain statements'],['hasForeignAssets','I have foreign income or assets']].map(([field,label]) => <label key={field} className="rounded-xl border p-3 text-sm"><input type="checkbox" className="mr-2" checked={form.taxIntake[field]} onChange={e => setForm(p => ({ ...p, taxIntake: { ...p.taxIntake, [field]: e.target.checked } }))} />{label}</label>)}</div></div>}
+            {isItr && step === 3 && <div className="sm:col-span-2"><h3 className="font-bold text-slate-900">Upload your tax documents</h3><p className="mt-1 text-sm text-slate-500">Select all available documents now. They will be placed in the private case room for Earnova and the assigned CA.</p><div className="mt-3 grid gap-2 sm:grid-cols-2">{[['hasForm16','I have Form 16'],['hasAisTis','I have AIS / TIS'],['hasCapitalGains','I have capital-gain statements'],['hasForeignAssets','I have foreign income or assets']].map(([field,label]) => <label key={field} className="rounded-xl border p-3 text-sm"><input type="checkbox" className="mr-2" checked={form.taxIntake[field]} onChange={e => setForm(p => ({ ...p, taxIntake: { ...p.taxIntake, [field]: e.target.checked } }))} />{label}</label>)}</div><label className="mt-5 block rounded-2xl border-2 border-dashed border-brand-200 bg-brand-50 p-5 text-sm font-bold text-brand-900">Choose documents<input type="file" multiple accept=".pdf,.jpg,.jpeg,.png,.csv,.xlsx" className="input-base mt-3 w-full bg-white text-xs" onChange={event => setIntakeFiles(Array.from(event.target.files || []))} /></label><p className="mt-2 text-xs text-slate-500">PDF, JPG, PNG, CSV or XLSX · maximum 50 MB per file · {intakeFiles.length} file(s) selected</p>{intakeFiles.length > 0 && <ul className="mt-3 space-y-1">{intakeFiles.map(file => <li key={`${file.name}-${file.lastModified}`} className="truncate rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-700">{file.name} · {(file.size / 1024 / 1024).toFixed(1)} MB</li>)}</ul>}</div>}
             {(!isItr || step === 4) && <>
             <label className="text-sm font-bold text-slate-700">Preferred verified firm
               <select className="input-base mt-2 w-full" value={form.firmId} onChange={event => setForm(prev => ({ ...prev, firmId: event.target.value }))}>
@@ -149,7 +170,7 @@ export default function CAWorkspacePage({ mode = 'overview' }) {
           </div>
           {selectedService && <p className="mt-4 rounded-xl bg-amber-50 p-3 text-xs leading-relaxed text-amber-900">{selectedService.handlingTime} {selectedService.externalDependency}</p>}
           {isItr && <p className="mt-3 rounded-xl bg-blue-50 p-3 text-xs leading-relaxed text-blue-900">Earnova is not connected to the Income Tax Department. Your answers and files go to Earnova and the assigned CA, who prepares and coordinates the filing work.</p>}
-          <div className="mt-5 flex gap-3">{isItr && step > 1 && <button type="button" onClick={() => setStep(value => value - 1)} className="btn-secondary">Back</button>}{isItr && step < 4 ? <button type="button" onClick={() => setStep(value => value + 1)} disabled={step === 1 && !form.serviceSlug} className="btn-primary">Continue <ArrowRight className="h-4 w-4" /></button> : <button className="btn-primary">Create secure case <ArrowRight className="h-4 w-4" /></button>}</div>
+          <div className="mt-5 flex gap-3">{isItr && step > 1 && <button type="button" onClick={() => setStep(value => value - 1)} className="btn-secondary">Back</button>}{isItr && step < 4 ? <button type="button" onClick={() => setStep(value => value + 1)} disabled={step === 1 && !form.serviceSlug} className="btn-primary">Continue <ArrowRight className="h-4 w-4" /></button> : <button disabled={submitting} className="btn-primary">{submitting ? <><Loader2 className="h-4 w-4 animate-spin" />Creating case and uploading...</> : <>Create case and securely upload <ArrowRight className="h-4 w-4" /></>}</button>}</div>
         </form>
       )}
 

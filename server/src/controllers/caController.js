@@ -11,23 +11,15 @@ const EARNOVA_CA_FEE = 49
 const CA_SERVICE_PACKAGES = {
   'simple-salaried': {
     label: 'Simple salaried',
-    amount: 1250,
-    amountMax: 1250,
   },
   'investors-traders': {
     label: 'Investors & Traders',
-    amount: 3000,
-    amountMax: 3000,
   },
   'freelancers-small-business': {
     label: 'Freelancers & Small Business',
-    amount: 4250,
-    amountMax: 4250,
   },
   'corporate-tax-audits': {
     label: 'Corporate and Tax Audits',
-    amount: 15000,
-    amountMax: 50000,
   },
 }
 
@@ -179,7 +171,11 @@ export const getPublicCAProfiles = async (_req, res) => {
       .sort({ yearsExperience: -1, name: 1 })
       .lean()
     res.set('Cache-Control', 'no-store')
-    res.json({ success: true, profiles, earnovaFee: EARNOVA_CA_FEE, servicePackages: CA_SERVICE_PACKAGES })
+    const quoteOnlyProfiles = profiles.map(profile => {
+      const { pricing: _pricing, ...safeProfile } = profile
+      return safeProfile
+    })
+    res.json({ success: true, profiles: quoteOnlyProfiles, servicePackages: CA_SERVICE_PACKAGES, pricingMode: 'quote_after_review' })
   } catch (err) {
     res.status(500).json({ success: false, message: err.message })
   }
