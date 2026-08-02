@@ -2,10 +2,12 @@ import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import {
   AlertCircle, ArrowLeft, Building2, CheckCircle2, Download, FileLock2,
-  HelpCircle, Loader2, Upload,
+  HelpCircle, IndianRupee, Loader2, Upload,
 } from 'lucide-react'
 import { api } from '../utils/api'
-import { formatDate } from '../utils/formatters'
+import { formatDate, formatPrice } from '../utils/formatters'
+import { loadRazorpayScript } from '../components/checkout/ReviewStep'
+import { useAuth } from '../context/AuthContext'
 
 const ownerStyle = {
   customer: 'bg-amber-50 text-amber-900 border-amber-200',
@@ -15,6 +17,7 @@ const ownerStyle = {
 }
 
 export default function CACasePage() {
+  const { user } = useAuth()
   const { caseId } = useParams()
   const [data, setData] = useState(null)
   const [message, setMessage] = useState('')
@@ -50,9 +53,43 @@ export default function CACasePage() {
     }
   }
 
+  const payQuote = async () => {
+    try {
+      setMessage('Opening secure payment...')
+      if (!await loadRazorpayScript()) throw new Error('Razorpay could not load. Check your connection and try again.')
+      const order = await api.post(`/ca-office/cases/${data.case._id}/payment-order`, {})
+      const checkout = new window.Razorpay({
+        key: order.keyId, amount: order.amount, currency: order.currency,
+        name: 'Earnova', description: `CA service ${order.caseReference}`, order_id: order.orderId,
+        prefill: { name: user?.name, email: user?.email, contact: user?.phone },
+        handler: async response => {
+          const result = await api.post(`/ca-office/cases/${data.case._id}/verify-payment`, {
+            razorpayOrderId: response.razorpay_order_id,
+            razorpayPaymentId: response.razorpay_payment_id,
+            razorpaySignature: response.razorpay_signature,
+          })
+          setMessage(result.message)
+          refresh()
+        },
+        theme: { color: '#5B21B6' },
+      })
+      checkout.on('payment.failed', response => setMessage(response.error?.description || 'Payment failed. Please try again.'))
+      checkout.open()
+    } catch (error) { setMessage(error.message) }
+  }
+
   if (!data && !message) return <div className="flex min-h-[50vh] items-center justify-center"><Loader2 className="h-7 w-7 animate-spin text-brand-700" /></div>
   if (!data) return <div><Link to="/app/ca/cases" className="text-sm font-bold text-brand-700">← My CA cases</Link><p className="mt-6 rounded-xl bg-rose-50 p-4 text-sm font-bold text-rose-800">{message}</p></div>
   const item = data.case
+  const taxChecklist = item.serviceSlug === 'income-tax-return-filing' ? [
+    'PAN copy', 'AIS / TIS and Form 26AS', 'Bank account details for refund verification',
+    ...(item.taxIntake?.incomeSources?.includes('salary') ? ['Form 16 / salary certificates'] : []),
+    ...(item.taxIntake?.incomeSources?.includes('house_property') ? ['Rent and home-loan interest records'] : []),
+    ...(item.taxIntake?.incomeSources?.includes('business') ? ['Business books, bank statements and expense records'] : []),
+    ...(item.taxIntake?.incomeSources?.includes('capital_gains') ? ['Broker capital-gain and transaction statements'] : []),
+    ...(item.taxIntake?.incomeSources?.includes('interest') ? ['Bank interest certificates'] : []),
+    ...(item.taxIntake?.incomeSources?.includes('foreign_income') ? ['Foreign income, asset and tax-credit records'] : []),
+  ] : []
   return (
     <div>
       <Link to="/app/ca/cases" className="inline-flex items-center gap-1 text-sm font-bold text-brand-700"><ArrowLeft className="h-4 w-4" />My CA cases</Link>
@@ -81,6 +118,9 @@ export default function CACasePage() {
               ))}
             </ol>
           </section>
+          {item.completionSummary && <section className="surface-card p-5"><h2 className="font-bold text-slate-950">Completion summary</h2><p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-slate-600">{item.completionSummary}</p></section>}
+
+          {taxChecklist.length > 0 && <section className="surface-card p-5"><h2 className="font-bold text-slate-950">Your personalized ITR checklist</h2><p className="mt-2 text-xs text-slate-500">Based on your answers. Your CA may request additional records after review.</p><div className="mt-4 grid gap-2 sm:grid-cols-2">{taxChecklist.map(label => { const uploaded = data.documents.some(doc => doc.documentType.toLowerCase().includes(label.split(' ')[0].toLowerCase())); return <div key={label} className={`flex items-center gap-2 rounded-xl border p-3 text-sm ${uploaded ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : 'border-slate-200 text-slate-700'}`}><CheckCircle2 className={`h-4 w-4 ${uploaded ? 'text-emerald-600' : 'text-slate-300'}`} />{label}</div> })}</div></section>}
 
           <section className="surface-card p-5">
             <h2 className="flex items-center gap-2 font-bold text-slate-950"><FileLock2 className="h-4 w-4 text-brand-700" />Secure document room</h2>
@@ -102,6 +142,19 @@ export default function CACasePage() {
           </section>
         </div>
         <aside className="space-y-4">
+          {item.quote?.status && (
+            <div className="surface-card border-brand-200 p-5">
+              <h2 className="flex items-center gap-2 font-bold text-slate-950"><IndianRupee className="h-4 w-4 text-brand-700" />CA quote</h2>
+              <p className="mt-3 text-sm leading-relaxed text-slate-600">{item.quote.scope}</p>
+              <dl className="mt-4 space-y-2 text-sm">
+                <div className="flex justify-between"><dt>Professional fee</dt><dd className="font-bold">{formatPrice((item.quote.professionalFeePaise || 0) / 100)}</dd></div>
+                <div className="flex justify-between"><dt>Earnova fee</dt><dd className="font-bold">{formatPrice((item.quote.customerPlatformFeePaise || 0) / 100)}</dd></div>
+                <div className="flex justify-between border-t pt-2"><dt className="font-bold">Total</dt><dd className="font-extrabold text-brand-700">{formatPrice((item.quote.totalPaise || 0) / 100)}</dd></div>
+              </dl>
+              {['pending', 'failed'].includes(item.paymentStatus) && <button type="button" onClick={payQuote} className="btn-primary mt-4 w-full">{item.paymentStatus === 'failed' ? 'Retry payment' : 'Pay securely in Earnova'}</button>}
+              {item.paymentStatus === 'paid' && <p className="mt-4 rounded-xl bg-emerald-50 p-3 text-sm font-bold text-emerald-800">Payment confirmed. The CA can begin work.</p>}
+            </div>
+          )}
           <div className="surface-card p-5">
             <h2 className="flex items-center gap-2 font-bold text-slate-950"><Building2 className="h-4 w-4 text-emerald-700" />Assigned firm</h2>
             <p className="mt-3 text-sm font-bold text-slate-800">{item.firm?.displayName || 'Allocation pending'}</p>

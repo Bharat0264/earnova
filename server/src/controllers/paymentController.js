@@ -4,6 +4,7 @@ import Order    from '../models/Order.js'
 import User     from '../models/User.js'
 import Product  from '../models/Product.js'
 import CATaxJob from '../models/CATaxJob.js'
+import CACase from '../models/CACase.js'
 import ProjectListing from '../models/ProjectListing.js'
 import CommissionRule from '../models/CommissionRule.js'
 import ReferralLedger from '../models/ReferralLedger.js'
@@ -628,10 +629,22 @@ export const handleWebhook = async (req, res) => {
           { razorpayOrderId: paymentEntity.order_id },
           { status: 'failed', razorpayPaymentId: paymentId }
         )
+        await CACase.findOneAndUpdate(
+          { razorpayOrderId: paymentEntity.order_id, paymentStatus: 'pending' },
+          {
+            paymentStatus: 'paid', 'quote.status': 'paid', razorpayPaymentId: paymentId,
+            paidAt: new Date(), status: 'payment_received', nextActionOwner: 'firm',
+            nextAction: 'Payment confirmed. The assigned CA will now complete the quoted work.',
+          }
+        )
         await Order.findOneAndUpdate(
           { razorpayPaymentId: paymentId },
           { paymentStatus: 'failed',
             $push: { statusHistory: { status: 'cancelled', note: 'Payment failed' } } }
+        )
+        await CACase.findOneAndUpdate(
+          { razorpayOrderId: paymentEntity.order_id, paymentStatus: 'pending' },
+          { paymentStatus: 'failed', razorpayPaymentId: paymentId }
         )
         break
       }

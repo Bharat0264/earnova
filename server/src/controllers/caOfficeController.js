@@ -8,6 +8,8 @@ import CAService from '../models/CAService.js'
 import AuditLog from '../models/AuditLog.js'
 import SupportTicket from '../models/SupportTicket.js'
 import User from '../models/User.js'
+import crypto from 'crypto'
+import Razorpay from 'razorpay'
 import { CA_SERVICE_CATALOG } from '../config/caSupport.js'
 import {
   buildCustomerCaseScope, findVerifiedFirm, getAuthorizedBusinessIds,
@@ -15,6 +17,8 @@ import {
 } from '../services/caPermissions.js'
 import { createPublicReference } from '../utils/references.js'
 import { maskPan } from '../utils/masking.js'
+import { isValidIndianPhone } from '../utils/validation.js'
+import { calculateFeeAmount, getCurrentPlatformFee } from '../services/platformFees.js'
 
 const pageParams = query => ({
   page: Math.max(1, Number.parseInt(query.page, 10) || 1),
@@ -40,12 +44,55 @@ const casePublicPopulate = query => query
   .populate('service', 'slug name category pricingMode startingPrice handlingTime consultationRequired')
   .populate('firm', publicFirmFields)
 
+const toCustomerCase = value => {
+  if (!value) return value
+  const item = { ...value }
+  if (item.quote) {
+    item.quote = { ...item.quote }
+    delete item.quote.providerPlatformFeePaise
+    delete item.quote.providerPayoutPaise
+    delete item.quote.feeVersion
+    delete item.quote.raisedBy
+  }
+  delete item.contactWhatsapp
+  return item
+}
+
+const calculateFeePaise = (basePaise, fee) => fee?.type === 'fixed'
+  ? calculateFeeAmount(basePaise / 100, fee) * 100
+  : calculateFeeAmount(basePaise, fee)
+
 const createUniqueCaseReference = async () => {
   for (let attempt = 0; attempt < 5; attempt += 1) {
     const reference = createPublicReference('CA')
     if (!await CACase.exists({ reference })) return reference
   }
   throw Object.assign(new Error('Could not allocate a case reference. Please retry.'), { status: 503 })
+}
+
+const getRazorpay = () => {
+  const keyId = process.env.RAZORPAY_KEY_ID?.trim()
+  const keySecret = process.env.RAZORPAY_KEY_SECRET?.trim()
+  if (!keyId || !keySecret) throw Object.assign(new Error('CA service payments are not configured.'), { status: 503 })
+  return { keyId, keySecret, instance: new Razorpay({ key_id: keyId, key_secret: keySecret }) }
+}
+
+const buildTaxIntake = body => {
+  const allowedIncome = ['salary', 'house_property', 'business', 'capital_gains', 'interest', 'foreign_income', 'other']
+  const allowedDeductions = ['80c', '80d', 'home_loan', 'donations', 'nps', 'education_loan', 'other']
+  const pickMany = (value, allowed) => [...new Set((Array.isArray(value) ? value : []).filter(item => allowed.includes(item)))]
+  return {
+    assessmentYear: String(body.assessmentYear || '').trim().slice(0, 20),
+    taxpayerType: ['individual', 'huf', 'proprietor'].includes(body.taxpayerType) ? body.taxpayerType : undefined,
+    residentialStatus: ['resident', 'nri', 'not_sure'].includes(body.residentialStatus) ? body.residentialStatus : undefined,
+    incomeSources: pickMany(body.incomeSources, allowedIncome),
+    deductionClaims: pickMany(body.deductionClaims, allowedDeductions),
+    filingReason: ['regular', 'refund', 'loss_carry_forward', 'notice', 'revised', 'not_sure'].includes(body.filingReason) ? body.filingReason : undefined,
+    hasForm16: Boolean(body.hasForm16), hasAisTis: Boolean(body.hasAisTis),
+    hasCapitalGains: Boolean(body.hasCapitalGains), hasForeignAssets: Boolean(body.hasForeignAssets),
+    taxPosition: ['refund_expected', 'tax_payable', 'not_sure'].includes(body.taxPosition) ? body.taxPosition : undefined,
+    declarationAccepted: body.declarationAccepted === true,
+  }
 }
 
 export const listCAServices = async (req, res, next) => {
@@ -113,6 +160,14 @@ export const createCACase = async (req, res, next) => {
     if (!service) return res.status(400).json({ success: false, message: 'Choose a valid CA service.' })
     const intakeSummary = String(req.body.intakeSummary || '').trim()
     if (intakeSummary.length < 20) return res.status(400).json({ success: false, message: 'Provide at least 20 characters about the required work.' })
+    const contactWhatsapp = String(req.body.contactWhatsapp || '').trim()
+    if (!contactWhatsapp || !isValidIndianPhone(contactWhatsapp)) {
+      return res.status(400).json({ success: false, message: 'Provide a valid Indian WhatsApp number.' })
+    }
+    const taxIntake = serviceSlug === 'income-tax-return-filing' ? buildTaxIntake(req.body.taxIntake || {}) : undefined
+    if (taxIntake && (!taxIntake.assessmentYear || !taxIntake.taxpayerType || !taxIntake.incomeSources.length || !taxIntake.declarationAccepted)) {
+      return res.status(400).json({ success: false, message: 'Complete the ITR profile and confirm that the information is accurate.' })
+    }
 
     let business = null
     if (req.body.businessId) {
@@ -144,11 +199,13 @@ export const createCACase = async (req, res, next) => {
       firm: firm?._id,
       intakeSummary,
       contactPhone: String(req.body.contactPhone || req.user.phone || '').trim(),
+      contactWhatsapp,
       maskedPan: maskPan(req.body.pan),
+      taxIntake,
       status,
       workflowKey: service.workflowKey,
       nextActionOwner: firm ? 'firm' : 'firm',
-      nextAction: firm ? nextAction : 'Earnova will assign an eligible verified firm.',
+      nextAction: firm ? nextAction : 'Documents can be uploaded now. Earnova will assign an eligible verified CA before any payment is requested.',
     })
     await CACaseStatusHistory.create({
       case: createdCase._id,
@@ -169,7 +226,7 @@ export const createCACase = async (req, res, next) => {
       metadata: { serviceSlug, assignedFirm: Boolean(firm) },
     })
     const populated = await casePublicPopulate(CACase.findById(createdCase._id)).lean()
-    res.status(201).json({ success: true, case: populated })
+    res.status(201).json({ success: true, case: toCustomerCase(populated) })
   } catch (error) {
     next(error)
   }
@@ -185,7 +242,7 @@ export const listMyCACases = async (req, res, next) => {
       casePublicPopulate(CACase.find(filter)).sort({ updatedAt: -1 }).skip((page - 1) * limit).limit(limit).lean(),
       CACase.countDocuments(filter),
     ])
-    res.json({ success: true, cases, pagination: { page, limit, total, pages: Math.ceil(total / limit) } })
+    res.json({ success: true, cases: cases.map(toCustomerCase), pagination: { page, limit, total, pages: Math.ceil(total / limit) } })
   } catch (error) {
     next(error)
   }
@@ -206,7 +263,7 @@ export const getMyCACase = async (req, res, next) => {
       CACaseDocument.find({ case: foundCase._id, deletedAt: null }).select('-storageKey -checksum').sort({ createdAt: -1 }).lean(),
       CACaseAssignment.find({ case: foundCase._id, active: true }).populate({ path: 'member', select: 'platformRole professionalDesignation designationVerified user', populate: { path: 'user', select: 'name' } }).select('assignmentRole member').lean(),
     ])
-    res.json({ success: true, case: foundCase, history, documents, assignments })
+    res.json({ success: true, case: toCustomerCase(foundCase), history, documents, assignments })
   } catch (error) {
     next(error)
   }
@@ -282,7 +339,9 @@ export const getFirmCase = async (req, res, next) => {
     const accessibleIds = await getFirmAccessibleCaseIds(req.firmMembership)
     const identity = isValidObjectId(req.params.caseId) ? { $or: [{ _id: req.params.caseId }, { reference: req.params.caseId }] } : { reference: req.params.caseId }
     const filter = { $and: [{ firm: req.firm._id }, identity, ...(accessibleIds ? [{ _id: { $in: accessibleIds } }] : [])] }
-    const foundCase = await casePublicPopulate(CACase.findOne(filter)).populate('customer', 'name email phone').lean()
+    const canViewWhatsapp = req.firmMembership.designationVerified === true
+    const query = CACase.findOne(filter).select(canViewWhatsapp ? '+contactWhatsapp' : '')
+    const foundCase = await casePublicPopulate(query).populate('customer', 'name email').lean()
     if (!foundCase) return res.status(404).json({ success: false, message: 'Firm case not found.' })
     const [history, assignments, documents] = await Promise.all([
       CACaseStatusHistory.find({ case: foundCase._id }).sort({ createdAt: 1 }).lean(),
@@ -293,6 +352,116 @@ export const getFirmCase = async (req, res, next) => {
   } catch (error) {
     next(error)
   }
+}
+
+export const raiseCaseQuote = async (req, res, next) => {
+  try {
+    if (!req.firmMembership.designationVerified) {
+      return res.status(403).json({ success: false, message: 'Only an administrator-verified CA professional can raise a quote.' })
+    }
+    const accessibleIds = await getFirmAccessibleCaseIds(req.firmMembership)
+    const filter = { firm: req.firm._id, $and: [{ _id: req.params.caseId }, ...(accessibleIds ? [{ _id: { $in: accessibleIds } }] : [])] }
+    const foundCase = await CACase.findOne(filter)
+    if (!foundCase) return res.status(404).json({ success: false, message: 'Assigned CA case not found.' })
+    if (foundCase.paymentStatus === 'paid') return res.status(400).json({ success: false, message: 'A paid case cannot be requoted.' })
+
+    const professionalFeePaise = Math.round(Number(req.body.professionalFeePaise))
+    const scope = String(req.body.scope || '').trim()
+    if (!Number.isInteger(professionalFeePaise) || professionalFeePaise < 10000 || professionalFeePaise > 50000000) {
+      return res.status(400).json({ success: false, message: 'Enter a professional fee between INR 100 and INR 5,00,000.' })
+    }
+    if (scope.length < 20) return res.status(400).json({ success: false, message: 'Describe the quoted work in at least 20 characters.' })
+
+    const feeSetting = await getCurrentPlatformFee('ca')
+    const customerPlatformFeePaise = calculateFeePaise(professionalFeePaise, feeSetting.customerFee)
+    const providerPlatformFeePaise = calculateFeePaise(professionalFeePaise, feeSetting.providerFee)
+    const previousStatus = foundCase.status
+    foundCase.quote = {
+      professionalFeePaise,
+      customerPlatformFeePaise,
+      providerPlatformFeePaise,
+      totalPaise: professionalFeePaise + customerPlatformFeePaise,
+      providerPayoutPaise: Math.max(professionalFeePaise - providerPlatformFeePaise, 0),
+      currency: 'INR', scope, feeVersion: feeSetting.version || 1,
+      raisedBy: req.user._id, raisedAt: new Date(), status: 'issued',
+    }
+    foundCase.paymentStatus = 'pending'
+    foundCase.status = 'awaiting_payment'
+    foundCase.nextActionOwner = 'customer'
+    foundCase.nextAction = 'Review the CA quote and pay securely in Earnova before work begins.'
+    await foundCase.save()
+    await Promise.all([
+      CACaseStatusHistory.create({ case: foundCase._id, previousStatus, newStatus: 'awaiting_payment', changedBy: req.user._id, actorRole: 'firm_member', reason: 'Verified CA raised a quote for customer approval.', customerVisible: true }),
+      AuditLog.create({ actor: req.user._id, action: 'ca_case.quote_raised', resourceType: 'CACase', resourceId: foundCase._id, summary: `Raised quote for ${foundCase.reference}`, requestId: req.id, metadata: { totalPaise: foundCase.quote.totalPaise, feeVersion: foundCase.quote.feeVersion } }),
+    ])
+    res.json({ success: true, case: foundCase, message: 'Quote sent to the customer for payment.' })
+  } catch (error) { next(error) }
+}
+
+export const completeCaseWork = async (req, res, next) => {
+  try {
+    if (!req.firmMembership.designationVerified) return res.status(403).json({ success: false, message: 'Only an administrator-verified CA professional can complete this work.' })
+    const accessibleIds = await getFirmAccessibleCaseIds(req.firmMembership)
+    const filter = { firm: req.firm._id, $and: [{ _id: req.params.caseId }, ...(accessibleIds ? [{ _id: { $in: accessibleIds } }] : [])] }
+    const foundCase = await CACase.findOne(filter)
+    if (!foundCase) return res.status(404).json({ success: false, message: 'Assigned CA case not found.' })
+    if (foundCase.paymentStatus !== 'paid') return res.status(400).json({ success: false, message: 'Customer payment must be confirmed before completing the work.' })
+    const completionSummary = String(req.body.completionSummary || '').trim()
+    if (completionSummary.length < 20) return res.status(400).json({ success: false, message: 'Provide a customer-visible completion summary of at least 20 characters.' })
+    const previousStatus = foundCase.status
+    foundCase.completionSummary = completionSummary
+    foundCase.status = 'completed'
+    foundCase.completedAt = new Date()
+    foundCase.nextActionOwner = 'none'
+    foundCase.nextAction = 'The quoted CA work is complete. Review the completion summary and secure case documents.'
+    await foundCase.save()
+    await Promise.all([
+      CACaseStatusHistory.create({ case: foundCase._id, previousStatus, newStatus: 'completed', changedBy: req.user._id, actorRole: 'firm_member', reason: 'Verified CA marked the paid work complete.', customerVisible: true }),
+      AuditLog.create({ actor: req.user._id, action: 'ca_case.completed', resourceType: 'CACase', resourceId: foundCase._id, summary: `Completed ${foundCase.reference}`, requestId: req.id }),
+    ])
+    res.json({ success: true, case: foundCase, message: 'CA work marked complete.' })
+  } catch (error) { next(error) }
+}
+
+export const createCasePaymentOrder = async (req, res, next) => {
+  try {
+    const foundCase = await CACase.findOne({ _id: req.params.caseId, customer: req.user._id })
+    if (!foundCase) return res.status(404).json({ success: false, message: 'CA case not found.' })
+    if (!['pending', 'failed'].includes(foundCase.paymentStatus) || foundCase.quote?.status !== 'issued') {
+      return res.status(400).json({ success: false, message: 'This case does not have an unpaid active quote.' })
+    }
+    const { keyId, instance } = getRazorpay()
+    const order = await instance.orders.create({ amount: foundCase.quote.totalPaise, currency: 'INR', receipt: foundCase.reference, notes: { caseReference: foundCase.reference, purpose: 'ca-case-quote' } })
+    foundCase.razorpayOrderId = order.id
+    foundCase.paymentStatus = 'pending'
+    await foundCase.save()
+    res.json({ success: true, keyId, orderId: order.id, amount: order.amount, currency: order.currency, caseReference: foundCase.reference })
+  } catch (error) { next(error) }
+}
+
+export const verifyCasePayment = async (req, res, next) => {
+  try {
+    const { razorpayOrderId, razorpayPaymentId, razorpaySignature } = req.body
+    const foundCase = await CACase.findOne({ _id: req.params.caseId, customer: req.user._id, razorpayOrderId })
+    if (!foundCase) return res.status(404).json({ success: false, message: 'CA quote payment not found.' })
+    const { keySecret } = getRazorpay()
+    const expected = crypto.createHmac('sha256', keySecret).update(`${razorpayOrderId}|${razorpayPaymentId}`).digest('hex')
+    if (!razorpaySignature || expected !== razorpaySignature) return res.status(400).json({ success: false, message: 'Payment verification failed.' })
+    if (foundCase.paymentStatus === 'paid' && foundCase.razorpayPaymentId === razorpayPaymentId) {
+      return res.json({ success: true, case: toCustomerCase(foundCase.toObject()), message: 'Payment was already confirmed. CA work can begin.' })
+    }
+    if (foundCase.paymentStatus !== 'pending') return res.status(400).json({ success: false, message: 'This quote is not awaiting payment.' })
+    foundCase.razorpayPaymentId = razorpayPaymentId
+    foundCase.paymentStatus = 'paid'
+    foundCase.quote.status = 'paid'
+    foundCase.paidAt = new Date()
+    foundCase.status = 'payment_received'
+    foundCase.nextActionOwner = 'firm'
+    foundCase.nextAction = 'Payment confirmed. The assigned CA will now complete the quoted work.'
+    await foundCase.save()
+    await CACaseStatusHistory.create({ case: foundCase._id, previousStatus: 'awaiting_payment', newStatus: 'payment_received', changedBy: req.user._id, actorRole: 'customer', reason: 'Customer paid the CA quote through Earnova.', customerVisible: true })
+    res.json({ success: true, case: foundCase, message: 'Payment confirmed. CA work can begin.' })
+  } catch (error) { next(error) }
 }
 
 export const assignCaseMember = async (req, res, next) => {

@@ -2,8 +2,10 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import mongoose from 'mongoose'
 import { SUPPORT_ISSUES } from '../src/config/caSupport.js'
+import { PRIVATE_DOCUMENT_MAX_BYTES } from '../src/config/uploads.js'
 import SupportTicket from '../src/models/SupportTicket.js'
 import SupportInternalNote from '../src/models/SupportInternalNote.js'
+import CACase from '../src/models/CACase.js'
 import { buildCustomerCaseScope, canFirmMemberAccessCase } from '../src/services/caPermissions.js'
 import { validatePrivateFile } from '../src/services/privateStorage.js'
 import { calculateSupportRouting } from '../src/controllers/supportController.js'
@@ -69,6 +71,18 @@ test('support internal notes are held in a separate model from customer tickets'
   assert.ok(SupportInternalNote.schema.path('note'))
 })
 
+test('CA case intake keeps WhatsApp private and supports quote-first payment states', () => {
+  assert.equal(CACase.schema.path('contactWhatsapp').options.select, false)
+  assert.ok(CACase.schema.path('quote.professionalFeePaise'))
+  assert.ok(CACase.schema.path('quote.totalPaise'))
+  assert.deepEqual(CACase.schema.path('paymentStatus').enumValues, ['not_quoted', 'pending', 'paid', 'failed', 'refunded'])
+  assert.ok(CACase.schema.path('status').enumValues.includes('awaiting_payment'))
+  assert.ok(CACase.schema.path('status').enumValues.includes('payment_received'))
+  assert.ok(CACase.schema.path('taxIntake.assessmentYear'))
+  assert.ok(CACase.schema.path('taxIntake.incomeSources'))
+  assert.ok(CACase.schema.path('taxIntake.declarationAccepted'))
+})
+
 test('private file validation accepts matching safe types and rejects spoofed files', () => {
   const pdf = {
     originalname: 'return.pdf',
@@ -77,6 +91,12 @@ test('private file validation accepts matching safe types and rejects spoofed fi
     buffer: Buffer.from('%PDF-1.7 safe'),
   }
   assert.equal(validatePrivateFile(pdf).extension, '.pdf')
+  assert.equal(PRIVATE_DOCUMENT_MAX_BYTES, 50 * 1024 * 1024)
+  assert.doesNotThrow(() => validatePrivateFile({ ...pdf, size: PRIVATE_DOCUMENT_MAX_BYTES }))
+  assert.throws(
+    () => validatePrivateFile({ ...pdf, size: PRIVATE_DOCUMENT_MAX_BYTES + 1 }),
+    /50 MB or smaller/
+  )
   assert.throws(() => validatePrivateFile({
     originalname: 'malware.exe',
     mimetype: 'application/pdf',
