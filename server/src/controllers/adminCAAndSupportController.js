@@ -211,12 +211,15 @@ export const adminListCACases = async (req, res, next) => {
     const filter = {}
     if (req.query.status) filter.status = req.query.status
     if (req.query.firm) filter.firm = req.query.firm
-    const result = await paged(CACase, filter, req.query, [
-      { path: 'customer', select: 'name email' },
-      { path: 'firm', select: 'displayName slug' },
-      { path: 'service', select: 'name slug' },
+    const [result, firms] = await Promise.all([
+      paged(CACase, filter, req.query, [
+        { path: 'customer', select: 'name email' },
+        { path: 'firm', select: 'displayName slug' },
+        { path: 'service', select: 'name slug' },
+      ], '+contactWhatsapp'),
+      CAFirm.find({ status: 'verified', acceptingCases: true }).select('displayName serviceSlugs').sort({ displayName: 1 }).lean(),
     ])
-    res.json({ success: true, cases: result.records, pagination: result.pagination })
+    res.json({ success: true, cases: result.records, firms, pagination: result.pagination })
   } catch (error) {
     next(error)
   }

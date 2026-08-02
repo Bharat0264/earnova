@@ -13,8 +13,20 @@ import {
 } from '../utils/validation.js'
 
 const respond = (res, user, statusCode = 200) => {
-  const token = signToken(user._id)
-  res.status(statusCode).json({ success: true, token, user: user.toPublicJSON() })
+  const token = signToken(user._id, user.sessionVersion ?? 0)
+  const secure = process.env.NODE_ENV === 'production'
+  const sameSite = process.env.AUTH_COOKIE_SAME_SITE || (secure ? 'None' : 'Lax')
+  const maxAge = Number(process.env.AUTH_COOKIE_MAX_AGE_SECONDS || 86400)
+  res.setHeader('Set-Cookie', `${process.env.AUTH_COOKIE_NAME || 'earnova_session'}=${encodeURIComponent(token)}; Path=/; HttpOnly; Max-Age=${maxAge}; SameSite=${sameSite}${secure ? '; Secure' : ''}`)
+  const includeToken = process.env.AUTH_RETURN_TOKEN === 'true' || process.env.NODE_ENV !== 'production'
+  res.status(statusCode).json({ success: true, ...(includeToken ? { token } : {}), user: user.toPublicJSON() })
+}
+
+export const logout = (_req, res) => {
+  const secure = process.env.NODE_ENV === 'production'
+  const sameSite = process.env.AUTH_COOKIE_SAME_SITE || (secure ? 'None' : 'Lax')
+  res.setHeader('Set-Cookie', `${process.env.AUTH_COOKIE_NAME || 'earnova_session'}=; Path=/; HttpOnly; Max-Age=0; SameSite=${sameSite}${secure ? '; Secure' : ''}`)
+  res.json({ success: true })
 }
 
 /* ── POST /api/auth/register ── */
@@ -84,7 +96,7 @@ export const googleLogin = async (req, res) => {
     }
 
     const email = normalizeEmail(profile.email)
-    let user = await User.findOne({ $or: [{ googleSub: profile.sub }, { email }] }).select('+googleSub')
+    let user = await User.findOne({ $or: [{ googleSub: profile.sub }, { email }] }).select('+googleSub +sessionVersion')
     let isNew = false
 
     if (user) {
@@ -133,7 +145,7 @@ export const login = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Email and password are required.' })
     }
 
-    const user = await User.findOne({ email }).select('+password')
+    const user = await User.findOne({ email }).select('+password +sessionVersion')
     if (!user || !(await user.comparePassword(password))) {
       return res.status(401).json({ success: false, message: 'Invalid email or password.' })
     }
@@ -171,7 +183,7 @@ export const updateProfile = async (req, res) => {
 export const updatePassword = async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body
-    const user = await User.findById(req.user._id).select('+password')
+    const user = await User.findById(req.user._id).select('+password +sessionVersion')
 
     if (!(await user.comparePassword(currentPassword))) {
       return res.status(401).json({ success: false, message: 'Current password is incorrect.' })
@@ -181,6 +193,7 @@ export const updatePassword = async (req, res) => {
     }
 
     user.password = newPassword
+    user.sessionVersion = (user.sessionVersion || 0) + 1
     await user.save()
     respond(res, user)
   } catch (err) {
@@ -302,7 +315,7 @@ export const resetPassword = async (req, res) => {
     const user = await User.findOne({
       resetPasswordToken:   hashedToken,
       resetPasswordExpires: { $gt: Date.now() },
-    })
+    }).select('+sessionVersion')
 
     if (!user) {
       return res.status(400).json({ success: false, message: 'Reset link is invalid or has expired.' })
@@ -312,6 +325,7 @@ export const resetPassword = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Password must be 8 to 128 characters.' })
     }
     user.password             = req.body.password
+    user.sessionVersion       = (user.sessionVersion || 0) + 1
     user.resetPasswordToken   = undefined
     user.resetPasswordExpires = undefined
     await user.save()

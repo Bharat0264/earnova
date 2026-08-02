@@ -1,4 +1,5 @@
 import crypto from 'crypto'
+import RateLimitBucket from '../models/RateLimitBucket.js'
 
 export const requestContext = (req, res, next) => {
   const incoming = req.get('x-request-id')
@@ -26,16 +27,38 @@ export const createRateLimit = ({
 } = {}) => {
   const buckets = new Map()
 
-  return (req, res, next) => {
+  return async (req, res, next) => {
     const now = Date.now()
     const key = `${req.ip}:${req.baseUrl}${req.path}`
-    const current = buckets.get(key)
-    const entry = !current || current.resetAt <= now
-      ? { count: 0, resetAt: now + windowMs }
-      : current
+    let entry
 
-    entry.count += 1
-    buckets.set(key, entry)
+    const useSharedStore = process.env.RATE_LIMIT_STORE === 'mongodb' || process.env.NODE_ENV === 'production'
+    if (useSharedStore) {
+      try {
+        const keyHash = crypto.createHash('sha256').update(key).digest('hex')
+        const resetAt = new Date(now + windowMs)
+        const bucket = await RateLimitBucket.findOneAndUpdate(
+          { key: keyHash },
+          [{ $set: {
+            count: { $cond: [{ $gt: ['$resetAt', new Date(now)] }, { $add: [{ $ifNull: ['$count', 0] }, 1] }, 1] },
+            resetAt: { $cond: [{ $gt: ['$resetAt', new Date(now)] }, '$resetAt', resetAt] },
+            key: keyHash,
+          } }],
+          { upsert: true, new: true }
+        )
+        entry = { count: bucket.count, resetAt: bucket.resetAt.getTime() }
+      } catch (error) {
+        console.error(`[RateLimit] store failure requestId=${req.id}:`, error.message)
+        return res.status(503).json({ success: false, code: 'RATE_LIMIT_UNAVAILABLE', message: 'Please try again shortly.', requestId: req.id })
+      }
+    } else {
+      const current = buckets.get(key)
+      entry = !current || current.resetAt <= now
+        ? { count: 0, resetAt: now + windowMs }
+        : current
+      entry.count += 1
+      buckets.set(key, entry)
+    }
     res.setHeader('RateLimit-Limit', String(max))
     res.setHeader('RateLimit-Remaining', String(Math.max(0, max - entry.count)))
     res.setHeader('RateLimit-Reset', String(Math.ceil(entry.resetAt / 1000)))
@@ -54,4 +77,3 @@ export const createRateLimit = ({
     next()
   }
 }
-

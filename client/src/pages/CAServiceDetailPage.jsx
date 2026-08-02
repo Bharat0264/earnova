@@ -30,7 +30,9 @@ export default function CAServiceDetailPage() {
   if (!data && !error) return <div className="flex min-h-[60vh] items-center justify-center"><Loader2 className="h-7 w-7 animate-spin text-brand-700" /></div>
   if (error) return <div className="section-wrapper py-16 text-center"><p className="font-bold text-red-700">{error}</p><Link to="/services/ca" className="btn-secondary mt-5">Back to CA services</Link></div>
   const { service, firms = [] } = data
-  const priceLabel = service.pricingMode === 'quote' || service.pricingMode === 'retainer'
+  const priceLabel = service.slug === 'income-tax-return-filing'
+    ? 'Quote after CA reviews your requirements'
+    : service.pricingMode === 'quote' || service.pricingMode === 'retainer'
     ? service.pricingMode === 'retainer' ? 'Recurring plan or custom quote' : 'Custom quotation required'
     : `${service.pricingMode === 'starting' ? 'Starting from ' : ''}${formatPrice(service.startingPrice || 0)}`
 
@@ -92,4 +94,3 @@ export default function CAServiceDetailPage() {
     </>
   )
 }
-

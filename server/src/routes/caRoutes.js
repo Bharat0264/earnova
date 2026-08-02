@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import multer from 'multer'
+import { PRIVATE_DOCUMENT_MAX_BYTES } from '../config/uploads.js'
 import { protect } from '../middleware/auth.js'
 import {
   upsertCAProfile,
@@ -16,7 +17,7 @@ import {
 
 const documentUpload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 10 * 1024 * 1024 },
+  limits: { fileSize: PRIVATE_DOCUMENT_MAX_BYTES },
   fileFilter: (_req, file, cb) => cb(null, ['application/pdf', 'image/jpeg', 'image/png'].includes(file.mimetype)),
 })
 

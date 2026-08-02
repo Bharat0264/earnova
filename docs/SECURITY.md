@@ -15,9 +15,9 @@
 - Upload size and MIME allow-lists.
 - Owner-scoped queries in core user/order/service flows.
 
-## Known limitations
+## Current migration and known limitations
 
-- Bearer tokens remain in browser local storage for backward compatibility. Move to short-lived access tokens plus rotated secure HTTP-only refresh cookies in a dedicated auth migration. Add CSRF protection when cookies are used.
+- New sessions use secure HTTP-only cookies. Legacy bearer tokens remain temporarily readable for backward compatibility; remove that path after existing sessions expire. Cross-origin cookie deployments must keep a strict CORS allow-list and validate mutation origins.
 - Email verification, session invalidation/versioning, device/session management, compromised-password screening, granular admin permissions, append-only audit logs, antivirus upload scanning, and central schema validation are incomplete.
 - The current business workspace is user-scoped and must not be treated as the final multi-tenant model.
 - Interim privacy/terms content requires legal review.

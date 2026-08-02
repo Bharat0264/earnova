@@ -9,11 +9,13 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true)
   const [token,   setToken]   = useState(() => localStorage.getItem('earnova_token'))
 
-  /* Verify stored token on mount */
+  /* Restore an HTTP-only cookie session, or a legacy bearer session during migration. */
   useEffect(() => {
-    if (!token) { setLoading(false); return }
     let cancelled = false
-    fetch(apiUrl('/auth/me'), { headers: { Authorization: `Bearer ${token}` } })
+    fetch(apiUrl('/auth/me'), {
+      credentials: 'include',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    })
       .then(r => r.ok ? parseJsonResponse(r) : null)
       .then(data => {
         if (!cancelled) {
@@ -27,20 +29,22 @@ export function AuthProvider({ children }) {
   }, [token])
 
   const saveSession = (tokenVal, userData) => {
-    setToken(tokenVal)
+    setToken(tokenVal || null)
     setUser(userData)
-    localStorage.setItem('earnova_token', tokenVal)
+    if (tokenVal) localStorage.setItem('earnova_token', tokenVal)
+    else localStorage.removeItem('earnova_token')
   }
 
   const login = async (email, password) => {
     const res  = await fetch(apiUrl('/auth/login'), {
       method: 'POST',
+      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password }),
     })
     const data = await parseJsonResponse(res)
     if (!res.ok) throw new Error(data?.message || 'Login failed')
-    if (!data?.token || !data?.user) throw new Error('Login failed')
+    if (!data?.user) throw new Error('Login failed')
     saveSession(data.token, data.user)
     return data
   }
@@ -48,12 +52,13 @@ export function AuthProvider({ children }) {
   const register = async (payload) => {
     const res  = await fetch(apiUrl('/auth/register'), {
       method: 'POST',
+      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     })
     const data = await parseJsonResponse(res)
     if (!res.ok) throw new Error(data?.message || 'Registration failed')
-    if (!data?.token || !data?.user) throw new Error('Registration failed')
+    if (!data?.user) throw new Error('Registration failed')
     saveSession(data.token, data.user)
     return data
   }
@@ -61,17 +66,19 @@ export function AuthProvider({ children }) {
   const googleLogin = async (credential, options = {}) => {
     const res = await fetch(apiUrl('/auth/google'), {
       method: 'POST',
+      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ credential, ...options }),
     })
     const data = await parseJsonResponse(res)
     if (!res.ok) throw new Error(data?.message || 'Google sign-in failed')
-    if (!data?.token || !data?.user) throw new Error('Google sign-in failed')
+    if (!data?.user) throw new Error('Google sign-in failed')
     saveSession(data.token, data.user)
     return data
   }
 
   const logout = () => {
+    fetch(apiUrl('/auth/logout'), { method: 'POST', credentials: 'include' }).catch(() => {})
     window.google?.accounts?.id?.disableAutoSelect()
     setUser(null)
     setToken(null)
@@ -89,9 +96,10 @@ export function AuthProvider({ children }) {
   const saveOnboarding = async (payload) => {
     const res = await fetch(apiUrl('/auth/onboarding'), {
       method: 'PUT',
+      credentials: 'include',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
       body: JSON.stringify(payload),
     })

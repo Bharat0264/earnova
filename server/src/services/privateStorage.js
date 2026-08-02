@@ -2,6 +2,7 @@ import crypto from 'crypto'
 import path from 'path'
 import { v2 as cloudinary } from 'cloudinary'
 import { sanitizeFilename } from '../utils/masking.js'
+import { PRIVATE_DOCUMENT_MAX_BYTES, PRIVATE_DOCUMENT_MAX_LABEL } from '../config/uploads.js'
 
 const ALLOWED = new Map([
   ['application/pdf', new Set(['.pdf'])],
@@ -23,7 +24,9 @@ const hasSignature = (buffer, mimeType) => {
 
 export const validatePrivateFile = file => {
   if (!file?.buffer) throw Object.assign(new Error('Choose a document to upload.'), { status: 400 })
-  if (file.size > 10 * 1024 * 1024) throw Object.assign(new Error('Files must be 10 MB or smaller.'), { status: 400 })
+  if (file.size > PRIVATE_DOCUMENT_MAX_BYTES) {
+    throw Object.assign(new Error(`Files must be ${PRIVATE_DOCUMENT_MAX_LABEL} or smaller.`), { status: 400 })
+  }
   const extension = path.extname(file.originalname || '').toLowerCase()
   if (!ALLOWED.get(file.mimetype)?.has(extension)) {
     throw Object.assign(new Error('Only PDF, JPG, PNG, CSV and XLSX documents are allowed.'), { status: 400 })
@@ -76,4 +79,3 @@ export const deletePrivateFile = ({ storageKey, resourceType = 'raw' }) =>
   cloudinary.uploader.destroy(storageKey, { resource_type: resourceType, type: 'authenticated', invalidate: true })
 
 export const PRIVATE_FILE_MIME_TYPES = [...ALLOWED.keys()]
-

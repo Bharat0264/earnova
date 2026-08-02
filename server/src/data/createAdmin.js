@@ -15,13 +15,17 @@ import User     from '../models/User.js'
 dotenv.config()
 
 const ADMIN = {
-  name:     process.env.ADMIN_NAME  || 'Earnova Admin',
-  email:    process.env.ADMIN_EMAIL || 'admin@earnova.in',
-  password: process.env.ADMIN_PASS  || 'Admin@1234',
+  name:     process.env.ADMIN_NAME,
+  email:    process.env.ADMIN_EMAIL,
+  password: process.env.ADMIN_PASS,
   role:     'admin',
 }
 
 async function main() {
+  if (!process.env.MONGO_URI || !ADMIN.name || !ADMIN.email || !ADMIN.password) {
+    throw new Error('MONGO_URI, ADMIN_NAME, ADMIN_EMAIL and ADMIN_PASS are all required.')
+  }
+  if (ADMIN.password.length < 12) throw new Error('ADMIN_PASS must contain at least 12 characters.')
   await mongoose.connect(process.env.MONGO_URI, { dbName: 'earnova' })
   console.log('✅  Connected to MongoDB')
 
@@ -36,8 +40,7 @@ async function main() {
     }
   } else {
     await User.create(ADMIN)
-    console.log(`✅  Admin created: ${ADMIN.email} / ${ADMIN.password}`)
-    console.log('⚠️   Change the password immediately after first login!\n')
+    console.log(`Admin created: ${ADMIN.email}`)
   }
   process.exit(0)
 }

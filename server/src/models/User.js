@@ -68,6 +68,7 @@ const userSchema = new mongoose.Schema({
   /* Account status */
   isVerified: { type: Boolean, default: false },
   isActive:   { type: Boolean, default: true  },
+  sessionVersion: { type: Number, default: 0, select: false },
 
   /* Password reset */
   resetPasswordToken:   String,
@@ -105,6 +106,7 @@ userSchema.methods.toPublicJSON = function () {
   delete obj.googleSub
   delete obj.resetPasswordToken
   delete obj.resetPasswordExpires
+  delete obj.sessionVersion
   return obj
 }
 

@@ -6,7 +6,7 @@ import {
   addFirmMember, assignCaseMember, createCACase, getCAService, getFirmCase, getFirmDashboard,
   getFirmTeam,
   getMyCACase, getVerifiedFirm, listCAServices, listFirmCases, listMyCACases,
-  listVerifiedFirms,
+  listVerifiedFirms, raiseCaseQuote, completeCaseWork, createCasePaymentOrder, verifyCasePayment,
 } from '../controllers/caOfficeController.js'
 
 const router = Router()
@@ -21,11 +21,15 @@ router.use('/cases', protect)
 router.get('/cases', listMyCACases)
 router.post('/cases', intakeLimit, createCACase)
 router.get('/cases/:caseId', getMyCACase)
+router.post('/cases/:caseId/payment-order', createCasePaymentOrder)
+router.post('/cases/:caseId/verify-payment', verifyCasePayment)
 
 router.use('/firm', protect, requireFirmMember)
 router.get('/firm/dashboard', getFirmDashboard)
 router.get('/firm/cases', listFirmCases)
 router.get('/firm/cases/:caseId', getFirmCase)
+router.post('/firm/cases/:caseId/quote', raiseCaseQuote)
+router.post('/firm/cases/:caseId/complete', completeCaseWork)
 router.get('/firm/team', getFirmTeam)
 router.post('/firm/team', requireFirmAdministrator, addFirmMember)
 router.post('/firm/cases/:caseId/assignments', requireFirmAdministrator, assignCaseMember)
