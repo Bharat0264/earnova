@@ -76,6 +76,7 @@ export function useAdminFreelanceJobs(params = {}) {
   const [freelancers, setFreelancers] = useState([])
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
 
   const key = JSON.stringify(params)
 
@@ -88,17 +89,18 @@ export function useAdminFreelanceJobs(params = {}) {
       setData(res.jobs || [])
       setFreelancers(res.freelancers || [])
       setTotal(res.total || res.jobs?.length || 0)
-    } catch {
+    } catch (err) {
       setData([])
       setFreelancers([])
       setTotal(0)
+      setError(err.message)
     } finally {
       setLoading(false)
     }
   }, [key]) // eslint-disable-line
 
   useEffect(() => { load() }, [load])
-  return { data, freelancers, total, loading, reload: load }
+  return { data, freelancers, total, loading, error, reload: load }
 }
 
 export function useAdminCAProfiles(params = {}) {
