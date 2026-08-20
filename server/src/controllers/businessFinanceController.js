@@ -7,6 +7,8 @@ import BusinessInvoice from '../models/BusinessInvoice.js'
 import BusinessLead from '../models/BusinessLead.js'
 import BusinessProduct from '../models/BusinessProduct.js'
 import BusinessSale from '../models/BusinessSale.js'
+import { snapshot } from './capabilityController.js'
+import { isolateFault, verificationPlan } from '../services/capabilityEngine.js'
 import {
   buildBusinessRecommendations,
   calculateDocumentTotals,
@@ -382,6 +384,13 @@ export const askBusinessAssistant = async (req, res) => {
     }
     const insight = await collectMetrics(req.business._id, req.body)
     const q = question.toLowerCase()
+    const intent = /(sell online|store ready|business status|blocking my business|ready to sell)/.test(q) ? 'SELL_ONLINE' : /(payments? working|recheck payments?)/.test(q) ? 'PAYMENT_ACCEPTANCE' : /(website working|verify my website)/.test(q) ? 'PUBLIC_WEB_PRESENCE' : /(delivery unavailable|fulfil|fulfill)/.test(q) ? 'FULFILMENT' : null
+    if (intent) {
+      const engine = await snapshot(req.business._id)
+      const fault = isolateFault(intent, engine.states)
+      const wantsReverify = /(check again|reverify|recheck|verify)/.test(q)
+      return res.json({ success: true, answer: { question, summary: `${intent.replaceAll('_', ' ')} is ${engine.states[intent].replaceAll('_', ' ').toLowerCase()}.`, confidence: 'Engine-derived', limitation: 'Capability state is determined by Earnova verification evidence.', engine: { capability: intent, state: engine.states[intent], reasonChain: fault.chain, plannedChecks: wantsReverify ? verificationPlan(intent, engine.states) : undefined, actions: wantsReverify ? ['REQUEST_REVERIFY'] : ['OPEN_STATUS', 'OPEN_RECOVERY_PLAN'] } } })
+    }
     const { metrics } = insight
     let summary
     let supportingMetrics

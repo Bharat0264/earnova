@@ -19,6 +19,7 @@ import helpRoutes from './helpRoutes.js'
 import supportRoutes from './supportRoutes.js'
 import privateFileRoutes from './privateFileRoutes.js'
 import platformFeeRoutes from './platformFeeRoutes.js'
+import buildSourceRoutes from './buildSourceRoutes.js'
 
 const router = Router()
 
@@ -43,5 +44,6 @@ router.use('/help', helpRoutes)
 router.use('/support', supportRoutes)
 router.use('/private-files', privateFileRoutes)
 router.use('/fees', platformFeeRoutes)
+router.use('/business-modules', buildSourceRoutes)
 
 export default router

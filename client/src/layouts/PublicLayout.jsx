@@ -2,6 +2,7 @@ import { Outlet } from 'react-router-dom'
 import Navbar from '../components/common/Navbar'
 import Footer from '../components/common/Footer'
 import GetHelp from '../components/support/GetHelp'
+import MobileBottomNav from '../components/common/MobileBottomNav'
 
 export default function PublicLayout() {
   return (
@@ -12,6 +13,7 @@ export default function PublicLayout() {
         <Outlet />
       </main>
       <Footer />
+      <MobileBottomNav />
       <GetHelp />
     </div>
   )

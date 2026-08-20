@@ -9,8 +9,8 @@ import {
   PUBLIC_NAV_LINKS,
 } from '../src/config/navigation.js'
 
-test('public navigation exposes the five required destinations', () => {
-  assert.deepEqual(PUBLIC_NAV_LINKS.map(link => link.label), ['Shopping', 'Services', 'Business', 'Energy', 'Earn & Partner'])
+test('public navigation exposes the four product stages', () => {
+  assert.deepEqual(PUBLIC_NAV_LINKS.map(link => link.label), ['Start', 'Build', 'Source', 'Operate'])
 })
 
 test('homepage groups every platform destination into five populated hubs', () => {

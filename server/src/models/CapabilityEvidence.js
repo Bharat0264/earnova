@@ -1,0 +1,3 @@
+import mongoose from 'mongoose'
+const schema=new mongoose.Schema({business:{type:mongoose.Schema.Types.ObjectId,ref:'Business',required:true,index:true},capabilityKey:{type:String,required:true,index:true},evidenceType:{type:String,required:true},sourceProvider:{type:String,default:'earnova'},normalizedStatus:{type:String,enum:['UNKNOWN','VALID','STALE','FAILED'],default:'UNKNOWN'},observedAt:Date,expiresAt:Date,metadata:{type:mongoose.Schema.Types.Mixed,default:{}},fingerprint:String},{timestamps:true})
+schema.index({business:1,capabilityKey:1,evidenceType:1},{unique:true});export default mongoose.model('CapabilityEvidence',schema)

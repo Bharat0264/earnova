@@ -4,6 +4,14 @@ const businessSchema = new mongoose.Schema({
   owner: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
   name: { type: String, required: true, trim: true, maxlength: 140 },
   industry: { type: String, required: true, trim: true, maxlength: 100 },
+  slug: { type: String, trim: true, lowercase: true, maxlength: 180, sparse: true },
+  stage: { type: String, enum: ['idea', 'starting', 'launching', 'operating', 'growing'], default: 'starting', index: true },
+  businessModel: { type: String, enum: ['online', 'offline', 'hybrid', 'unspecified'], default: 'unspecified' },
+  launchStatus: { type: String, enum: ['planning', 'building', 'ready', 'launched'], default: 'planning' },
+  description: { type: String, trim: true, maxlength: 1000, default: '' },
+  location: { type: String, trim: true, maxlength: 180, default: '' },
+  website: { type: String, trim: true, maxlength: 300, default: '' },
+  goals: { type: [String], default: [] },
   businessType: {
     type: String,
     enum: ['proprietorship', 'partnership', 'llp', 'private_limited', 'public_limited', 'other'],
@@ -28,9 +36,18 @@ const businessSchema = new mongoose.Schema({
   reviewedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   verifiedAt: Date,
   verifiedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  state: {
+    identity: { type: String, enum: ['NOT_STARTED', 'REQUIRED', 'IN_PROGRESS', 'ACTIVE', 'ISSUE', 'COMPLETED', 'NOT_APPLICABLE'], default: 'ACTIVE' },
+    website: { type: String, enum: ['NOT_STARTED', 'REQUIRED', 'IN_PROGRESS', 'ACTIVE', 'ISSUE', 'COMPLETED', 'NOT_APPLICABLE'], default: 'NOT_STARTED' },
+    payments: { type: String, enum: ['NOT_STARTED', 'REQUIRED', 'IN_PROGRESS', 'ACTIVE', 'ISSUE', 'COMPLETED', 'NOT_APPLICABLE'], default: 'NOT_STARTED' },
+    catalog: { type: String, enum: ['NOT_STARTED', 'REQUIRED', 'IN_PROGRESS', 'ACTIVE', 'ISSUE', 'COMPLETED', 'NOT_APPLICABLE'], default: 'NOT_STARTED' },
+    shipping: { type: String, enum: ['NOT_STARTED', 'REQUIRED', 'IN_PROGRESS', 'ACTIVE', 'ISSUE', 'COMPLETED', 'NOT_APPLICABLE'], default: 'NOT_STARTED' },
+    marketing: { type: String, enum: ['NOT_STARTED', 'REQUIRED', 'IN_PROGRESS', 'ACTIVE', 'ISSUE', 'COMPLETED', 'NOT_APPLICABLE'], default: 'NOT_STARTED' },
+  },
 }, { timestamps: true })
 
 businessSchema.index({ owner: 1, status: 1, createdAt: -1 })
+businessSchema.index({ slug: 1 }, { unique: true, sparse: true })
 businessSchema.index({ verificationStatus: 1, createdAt: -1 })
 
 export default mongoose.model('Business', businessSchema)
