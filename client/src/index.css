@@ -94,6 +94,15 @@
   .data-table td { @apply px-4 py-3 text-slate-700; }
   .modal-panel { @apply max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto rounded-2xl bg-white shadow-2xl; }
   .toast { @apply fixed bottom-4 right-4 z-[90] max-w-sm rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-700 shadow-lg; }
+  .page-container { @apply mx-auto w-full max-w-6xl px-5 sm:px-8; }
+  .phase-page { @apply min-h-[70vh] bg-[radial-gradient(circle_at_top_right,#ede9fe_0,transparent_30rem),#fcfcfd]; }
+  .phase-title { @apply font-display text-4xl font-extrabold tracking-[-.045em] text-slate-950 sm:text-6xl; }
+  .phase-copy { @apply max-w-xl text-base leading-7 text-slate-600 sm:text-lg; }
+  .stage-mark { @apply inline-flex items-center gap-2 rounded-full border border-brand-100 bg-brand-50 px-3 py-1.5 text-xs font-bold uppercase tracking-[.14em] text-brand-800; }
+  .mobile-bottom { @apply fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t border-slate-200 bg-white/95 px-2 pb-[env(safe-area-inset-bottom)] pt-2 backdrop-blur md:hidden; }
+  .mobile-bottom a { @apply flex min-h-14 flex-col items-center justify-center gap-1 text-[10px] font-semibold text-slate-500; }
+  .mobile-bottom a.active { @apply text-brand-700; }
+  .mobile-bottom .mobile-create { @apply mx-auto -mt-5 h-12 min-h-12 w-12 rounded-full bg-brand-700 text-white shadow-lg; }
 }
 
 @layer utilities {

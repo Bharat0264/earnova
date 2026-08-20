@@ -62,6 +62,12 @@ export const createBusiness = async (req, res) => {
         name,
         industry,
         businessType: req.body.businessType || 'proprietorship',
+        stage: ['idea', 'starting', 'launching', 'operating', 'growing'].includes(req.body.stage) ? req.body.stage : 'starting',
+        businessModel: ['online', 'offline', 'hybrid', 'unspecified'].includes(req.body.businessModel) ? req.body.businessModel : 'unspecified',
+        description: String(req.body.description || '').trim(),
+        location: String(req.body.location || '').trim(),
+        website: String(req.body.website || '').trim(),
+        goals: Array.isArray(req.body.goals) ? req.body.goals.slice(0, 10).map(goal => String(goal).trim()).filter(Boolean) : [],
         gstin: String(req.body.gstin || '').trim().toUpperCase(),
         phone,
         email,
@@ -105,7 +111,7 @@ export const getBusiness = async (req, res) => {
 
 export const updateBusiness = async (req, res) => {
   try {
-    const allowed = ['name', 'industry', 'businessType', 'gstin', 'phone', 'email', 'address']
+    const allowed = ['name', 'industry', 'businessType', 'businessModel', 'stage', 'description', 'location', 'website', 'goals', 'gstin', 'phone', 'email', 'address']
     const updates = {}
     for (const key of allowed) {
       if (req.body[key] !== undefined) updates[key] = typeof req.body[key] === 'string' ? req.body[key].trim() : req.body[key]

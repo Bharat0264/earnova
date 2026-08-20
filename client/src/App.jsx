@@ -11,7 +11,7 @@ import AppLayout from './layouts/AppLayout'
 import PartnerLayout from './layouts/PartnerLayout'
 import FirmLayout from './layouts/FirmLayout'
 
-const HomePage = lazy(() => import('./pages/HomePage'))
+const HomePage = lazy(() => import('./pages/UnifiedHomePage'))
 const PublicPage = lazy(() => import('./pages/PublicPage'))
 const MarketplacePage = lazy(() => import('./pages/MarketplacePage'))
 const PricingPage = lazy(() => import('./pages/PricingPage'))
@@ -53,6 +53,14 @@ const FirmCasePage = lazy(() => import('./pages/FirmCasePage'))
 const HelpCenterPage = lazy(() => import('./pages/HelpCenterPage'))
 const SupportPage = lazy(() => import('./pages/SupportPage'))
 const AdminDomainPage = lazy(() => import('./pages/AdminDomainPage'))
+const BusinessJourneyPage = lazy(() => import('./pages/BusinessJourneyPage'))
+const BusinessEntryPage = lazy(() => import('./pages/BusinessJourneyPage').then(module => ({ default: module.BusinessEntryPage })))
+const StageLandingPage = lazy(() => import('./pages/StageLandingPage'))
+const BuildSourcePage = lazy(() => import('./pages/BuildSourcePage'))
+const OperatePage = lazy(() => import('./pages/OperatePage'))
+const CapabilityStatusPage = lazy(() => import('./pages/CapabilityStatusPage'))
+const BuildProjectPage = lazy(() => import('./pages/BuildProjectPage'))
+const ActivityPage = lazy(() => import('./pages/ActivityPage'))
 
 const APP_MODULES = {
   sales: 'Record, search, filter and export authorized sales.',
@@ -77,9 +85,14 @@ function AppRoutes() {
     <Suspense fallback={<PageLoader label="Loading Earnova" />}>
       <Routes>
         <Route element={<PublicLayout />}>
-          <Route index element={<AuthPage mode="login" />} />
+          <Route index element={<HomePage />} />
           <Route path="home" element={<HomePage />} />
-          <Route path="business" element={<PublicPage page="business" />} />
+          <Route path="start" element={<StageLandingPage stage="start" />} />
+          <Route path="source" element={<StageLandingPage stage="source" />} />
+          <Route path="shop" element={<ProductsPage />} />
+          <Route path="hire" element={<FreelancePage />} />
+          <Route path="build" element={<StageLandingPage stage="build" />} />
+          <Route path="business" element={<BusinessEntryPage />} />
           <Route path="business-ai" element={<PublicPage page="businessAi" />} />
           <Route path="services" element={<PublicPage page="services" />} />
           <Route path="services/freelancers" element={<FreelancePage />} />
@@ -131,6 +144,17 @@ function AppRoutes() {
         </Route>
 
         <Route element={<ProtectedRoute />}>
+          <Route path="business/start" element={<BusinessProvider><BusinessJourneyPage mode="start" /></BusinessProvider>} />
+          <Route path="operate" element={<BusinessProvider><OperatePage /></BusinessProvider>} />
+          <Route path="operate/status" element={<BusinessProvider><CapabilityStatusPage /></BusinessProvider>} />
+          <Route path="build/start" element={<BusinessProvider><BuildSourcePage mode="build" /></BusinessProvider>} />
+          <Route path="build/project/:id" element={<BuildProjectPage />} />
+          <Route path="source/request" element={<BusinessProvider><BuildSourcePage mode="source" /></BusinessProvider>} />
+          <Route path="activity" element={<BusinessProvider><ActivityPage /></BusinessProvider>} />
+          <Route path="start/roadmap" element={<BusinessProvider><BusinessJourneyPage mode="roadmap" /></BusinessProvider>} />
+          <Route path="business/dashboard" element={<BusinessProvider><BusinessJourneyPage mode="dashboard" /></BusinessProvider>} />
+          <Route path="business/roadmap" element={<BusinessProvider><BusinessJourneyPage mode="roadmap" /></BusinessProvider>} />
+          <Route path="business/status" element={<BusinessProvider><BusinessJourneyPage mode="dashboard" /></BusinessProvider>} />
           <Route path="onboarding" element={<OnboardingPage />} />
           <Route path="app" element={<BusinessProvider><AppLayout /></BusinessProvider>}>
             <Route index element={<Navigate to="overview" replace />} />

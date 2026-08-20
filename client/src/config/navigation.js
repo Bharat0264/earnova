@@ -26,11 +26,10 @@ export const PRODUCT_PILLARS = [
 ]
 
 export const PUBLIC_NAV_LINKS = [
-  { label: 'Shopping', to: '/products' },
-  { label: 'Services', to: '/services' },
-  { label: 'Business', to: '/business' },
-  { label: 'Energy', to: '/energy' },
-  { label: 'Earn & Partner', to: '/referral' },
+  { label: 'Start', to: '/start' },
+  { label: 'Build', to: '/build' },
+  { label: 'Source', to: '/source' },
+  { label: 'Operate', to: '/operate' },
 ]
 
 export const PLATFORM_HUBS = [

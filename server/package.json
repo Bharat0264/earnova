@@ -15,7 +15,8 @@
     "create-admin": "node src/data/createAdmin.js",
     "migrate:onboarding": "node src/data/backfillOnboarding.js",
     "migrate:ca-support": "node src/data/migrateCAAndSupportPhase1.js",
-    "seed:operations": "node src/data/seedOperations.js"
+    "seed:operations": "node src/data/seedOperations.js",
+    "smoke:engine": "node scripts/smoke-engine.mjs"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
