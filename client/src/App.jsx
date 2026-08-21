@@ -63,6 +63,8 @@ const ActivityPage = lazy(() => import('./pages/ActivityPage'))
 const BusinessPassportPage = lazy(() => import('./pages/BusinessPassportPage'))
 const StorePage = lazy(() => import('./pages/StorePage'))
 const FulfilmentSettingsPage = lazy(() => import('./pages/FulfilmentSettingsPage'))
+const SellWorkspacePage = lazy(() => import('./pages/SellWorkspacePage'))
+const SupplierWorkspacePage = lazy(() => import('./pages/SupplierWorkspacePage'))
 
 const APP_MODULES = {
   sales: 'Record, search, filter and export authorized sales.',
@@ -157,6 +159,11 @@ function AppRoutes() {
           <Route path="source" element={<BusinessProvider><BuildSourcePage mode="source-dashboard" /></BusinessProvider>} />
           <Route path="activity" element={<BusinessProvider><ActivityPage /></BusinessProvider>} />
           <Route path="operate/fulfilment" element={<BusinessProvider><FulfilmentSettingsPage /></BusinessProvider>} />
+          <Route path="supplier/dashboard" element={<SupplierWorkspacePage view="dashboard" />} />
+          <Route path="supplier/rfqs" element={<SupplierWorkspacePage view="rfqs" />} />
+          <Route path="supplier/rfqs/:id" element={<SupplierWorkspacePage view="detail" />} />
+          <Route path="supplier/quotes" element={<SupplierWorkspacePage view="quotes" />} />
+          <Route path="supplier/profile" element={<SupplierWorkspacePage view="profile" />} />
           <Route path="start/roadmap" element={<BusinessProvider><BusinessJourneyPage mode="roadmap" /></BusinessProvider>} />
           <Route path="business/dashboard" element={<BusinessProvider><BusinessJourneyPage mode="dashboard" /></BusinessProvider>} />
           <Route path="business/roadmap" element={<BusinessProvider><BusinessJourneyPage mode="roadmap" /></BusinessProvider>} />
@@ -165,6 +172,7 @@ function AppRoutes() {
           <Route path="app" element={<BusinessProvider><AppLayout /></BusinessProvider>}>
             <Route index element={<Navigate to="overview" replace />} />
             <Route path="overview" element={<AppOverviewPage />} />
+            <Route path="sell" element={<SellWorkspacePage />} />
             <Route path="business-dashboard" element={<BusinessSolutionsPage />} />
             {['sales', 'customers', 'leads', 'inventory', 'invoices', 'expenses', 'analytics'].map(path => (
               <Route key={path} path={path} element={<BusinessRecordsPage module={path} />} />

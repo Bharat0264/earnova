@@ -131,7 +131,7 @@ export const ONBOARDING_CHECKLISTS = {
 
 export const APP_NAV_LINKS = [
   { label: 'Overview', to: '/app/overview' },
-  { label: 'Sell', to: '/app/sales' }, { label: 'Products', to: '/app/inventory' }, { label: 'Orders', to: '/app/orders' }, { label: 'Customers', to: '/app/customers' },
+  { label: 'Sell', to: '/app/sell' }, { label: 'Products', to: '/app/sell' }, { label: 'Orders', to: '/app/sell' }, { label: 'Customers', to: '/app/sell' },
   { label: 'Build', to: '/build' }, { label: 'Website', to: '/build' }, { label: 'Source', to: '/source' }, { label: 'RFQs', to: '/source/request' }, { label: 'Suppliers', to: '/source' },
   { label: 'Operate', to: '/operate' }, { label: 'Payments', to: '/app/invoices' }, { label: 'Inventory', to: '/app/inventory' }, { label: 'Analytics', to: '/app/analytics' },
   { label: 'Business Status', to: '/operate/status' }, { label: 'Activity', to: '/activity' }, { label: 'Ask Earnova', to: '/app/ai' },
