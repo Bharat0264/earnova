@@ -9,6 +9,7 @@ import { useCart } from '../context/CartContext'
 import { api } from '../utils/api'
 import { formatPrice } from '../utils/formatters'
 import { analyticsSessionId, track } from '../utils/analytics'
+import { normalizeRazorpayOrder } from '../utils/checkoutPayment'
 
 const STEPS = ['Address', 'Review', 'Payment']
 
@@ -118,9 +119,13 @@ export default function CheckoutPage() {
       const loaded = await loadRazorpayScript()
       if (!loaded) throw new Error('Razorpay failed to load. Check your internet connection.')
 
-      const { orderId: rzpId, amount, currency, keyId } =
-        cartItems.forEach(item => track('CHECKOUT_STARTED', { productId: item._id }))
-        await api.post('/payment/create-order', { cartItems, shippingAddress: address, analyticsSessionId: analyticsSessionId() })
+      cartItems.forEach(item => track('CHECKOUT_STARTED', { productId: item._id }))
+      const paymentOrder = await api.post('/payment/create-order', {
+        cartItems,
+        shippingAddress: address,
+        analyticsSessionId: analyticsSessionId(),
+      })
+      const { orderId: rzpId, amount, currency, keyId } = normalizeRazorpayOrder(paymentOrder)
 
       await new Promise((resolve, reject) => {
         const options = {

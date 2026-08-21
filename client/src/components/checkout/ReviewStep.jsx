@@ -1,6 +1,7 @@
 import { MapPin, ShoppingBag, Loader2, Shield, Truck } from 'lucide-react'
 import { formatPrice } from '../../utils/formatters'
 import { useCart } from '../../context/CartContext'
+import { checkoutTotal } from '../../utils/checkoutPayment'
 
 /* ── Razorpay script loader ── */
 let scriptPromise = null
@@ -22,7 +23,7 @@ export default function ReviewStep({ address, onBack, onPay, loading, error, shi
   const { cartItems } = useCart()
 
   const subtotal = cartItems.reduce((s, i) => s + i.price * i.quantity, 0)
-  const total = subtotal + (shippingQuote?.shipping || 0)
+  const total = checkoutTotal(subtotal, shippingQuote?.shipping)
   const solarOnly = cartItems.length > 0 && cartItems.every(i => i.category === 'solar-panels')
   const serviceOnly = cartItems.length > 0 && cartItems.every(i => i.itemType === 'service')
 

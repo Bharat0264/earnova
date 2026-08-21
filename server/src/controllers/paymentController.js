@@ -312,7 +312,7 @@ export const verifyPayment = async (req, res) => {
 
     /* 3. Calculate amounts */
     const dbCartItems = attempt.cartItems
-    const { subtotal, gst, shipping, total } = calcAmounts(dbCartItems, attempt.shippingQuote?.shipping || 0)
+    const { subtotal, gst, shipping, total } = calcAmounts(dbCartItems, attempt.shippingQuote?.shipping ?? 0)
 
     /* 4. Determine referral info */
     const fullUser = await User.findById(req.user._id)
