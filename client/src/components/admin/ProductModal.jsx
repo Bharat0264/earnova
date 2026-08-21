@@ -23,6 +23,7 @@ export default function ProductModal({ product, onClose, onSaved }) {
     referralCommission: product?.referralCommission || 5,
     thumbnail: product?.thumbnail || '',
     imagesText: product?.images?.join('\n') || '',
+    published: product?.published !== false,
     isFeatured: product?.isFeatured || false,
   })
 
@@ -124,6 +125,7 @@ export default function ProductModal({ product, onClose, onSaved }) {
 
         highlights: highlights.filter(h => h.trim()),
         specs: specs.filter(s => s.key.trim()),
+        published: Boolean(form.published),
       }
 
       delete payload.imagesText
@@ -311,6 +313,11 @@ export default function ProductModal({ product, onClose, onSaved }) {
             rows={3}
             className="input-base col-span-2"
           />
+
+          <label className="col-span-2 flex items-center gap-2 rounded-lg border border-slate-200 p-3 text-sm font-semibold text-slate-700">
+            <input type="checkbox" checked={form.published} onChange={e => setForm(f => ({ ...f, published: e.target.checked }))} />
+            Published — visible in the public Shop while active
+          </label>
 
           <textarea
             value={form.shortDesc}

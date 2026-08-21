@@ -25,6 +25,12 @@ export default function ProductsTable({ data, loading, reload }) {
     catch (e) { alert(e.message) }
     finally { setToggling(null) }
   }
+  const togglePublished = async (p) => {
+    setToggling(p._id)
+    try { await api.patch(`/products/${p._id}`, { published: p.published === false }); reload?.() }
+    catch (e) { alert(e.message) }
+    finally { setToggling(null) }
+  }
 
   const downloadTemplate = () => {
     const headers = [
@@ -147,6 +153,7 @@ export default function ProductsTable({ data, loading, reload }) {
                           <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">Inactive</span>
                         </div>
                       )}
+                      {p.isActive && (p.published === false ? <span className="absolute top-2 right-2 bg-slate-700 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">Draft</span> : <span className="absolute top-2 right-2 bg-emerald-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">Published</span>)}
                       {p.isFeatured && (
                         <span className="absolute top-2 left-2 bg-yellow-400 text-yellow-900 text-[10px] font-bold px-2 py-0.5 rounded-full">Featured</span>
                       )}
@@ -171,6 +178,9 @@ export default function ProductsTable({ data, loading, reload }) {
                           {toggling === p._id
                             ? <Loader2 className="w-4 h-4 animate-spin" />
                             : p.isActive ? <ToggleRight className="w-4 h-4 text-eco-500" /> : <ToggleLeft className="w-4 h-4 text-red-400" />}
+                        </button>
+                        <button onClick={() => togglePublished(p)} disabled={toggling === p._id} className="px-2 text-xs font-semibold text-primary-700">
+                          {p.published === false ? 'Publish' : 'Draft'}
                         </button>
                       </div>
                     </div>

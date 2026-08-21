@@ -217,7 +217,8 @@ const validateProductPayload = (payload) => {
 export const getProducts = async (req, res) => {
   try {
     // Public catalogue baseline: Product.find({ isActive: true }) with published visibility enforced below.
-    const base     = Product.find({ isActive: true, published: true })
+    const publicVisibility = { isActive: true, $or: [{ published: true }, { published: { $exists: false } }] }
+    const base     = Product.find(publicVisibility)
     const features = new APIFeatures(base, req.query)
       .filter()
       .search()
@@ -227,7 +228,7 @@ export const getProducts = async (req, res) => {
 
     const [products, total] = await Promise.all([
       features.query.lean(),
-      Product.countDocuments({ ...buildCountFilter(req.query), isActive: true, published: true }),
+      Product.countDocuments({ ...buildCountFilter(req.query), ...publicVisibility }),
     ])
 
     const page  = parseInt(req.query.page,  10) || 1
@@ -264,7 +265,7 @@ export const getProduct = async (req, res) => {
     const product  = await Product.findOne({
       $or: [{ slug }, { _id: slug.match(/^[a-f\d]{24}$/i) ? slug : null }],
       isActive: true,
-      published: true,
+      $or: [{ published: true }, { published: { $exists: false } }],
     }).populate('business','name slug verificationStatus').lean()
 
     if (!product) {
@@ -481,7 +482,7 @@ export const addReview = async (req, res) => {
 ──────────────────────────────────────── */
 export const getFeaturedProducts = async (_req, res) => {
   try {
-    const products = await Product.find({ isActive: true, published: true, isFeatured: true })
+    const products = await Product.find({ isActive: true, isFeatured: true, $or: [{ published: true }, { published: { $exists: false } }] })
       .sort('-createdAt')
       .limit(8)
       .lean()

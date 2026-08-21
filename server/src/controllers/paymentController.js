@@ -138,7 +138,7 @@ const hydrateCartItems = async (cartItems, userId) => {
     .filter(item => !(item.itemType === 'service' || item.serviceKey))
     .map(i => i._id || i.product)
     .filter(Boolean)
-  const products = await Product.find({ _id: { $in: ids }, isActive: true, published: true }).lean()
+  const products = await Product.find({ _id: { $in: ids }, isActive: true, $or: [{ published: true }, { published: { $exists: false } }] }).lean()
   const byId = new Map(products.map(p => [p._id.toString(), p]))
 
   const productItems = cartItems
