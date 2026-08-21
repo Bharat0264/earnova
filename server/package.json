@@ -16,6 +16,7 @@
     "migrate:onboarding": "node src/data/backfillOnboarding.js",
     "migrate:ca-support": "node src/data/migrateCAAndSupportPhase1.js",
     "migrate:platform-products": "node src/data/migratePlatformProducts.js",
+    "configure:platform-fulfilment": "node src/data/configurePlatformFulfilment.js",
     "seed:operations": "node src/data/seedOperations.js",
     "smoke:engine": "node scripts/smoke-engine.mjs"
   },
