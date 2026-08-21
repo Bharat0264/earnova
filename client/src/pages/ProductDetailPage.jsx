@@ -39,14 +39,17 @@ export default function ProductDetailPage() {
   const inCart      = isInCart(_id)
   const wishlisted  = isInWishlist(_id)
   const outOfStock  = stock === 0
+  const canPurchase = product.canPurchase !== false
 
   const handleAddToCart = () => {
+    if (!canPurchase) return
     addToCart(product, qty)
     setAddedMsg(true)
     setTimeout(() => setAddedMsg(false), 2000)
   }
 
   const handleBuyNow = () => {
+    if (!canPurchase) return
     addToCart(product, qty)
     navigate('/checkout')
   }
@@ -139,9 +142,10 @@ export default function ProductDetailPage() {
                 {outOfStock ? 'Out of Stock' : `In Stock (${stock} left)`}
               </span>
             </div>
+            {!canPurchase && !outOfStock && <p className="text-sm font-semibold text-amber-700">Delivery currently unavailable</p>}
 
             {/* Quantity + actions */}
-            {!outOfStock && (
+            {!outOfStock && canPurchase && (
               <div className="flex items-center gap-3">
                 <div className="flex items-center border border-gray-200 rounded-xl overflow-hidden">
                   <button onClick={() => setQty(q => Math.max(1, q - 1))} disabled={qty <= 1}
@@ -162,7 +166,7 @@ export default function ProductDetailPage() {
             <div className="flex gap-3">
               <button
                 onClick={handleAddToCart}
-                disabled={outOfStock}
+                disabled={outOfStock || !canPurchase}
                 className={`flex-1 flex items-center justify-center gap-2 py-3.5 rounded-xl
                             font-semibold text-sm transition-all duration-200 disabled:opacity-50
                             ${addedMsg
@@ -183,7 +187,7 @@ export default function ProductDetailPage() {
 
               <button
                 onClick={handleBuyNow}
-                disabled={outOfStock}
+                disabled={outOfStock || !canPurchase}
                 className="flex-1 rounded-xl border border-primary-700 px-4 py-3.5 text-sm font-semibold text-primary-700 transition-colors hover:bg-primary-50 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Buy now

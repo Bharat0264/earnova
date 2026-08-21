@@ -11,7 +11,7 @@ import ReferralLedger from '../models/ReferralLedger.js'
 import PaymentAttempt from '../models/PaymentAttempt.js'
 import BusinessSubscription from '../models/BusinessSubscription.js'
 import { sendOrderConfirmation } from '../utils/email.js'
-import { getShippingQuote } from '../services/fulfilmentShipping.js'
+import { getShippingQuote, FulfilmentUnavailableError } from '../services/fulfilmentShipping.js'
 import { recordPurchaseCompleted } from '../services/purchaseAnalytics.js'
 
 const readCredential = (name) => {
@@ -256,6 +256,9 @@ export const createRazorpayOrder = async (req, res) => {
       keyId,
     })
   } catch (err) {
+    if (err instanceof FulfilmentUnavailableError) {
+      return res.status(400).json({ success: false, code: err.code, message: err.message, productIds: err.productIds })
+    }
     const message = paymentSetupMessage(err)
     console.error('[Payment] create-order failed:', message)
     res.status(paymentSetupStatus(err)).json({ success: false, code: 'PAYMENT_PROVIDER_ERROR', message })
@@ -267,7 +270,7 @@ export const getCheckoutShippingQuote = async (req, res) => {
     const dbCartItems = await hydrateCartItems(req.body.cartItems || [], req.user._id)
     const quote = await getShippingQuote({ items: dbCartItems, address: req.body.shippingAddress })
     res.json({ success: true, quote })
-  } catch (error) { res.status(400).json({ success: false, message: error.message }) }
+  } catch (error) { res.status(400).json({ success: false, code: error.code, message: error.message, productIds: error.productIds }) }
 }
 
 /* ────────────────────────────────────────
@@ -522,6 +525,9 @@ export const createCodOrder = async (req, res) => {
 
     res.status(201).json({ success: true, order })
   } catch (err) {
+    if (err instanceof FulfilmentUnavailableError) {
+      return res.status(400).json({ success: false, code: err.code, message: err.message, productIds: err.productIds })
+    }
     console.error('[Payment] cod-order failed:', err.message)
     res.status(500).json({ success: false, message: 'Order creation failed: ' + err.message })
   }

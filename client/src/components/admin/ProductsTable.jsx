@@ -167,6 +167,10 @@ export default function ProductsTable({ data, loading, reload }) {
                         <p className="font-bold text-gray-900">{formatPrice(p.price)}</p>
                         <span className="text-[11px] text-gray-400">Stock: {p.stock ?? '?'}</span>
                       </div>
+                      <div className="mb-3 space-y-1 text-[11px] text-slate-500">
+                        <p>Seller: <span className="font-semibold text-slate-700">{p.business?.isPlatformStore ? 'Earnova' : (p.business?.name || 'Unassigned')}</span></p>
+                        <p>Fulfilment: <span className={p.fulfilmentAvailable ? 'font-semibold text-emerald-700' : 'font-semibold text-amber-700'}>{p.fulfilmentAvailable ? 'Configured' : 'Missing'}</span> · {p.canPurchase ? 'Sellable' : 'Delivery unavailable'}</p>
+                      </div>
                       <div className="flex gap-2">
                         <button onClick={() => setModal(p)}
                                 className="flex-1 flex items-center justify-center gap-1 py-1.5 text-xs font-semibold

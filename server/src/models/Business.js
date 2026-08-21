@@ -25,6 +25,9 @@ const businessSchema = new mongoose.Schema({
   currency: { type: String, enum: ['INR'], default: 'INR' },
   timezone: { type: String, default: 'Asia/Kolkata' },
   status: { type: String, enum: ['active', 'archived'], default: 'active', index: true },
+  // The single business identity used for products sold directly by Earnova.
+  // Third-party seller products must always reference their own business.
+  isPlatformStore: { type: Boolean, default: undefined },
   verificationStatus: {
     type: String,
     enum: ['pending', 'under_review', 'verified', 'rejected', 'suspended'],
@@ -50,5 +53,6 @@ const businessSchema = new mongoose.Schema({
 businessSchema.index({ owner: 1, status: 1, createdAt: -1 })
 businessSchema.index({ slug: 1 }, { unique: true, sparse: true })
 businessSchema.index({ verificationStatus: 1, createdAt: -1 })
+businessSchema.index({ isPlatformStore: 1 }, { unique: true, partialFilterExpression: { isPlatformStore: true } })
 
 export default mongoose.model('Business', businessSchema)

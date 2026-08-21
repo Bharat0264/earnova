@@ -44,12 +44,13 @@ export default function ProductCard({ product, compact = false }) {
   const inCart   = isInCart(_id)
   const wishlisted = isInWishlist(_id)
   const outOfStock = stock === 0
+  const canPurchase = product.canPurchase !== false
   const imgSrc   = thumbnail || images?.[0]
   const href     = `/shop/product/${slug || _id}`
 
   const handleAddToCart = (e) => {
     e.preventDefault()
-    if (!outOfStock) addToCart(product, 1)
+    if (!outOfStock && canPurchase) addToCart(product, 1)
   }
 
   const handleWishlist = (e) => {
@@ -137,6 +138,9 @@ export default function ProductCard({ product, compact = false }) {
             <span className="text-[10px] text-eco-700 font-medium line-clamp-1">{energySaving}</span>
           </div>
         )}
+        {!outOfStock && !canPurchase && (
+          <div className="absolute inset-x-2 bottom-2 rounded-lg bg-amber-50 px-2 py-1 text-center text-[10px] font-semibold text-amber-800">Delivery unavailable</div>
+        )}
 
         {/* Member earnings */}
         {hasFeature('ecommerce') && memberEarnings > 0 && (
@@ -164,7 +168,7 @@ export default function ProductCard({ product, compact = false }) {
         {/* Add to cart button */}
         <button
           onClick={handleAddToCart}
-          disabled={outOfStock}
+          disabled={outOfStock || !canPurchase}
           className={`w-full flex items-center justify-center gap-2 py-2.5 rounded-xl
                       text-sm font-semibold transition-all duration-200
                       disabled:opacity-50 disabled:cursor-not-allowed
@@ -173,7 +177,7 @@ export default function ProductCard({ product, compact = false }) {
                         : 'bg-primary-800 hover:bg-primary-900 text-white hover:shadow-btn active:scale-95'
                       }`}
         >
-          {inCart ? (
+          {!canPurchase ? 'Delivery unavailable' : inCart ? (
             <><CheckCircle2 className="w-4 h-4" /> Added to Cart</>
           ) : (
             <><ShoppingCart className="w-4 h-4" /> Add to Cart</>

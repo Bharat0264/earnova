@@ -24,6 +24,8 @@ export default function ProductModal({ product, onClose, onSaved }) {
     thumbnail: product?.thumbnail || '',
     imagesText: product?.images?.join('\n') || '',
     published: product?.published !== false,
+    sellerType: product?.business?.isPlatformStore === true || !product?.business ? 'EARNOVA' : 'BUSINESS',
+    businessId: product?.business?._id || product?.business || '',
     isFeatured: product?.isFeatured || false,
   })
 
@@ -34,6 +36,15 @@ export default function ProductModal({ product, onClose, onSaved }) {
   const [pasteStatus, setPasteStatus] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [businesses, setBusinesses] = useState([])
+
+  useEffect(() => {
+    let active = true
+    api.get('/businesses')
+      .then(data => { if (active) setBusinesses(data.businesses || []) })
+      .catch(() => { if (active) setError('Could not load businesses for product ownership.') })
+    return () => { active = false }
+  }, [])
 
   const setProductImageFile = (file) => {
     setImageFile(file)
@@ -126,6 +137,8 @@ export default function ProductModal({ product, onClose, onSaved }) {
         highlights: highlights.filter(h => h.trim()),
         specs: specs.filter(s => s.key.trim()),
         published: Boolean(form.published),
+        sellerType: form.sellerType,
+        businessId: form.sellerType === 'BUSINESS' ? form.businessId : undefined,
       }
 
       delete payload.imagesText
@@ -305,6 +318,25 @@ export default function ProductModal({ product, onClose, onSaved }) {
             placeholder="Thumbnail Image URL (optional)"
             className="input-base col-span-2"
           />
+
+          <div className="col-span-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <label className="text-sm font-medium text-slate-700">
+              Seller
+              <select value={form.sellerType} onChange={e => setForm(f => ({ ...f, sellerType: e.target.value, businessId: e.target.value === 'EARNOVA' ? '' : f.businessId }))} className="input-base mt-1 w-full">
+                <option value="EARNOVA">Earnova</option>
+                <option value="BUSINESS">Existing Business</option>
+              </select>
+            </label>
+            {form.sellerType === 'BUSINESS' && (
+              <label className="text-sm font-medium text-slate-700">
+                Business
+                <select value={form.businessId} onChange={e => setForm(f => ({ ...f, businessId: e.target.value }))} className="input-base mt-1 w-full" required>
+                  <option value="">Select business</option>
+                  {businesses.filter(business => !business.isPlatformStore).map(business => <option key={business._id} value={business._id}>{business.name}</option>)}
+                </select>
+              </label>
+            )}
+          </div>
 
           <textarea
             value={form.imagesText}

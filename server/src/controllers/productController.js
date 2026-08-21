@@ -1,6 +1,9 @@
 import Product from '../models/Product.js'
+import Business from '../models/Business.js'
 import { APIFeatures, buildCountFilter } from '../utils/apiFeatures.js'
 import { uploadToCloudinary } from '../config/cloudinary.js'
+import { migrateLegacyPlatformProducts, ensurePlatformBusiness } from '../services/platformStore.js'
+import { withPublicProductState } from '../services/publicProductState.js'
 
 const parseDelimited = (text) => {
   const rows = []
@@ -192,10 +195,27 @@ const normalizeProductPayload = (input, { partial = false } = {}) => {
     referralIncome: nonNegativeNumber(input.referralIncome, NaN),
     referralCommission: number(input.referralCommission, 5),
     isActive: input.isActive === undefined ? (partial ? undefined : true) : !['false', '0', 'no'].includes(String(input.isActive).toLowerCase()),
+    published: input.published === undefined ? (partial ? undefined : true) : !['false', '0', 'no'].includes(String(input.published).toLowerCase()),
     isFeatured: input.isFeatured === undefined ? undefined : ['true', '1', 'yes'].includes(String(input.isFeatured).toLowerCase()),
   }
 
   return Object.fromEntries(Object.entries(payload).filter(([, value]) => value !== undefined))
+}
+
+const productBusinessPayload = async (input, adminUserId, { creating = false, importing = false } = {}) => {
+  const sellerType = String(input.sellerType || '').trim().toUpperCase()
+  const businessId = String(input.businessId || input.business || '').trim()
+  if (!creating && !sellerType && !businessId) return {}
+
+  if (sellerType === 'EARNOVA' || (importing && !sellerType && !businessId)) {
+    const platformBusiness = await ensurePlatformBusiness(adminUserId)
+    return { business: platformBusiness._id }
+  }
+  if (sellerType && sellerType !== 'BUSINESS') throw new Error('Seller must be Earnova or an existing business.')
+  if (!businessId) throw new Error('Select Earnova or an existing business for this product.')
+  const business = await Business.findOne({ _id: businessId, status: 'active' }).select('_id')
+  if (!business) throw new Error('The selected business is not available.')
+  return { business: business._id }
 }
 
 const validateProductPayload = (payload) => {
@@ -240,9 +260,10 @@ export const getProducts = async (req, res) => {
       (req.user?.featureAccess instanceof Map
         ? req.user.featureAccess.get('ecommerce') === true
         : req.user?.featureAccess?.ecommerce === true)
+    const decoratedProducts = await withPublicProductState(products)
     const visibleProducts = canViewMemberEarnings
-      ? products
-      : products.map(({ referralIncome: _referralIncome, ...product }) => product)
+      ? decoratedProducts
+      : decoratedProducts.map(({ referralIncome: _referralIncome, ...product }) => product)
 
     res.json({
       success:  true,
@@ -262,11 +283,13 @@ export const getProducts = async (req, res) => {
 export const getProduct = async (req, res) => {
   try {
     const { slug } = req.params
-    const product  = await Product.findOne({
-      $or: [{ slug }, { _id: slug.match(/^[a-f\d]{24}$/i) ? slug : null }],
-      isActive: true,
-      $or: [{ published: true }, { published: { $exists: false } }],
-    }).populate('business','name slug verificationStatus').lean()
+    const product = await Product.findOne({
+      $and: [
+        { $or: [{ slug }, { _id: slug.match(/^[a-f\d]{24}$/i) ? slug : null }] },
+        { isActive: true },
+        { $or: [{ published: true }, { published: { $exists: false } }] },
+      ],
+    }).lean()
 
     if (!product) {
       return res.status(404).json({ success: false, message: 'Product not found' })
@@ -276,9 +299,10 @@ export const getProduct = async (req, res) => {
       (req.user?.featureAccess instanceof Map
         ? req.user.featureAccess.get('ecommerce') === true
         : req.user?.featureAccess?.ecommerce === true)
-    if (!canViewMemberEarnings) delete product.referralIncome
+    const [decoratedProduct] = await withPublicProductState([product])
+    if (!canViewMemberEarnings) delete decoratedProduct.referralIncome
 
-    res.json({ success: true, product })
+    res.json({ success: true, product: decoratedProduct })
   } catch (err) {
     res.status(500).json({ success: false, message: err.message })
   }
@@ -289,7 +313,7 @@ export const getProduct = async (req, res) => {
 ──────────────────────────────────────── */
 export const createProduct = async (req, res) => {
   try {
-    const payload = normalizeProductPayload(req.body)
+    const payload = { ...normalizeProductPayload(req.body), ...await productBusinessPayload(req.body, req.user._id, { creating: true }) }
     const validationError = validateProductPayload(payload)
     if (validationError) {
       return res.status(400).json({ success: false, message: validationError })
@@ -303,17 +327,21 @@ export const createProduct = async (req, res) => {
 
 export const getAdminProducts = async (req, res) => {
   try {
+    const migration = await migrateLegacyPlatformProducts(req.user._id)
     const products = await Product.find({})
+      .populate('business', 'name slug verificationStatus isPlatformStore status')
       .sort('-createdAt')
       .select('-__v')
       .lean()
+    const decoratedProducts = await withPublicProductState(products)
 
     res.json({
       success: true,
-      total: products.length,
+      total: decoratedProducts.length,
       page: 1,
       pages: 1,
-      products,
+      products: decoratedProducts,
+      legacyMigration: { migrated: migration.migrated, platformBusinessId: migration.platformBusiness._id },
     })
   } catch (err) {
     res.status(500).json({ success: false, message: err.message })
@@ -325,7 +353,7 @@ export const getAdminProducts = async (req, res) => {
 ──────────────────────────────────────── */
 export const updateProduct = async (req, res) => {
   try {
-    const payload = normalizeProductPayload(req.body, { partial: true })
+    const payload = { ...normalizeProductPayload(req.body, { partial: true }), ...await productBusinessPayload(req.body, req.user._id) }
     const product = await Product.findByIdAndUpdate(
       req.params.id,
       { $set: payload },
@@ -355,7 +383,7 @@ export const importProducts = async (req, res) => {
     for (const [index, values] of rows.slice(1).entries()) {
       const raw = {}
       headers.forEach((header, i) => { raw[header] = values[i] ?? '' })
-      const payload = normalizeProductPayload(raw)
+      const payload = { ...normalizeProductPayload(raw), ...await productBusinessPayload(raw, req.user._id, { creating: true, importing: true }) }
       const validationError = validateProductPayload(payload)
 
       if (validationError) {
@@ -486,7 +514,7 @@ export const getFeaturedProducts = async (_req, res) => {
       .sort('-createdAt')
       .limit(8)
       .lean()
-    res.json({ success: true, products })
+    res.json({ success: true, products: await withPublicProductState(products) })
   } catch (err) {
     res.status(500).json({ success: false, message: err.message })
   }

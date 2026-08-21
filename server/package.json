@@ -15,6 +15,7 @@
     "create-admin": "node src/data/createAdmin.js",
     "migrate:onboarding": "node src/data/backfillOnboarding.js",
     "migrate:ca-support": "node src/data/migrateCAAndSupportPhase1.js",
+    "migrate:platform-products": "node src/data/migratePlatformProducts.js",
     "seed:operations": "node src/data/seedOperations.js",
     "smoke:engine": "node scripts/smoke-engine.mjs"
   },
