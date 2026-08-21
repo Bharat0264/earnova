@@ -20,6 +20,10 @@ import supportRoutes from './supportRoutes.js'
 import privateFileRoutes from './privateFileRoutes.js'
 import platformFeeRoutes from './platformFeeRoutes.js'
 import buildSourceRoutes from './buildSourceRoutes.js'
+import cartRoutes from './cartRoutes.js'
+import supplierRoutes from './supplierRoutes.js'
+import storeRoutes from './storeRoutes.js'
+import analyticsRoutes from './analyticsRoutes.js'
 
 const router = Router()
 
@@ -45,5 +49,9 @@ router.use('/support', supportRoutes)
 router.use('/private-files', privateFileRoutes)
 router.use('/fees', platformFeeRoutes)
 router.use('/business-modules', buildSourceRoutes)
+router.use('/cart', cartRoutes)
+router.use('/supplier', supplierRoutes)
+router.use('/stores', storeRoutes)
+router.use('/analytics', analyticsRoutes)
 
 export default router

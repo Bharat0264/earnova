@@ -13,6 +13,8 @@ const reviewSchema = new mongoose.Schema({
 }, { timestamps: true })
 
 const productSchema = new mongoose.Schema({
+  business: { type: mongoose.Schema.Types.ObjectId, ref: 'Business', index: true },
+  published: { type: Boolean, default: true, index: true },
   name:      { type: String, required: true, trim: true },
   slug:      { type: String, unique: true },
   description: { type: String, required: true },

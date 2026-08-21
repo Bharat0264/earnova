@@ -11,6 +11,8 @@ import ReferralLedger from '../models/ReferralLedger.js'
 import PaymentAttempt from '../models/PaymentAttempt.js'
 import BusinessSubscription from '../models/BusinessSubscription.js'
 import { sendOrderConfirmation } from '../utils/email.js'
+import { getShippingQuote } from '../services/fulfilmentShipping.js'
+import { recordPurchaseCompleted } from '../services/purchaseAnalytics.js'
 
 const readCredential = (name) => {
   let value = String(process.env[name] || '').trim()
@@ -72,9 +74,9 @@ const paymentSetupStatus = (err) => {
 }
 
 /* ── Pricing helpers ── */
-const calcAmounts = (cartItems) => {
+const calcAmounts = (cartItems, shipping = 0) => {
   const subtotal = cartItems.reduce((s, i) => s + i.price * i.quantity, 0)
-  return { subtotal, gst: 0, shipping: 0, total: subtotal }
+  return { subtotal, gst: 0, shipping, total: subtotal + shipping }
 }
 
 const hydrateCartItems = async (cartItems, userId) => {
@@ -136,7 +138,7 @@ const hydrateCartItems = async (cartItems, userId) => {
     .filter(item => !(item.itemType === 'service' || item.serviceKey))
     .map(i => i._id || i.product)
     .filter(Boolean)
-  const products = await Product.find({ _id: { $in: ids }, isActive: true }).lean()
+  const products = await Product.find({ _id: { $in: ids }, isActive: true, published: true }).lean()
   const byId = new Map(products.map(p => [p._id.toString(), p]))
 
   const productItems = cartItems
@@ -213,13 +215,14 @@ const activateBusinessSubscription = async ({ user, razorpayOrderId, razorpayPay
 ────────────────────────────────────────── */
 export const createRazorpayOrder = async (req, res) => {
   try {
-    const { cartItems } = req.body
+    const { cartItems, shippingAddress, analyticsSessionId } = req.body
     if (!cartItems?.length) {
       return res.status(400).json({ success: false, message: 'Cart is empty.' })
     }
 
     const dbCartItems = await hydrateCartItems(cartItems, req.user._id)
-    const { total } = calcAmounts(dbCartItems)
+    const shippingQuote = await getShippingQuote({ items: dbCartItems, address: shippingAddress })
+    const { total } = calcAmounts(dbCartItems, shippingQuote.shipping)
     const { keyId } = requireRazorpayConfig()
     const instance  = getRazorpay()
 
@@ -240,6 +243,9 @@ export const createRazorpayOrder = async (req, res) => {
       amount: rzpOrder.amount,
       currency: rzpOrder.currency,
       cartItems: dbCartItems,
+      shippingAddress,
+      shippingQuote,
+      analyticsSessionId: String(analyticsSessionId || '').replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 120),
     })
 
     res.json({
@@ -256,6 +262,14 @@ export const createRazorpayOrder = async (req, res) => {
   }
 }
 
+export const getCheckoutShippingQuote = async (req, res) => {
+  try {
+    const dbCartItems = await hydrateCartItems(req.body.cartItems || [], req.user._id)
+    const quote = await getShippingQuote({ items: dbCartItems, address: req.body.shippingAddress })
+    res.json({ success: true, quote })
+  } catch (error) { res.status(400).json({ success: false, message: error.message }) }
+}
+
 /* ────────────────────────────────────────
    POST /api/payment/verify
 ────────────────────────────────────────── */
@@ -270,7 +284,7 @@ export const verifyPayment = async (req, res) => {
 
     /* 1. Verify Razorpay signature */
     const expected = crypto
-      .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
+      .createHmac('sha256', requireRazorpayConfig().keySecret)
       .update(`${razorpayOrderId}|${razorpayPaymentId}`)
       .digest('hex')
 
@@ -295,7 +309,7 @@ export const verifyPayment = async (req, res) => {
 
     /* 3. Calculate amounts */
     const dbCartItems = attempt.cartItems
-    const { subtotal, gst, shipping, total } = calcAmounts(dbCartItems)
+    const { subtotal, gst, shipping, total } = calcAmounts(dbCartItems, attempt.shippingQuote?.shipping || 0)
 
     /* 4. Determine referral info */
     const fullUser = await User.findById(req.user._id)
@@ -329,7 +343,10 @@ export const verifyPayment = async (req, res) => {
       gstAmount:      gst,
       shippingCharge: shipping,
       total,
-      shippingAddress,
+      shippingAddress: attempt.shippingAddress || shippingAddress,
+      fulfilmentMode: attempt.shippingQuote?.fulfilmentMode,
+      estimatedDelivery: attempt.shippingQuote?.estimatedDelivery,
+      fulfilmentStatus: 'PROCESSING',
       paymentMethod:      'razorpay',
       paymentStatus:      'paid',
       razorpayOrderId,
@@ -337,7 +354,7 @@ export const verifyPayment = async (req, res) => {
       razorpaySignature,
       status:        'processing',
       processedAt:   new Date(),
-      statusHistory: [{ status: 'processing', note: 'Payment verified and captured via Razorpay.' }],
+      statusHistory: [{ status: 'processing', note: 'Payment verified and captured via Razorpay.', changedBy: req.user._id }],
       referredBy:    fullUser.referredBy || null,
       memberIncomeRecipient,
     })
@@ -437,6 +454,7 @@ export const verifyPayment = async (req, res) => {
     attempt.fulfilledAt = new Date()
     attempt.order = order._id
     await attempt.save()
+    await recordPurchaseCompleted({ order, userId: req.user._id, sessionId: attempt.analyticsSessionId })
 
     /* 7. Send confirmation email (non-blocking) */
     sendOrderConfirmation(order, fullUser)
@@ -465,7 +483,8 @@ export const createCodOrder = async (req, res) => {
       })
     }
 
-    const { subtotal, gst, shipping, total } = calcAmounts(dbCartItems)
+    const shippingQuote = await getShippingQuote({ items: dbCartItems, address: shippingAddress })
+    const { subtotal, gst, shipping, total } = calcAmounts(dbCartItems, shippingQuote.shipping)
     const fullUser = await User.findById(req.user._id)
     const memberIncomeRecipient = hasEcommerceMemberBenefits(fullUser) ? 'member' : 'admin'
 
@@ -486,6 +505,9 @@ export const createCodOrder = async (req, res) => {
       shippingCharge: shipping,
       total,
       shippingAddress,
+      fulfilmentMode: shippingQuote.fulfilmentMode,
+      estimatedDelivery: shippingQuote.estimatedDelivery,
+      fulfilmentStatus: 'PENDING',
       paymentMethod: 'cod',
       paymentStatus: 'pending',
       status: 'placed',
@@ -493,6 +515,7 @@ export const createCodOrder = async (req, res) => {
       referredBy: fullUser.referredBy || null,
       memberIncomeRecipient,
     })
+    await recordPurchaseCompleted({ order, userId: req.user._id, sessionId: req.body.analyticsSessionId })
 
     sendOrderConfirmation(order, fullUser)
       .catch(err => console.warn('[Email] order-confirm failed:', err.message))

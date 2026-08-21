@@ -66,6 +66,18 @@ export default function ProductsPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {!filters.category && !filters.search && (
+        <section className="border-b border-slate-800 bg-slate-950 text-white">
+          <div className="section-wrapper grid gap-5 py-7 md:grid-cols-[1fr_auto] md:items-center">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary-300">Earnova shop</p>
+              <h1 className="mt-2 font-display text-2xl font-bold tracking-tight md:text-3xl">Products for your business and everyday needs.</h1>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-300">Browse currently available products from the Earnova catalogue. Prices, stock, and reviews come directly from product records.</p>
+            </div>
+            <a href="#shop-products" className="btn-primary whitespace-nowrap">Browse products</a>
+          </div>
+        </section>
+      )}
       {/* Page header */}
       <div className="bg-white border-b border-gray-100">
         <div className="section-wrapper py-5">
@@ -98,7 +110,7 @@ export default function ProductsPage() {
         </div>
       </div>
 
-      <div className="section-wrapper py-6">
+      <div id="shop-products" className="section-wrapper py-6">
         <div className="flex gap-6">
           {/* Desktop sidebar */}
           <aside className="hidden lg:block w-56 xl:w-64 shrink-0">

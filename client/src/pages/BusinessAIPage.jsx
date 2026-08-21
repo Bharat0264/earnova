@@ -17,11 +17,13 @@ export default function BusinessAIPage() {
   const [answer, setAnswer] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [verificationResult, setVerificationResult] = useState('')
 
   const ask = async event => {
     event.preventDefault()
     setLoading(true)
     setError('')
+    setVerificationResult('')
     try {
       const data = await api.post(`/businesses/${selectedBusinessId}/assistant`, { question, preset: 'last_30_days' })
       setAnswer(data.answer)
@@ -30,6 +32,16 @@ export default function BusinessAIPage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const runVerification = async () => {
+    const capability = answer?.engine?.capability
+    if (!capability || !selectedBusinessId) return
+    setLoading(true); setError(''); setVerificationResult('')
+    try {
+      const result = await api.post(`/businesses/${selectedBusinessId}/capabilities/${capability}/reverify`, {})
+      setVerificationResult(`${capability.replaceAll('_', ' ')} is now ${result.run?.resultingState?.replaceAll('_', ' ').toLowerCase() || 'updated'}.`)
+    } catch (requestError) { setError(requestError.message) } finally { setLoading(false) }
   }
 
   if (businessLoading) return <div className="state-panel">Loading workspace…</div>
@@ -51,6 +63,7 @@ export default function BusinessAIPage() {
         <dl className="mt-5 grid gap-3 sm:grid-cols-2">{Object.entries(answer.supportingMetrics || {}).map(([key, value]) => <div key={key} className="rounded-xl bg-slate-50 p-4"><dt className="text-xs font-bold uppercase tracking-wide text-slate-500">{key.replace(/Paise$/, '').replace(/([A-Z])/g, ' $1')}</dt><dd className="mt-1 text-lg font-bold text-slate-900">{displayMetric(key, value)}</dd></div>)}</dl>
         <div className="mt-5 rounded-xl border border-brand-100 bg-brand-50 p-4"><p className="text-xs font-black uppercase tracking-wide text-brand-700">Recommended action</p><p className="mt-1 text-sm font-semibold text-slate-800">{answer.recommendedAction}</p></div>
         <p className="mt-4 text-xs text-slate-500">{answer.limitation}</p>
+        {answer.engine && <section className="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-4"><p className="text-xs font-black uppercase tracking-wide text-slate-500">Business status</p><p className="mt-1 text-sm font-semibold text-slate-800">{answer.engine.capability.replaceAll('_', ' ')} · {answer.engine.state.replaceAll('_', ' ')}</p>{answer.engine.reasonChain?.length > 1 && <p className="mt-2 text-sm text-slate-600">{answer.engine.reasonChain.slice(1).map(item => item.replaceAll('_', ' ').toLowerCase()).join(' → ')}</p>}<div className="mt-4 flex flex-wrap gap-2">{answer.engine.actions?.includes('OPEN_STATUS') && <Link className="btn-secondary" to="/operate/status">Open status</Link>}{answer.engine.actions?.includes('OPEN_RECOVERY_PLAN') && <Link className="btn-secondary" to="/operate/status">Review recovery plan</Link>}{answer.engine.actions?.includes('REQUEST_REVERIFY') && <button className="btn-primary" onClick={runVerification} disabled={loading}>Run {answer.engine.plannedChecks?.length || 0} check(s)</button>}</div>{verificationResult && <p className="mt-3 text-sm font-semibold text-emerald-700">{verificationResult}</p>}</section>}
       </section>}
     </div>
   )

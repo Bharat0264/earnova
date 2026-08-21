@@ -1,6 +1,6 @@
 import { Router }  from 'express'
 import {
-  createRazorpayOrder, verifyPayment, createCodOrder, createBusinessSubscriptionOrder,
+  createRazorpayOrder, verifyPayment, createCodOrder, createBusinessSubscriptionOrder, getCheckoutShippingQuote,
   verifyBusinessSubscription,
 } from '../controllers/paymentController.js'
 import { protect } from '../middleware/auth.js'
@@ -8,6 +8,7 @@ import { protect } from '../middleware/auth.js'
 const router = Router()
 
 router.post('/create-order', protect, createRazorpayOrder)
+router.post('/shipping-quote', protect, getCheckoutShippingQuote)
 router.post('/cod-order',    protect, createCodOrder)
 router.post('/verify',       protect, verifyPayment)
 router.post('/business-subscription/create-order', protect, createBusinessSubscriptionOrder)

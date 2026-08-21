@@ -1,14 +1,13 @@
 const template = [
-  ['idea_profile', 'Idea & business profile', 'Capture the foundation for your business.', 'identity', '/start'],
-  ['brand_setup', 'Brand setup', 'Define the essentials customers will recognize.', 'identity', '/operate'],
-  ['compliance', 'Business registration & compliance', 'Understand which professional support you may need.', 'compliance', '/source'],
-  ['digital_presence', 'Digital presence', 'Create a place for customers to find your business.', 'website', '/build'],
-  ['payments', 'Payments', 'Set up secure ways to accept customer payments.', 'payments', '/operate'],
-  ['products_services', 'Products or services', 'Add what you plan to sell.', 'catalog', '/source'],
-  ['operations', 'Suppliers & operations', 'Prepare how your business will deliver.', 'operations', '/operate'],
-  ['launch', 'Launch readiness', 'Review your essentials before launch.', 'launch', '/operate'],
-  ['first_customer', 'First customer', 'Set up your first path to a customer.', 'customers', '/operate'],
-  ['growth', 'Growth', 'Choose your first growth focus.', 'marketing', '/operate'],
+  ['business_idea', 'Define Business Idea', 'Capture the business you want to build and the customer it serves.', 'identity', '/start'],
+  ['brand_identity', 'Brand & Identity', 'Define the essentials customers will recognise.', 'identity', '/business/passport'],
+  ['business_registration', 'Business Registration', 'Record the registration and compliance work your business needs.', 'compliance', '/business/passport'],
+  ['source_packaging', 'Source Packaging', 'Create a sourcing request for packaging or other operational supplies.', 'suppliers', '/source'],
+  ['build_online_store', 'Build Online Store', 'Create a project for your website or online store.', 'website', '/build'],
+  ['add_products', 'Add Products', 'Add the products or services your business will offer.', 'products', '/app/inventory'],
+  ['connect_payments', 'Connect Payments', 'Review payment readiness in your business workspace.', 'payments', '/operate'],
+  ['configure_delivery', 'Configure Delivery', 'Set up the fulfilment information your business needs.', 'fulfilment', '/operate/status'],
+  ['launch_market', 'Launch & Market', 'Review launch readiness and choose your first customer-growth action.', 'marketing', '/operate'],
 ]
 
 export const roadmapTemplate = () => template.map(([stepKey, title, description, category, recommendedRoute], index) => ({

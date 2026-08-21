@@ -9,6 +9,7 @@ const businessSchema = new mongoose.Schema({
   businessModel: { type: String, enum: ['online', 'offline', 'hybrid', 'unspecified'], default: 'unspecified' },
   launchStatus: { type: String, enum: ['planning', 'building', 'ready', 'launched'], default: 'planning' },
   description: { type: String, trim: true, maxlength: 1000, default: '' },
+  initialBudget: { type: Number, min: 0 },
   location: { type: String, trim: true, maxlength: 180, default: '' },
   website: { type: String, trim: true, maxlength: 300, default: '' },
   goals: { type: [String], default: [] },

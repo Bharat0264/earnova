@@ -35,6 +35,9 @@ import {
 } from '../controllers/businessImportController.js'
 import { getBlueprint, getLifecycle, initializeRoadmap, listBusinessEvents, updateRoadmapItem, upsertBlueprint } from '../controllers/businessLifecycleController.js'
 import { approveRecoveryPlan, createRecoveryPlan, diagnosis, getRecoveryPlan, getStatus, rejectRecoveryPlan, reverify, verificationHistory } from '../controllers/capabilityController.js'
+import { getFulfilment, saveFulfilment } from '../controllers/fulfilmentController.js'
+import { businessAnalytics } from '../controllers/analyticsController.js'
+import { listStoreProducts, createStoreProduct, updateStoreProduct, listStoreOrders, updateStoreOrderFulfilment } from '../controllers/businessStoreController.js'
 
 const router = Router()
 const canWrite = requireBusinessRole('owner', 'admin', 'editor')
@@ -71,6 +74,7 @@ router.route('/:businessId/expenses').get(listExpenses).post(canWrite, createExp
 router.route('/:businessId/invoices').get(listInvoices).post(canWrite, createInvoice)
 router.patch('/:businessId/invoices/:invoiceId/status', canWrite, updateInvoiceStatus)
 router.get('/:businessId/overview', getBusinessOverview)
+router.get('/:businessId/commerce-analytics', businessAnalytics)
 router.get('/:businessId/lifecycle', getLifecycle)
 router.get('/:businessId/events', listBusinessEvents)
 router.get('/:businessId/capabilities', getStatus)
@@ -81,6 +85,11 @@ router.get('/:businessId/recovery-plans/:recoveryPlanId', getRecoveryPlan)
 router.post('/:businessId/recovery-plans/:recoveryPlanId/approve', canAdminister, approveRecoveryPlan)
 router.post('/:businessId/recovery-plans/:recoveryPlanId/reject', canAdminister, rejectRecoveryPlan)
 router.get('/:businessId/verification-runs', verificationHistory)
+router.route('/:businessId/fulfilment').get(getFulfilment).put(canAdminister, saveFulfilment)
+router.route('/:businessId/store-products').get(listStoreProducts).post(canAdminister, createStoreProduct)
+router.patch('/:businessId/store-products/:productId', canAdminister, updateStoreProduct)
+router.get('/:businessId/store-orders', listStoreOrders)
+router.patch('/:businessId/store-orders/:orderId/fulfilment', canAdminister, updateStoreOrderFulfilment)
 router.get('/:businessId/blueprint', getBlueprint)
 router.put('/:businessId/blueprint', canAdminister, upsertBlueprint)
 router.post('/:businessId/roadmap', canAdminister, initializeRoadmap)

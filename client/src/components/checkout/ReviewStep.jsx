@@ -18,10 +18,11 @@ export function loadRazorpayScript() {
   return scriptPromise
 }
 
-export default function ReviewStep({ address, onBack, onPay, loading, error }) {
+export default function ReviewStep({ address, onBack, onPay, loading, error, shippingQuote }) {
   const { cartItems } = useCart()
 
-  const total = cartItems.reduce((s, i) => s + i.price * i.quantity, 0)
+  const subtotal = cartItems.reduce((s, i) => s + i.price * i.quantity, 0)
+  const total = subtotal + (shippingQuote?.shipping || 0)
   const solarOnly = cartItems.length > 0 && cartItems.every(i => i.category === 'solar-panels')
   const serviceOnly = cartItems.length > 0 && cartItems.every(i => i.itemType === 'service')
 
@@ -82,7 +83,8 @@ export default function ReviewStep({ address, onBack, onPay, loading, error }) {
       <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-card space-y-2.5">
         <h3 className="font-display font-semibold text-sm text-gray-900 mb-3">Total Amount</h3>
         <Row label={`Amount (${cartItems.length} item${cartItems.length !== 1 ? 's' : ''})`}
-             value={formatPrice(total)} bold />
+             value={formatPrice(subtotal)} />
+        {!serviceOnly && <><Row label="Delivery" value={shippingQuote ? (shippingQuote.shipping ? formatPrice(shippingQuote.shipping) : 'Free') : 'Calculating…'} /><Row label="Total" value={formatPrice(total)} bold />{shippingQuote?.estimatedDelivery && <Row label="Estimated delivery" value={new Date(shippingQuote.estimatedDelivery).toLocaleDateString()} />}</>}
       </div>
 
       {/* Error */}
@@ -95,7 +97,7 @@ export default function ReviewStep({ address, onBack, onPay, loading, error }) {
       {/* Payment buttons */}
       <button
         onClick={() => onPay('razorpay')}
-        disabled={loading}
+        disabled={loading || (!serviceOnly && !shippingQuote)}
         className="btn-primary w-full py-4 text-base flex items-center justify-center gap-3"
       >
         {loading ? (

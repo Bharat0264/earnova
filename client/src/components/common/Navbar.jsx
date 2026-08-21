@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
-import { LayoutDashboard, LogOut, Menu, ShieldCheck, ShoppingCart, UserRound, X } from 'lucide-react'
+import { LayoutDashboard, LogOut, Menu, Search, ShieldCheck, ShoppingCart, UserRound, X } from 'lucide-react'
 import { PUBLIC_NAV_LINKS } from '../../config/navigation'
 import { useAuth } from '../../context/AuthContext'
 import { useCart } from '../../context/CartContext'
@@ -27,17 +27,17 @@ export default function Navbar() {
   }, [open])
 
   return (
-    <header className="sticky top-0 z-50 border-b border-slate-200/80 bg-white/95 backdrop-blur">
-      <div className="section-wrapper flex h-16 items-center justify-between gap-4">
+    <header className="sticky top-0 z-50 border-b border-slate-800 bg-[#06162f] text-white">
+      <div className="section-wrapper flex h-14 items-center justify-between gap-4">
         <Link to="/" className="shrink-0" aria-label="Earnova home">
           <img src="/earnova-logo.png" alt="Earnova" className="h-10 w-auto max-w-[150px] object-contain sm:max-w-[180px]" />
         </Link>
-        <nav className="hidden items-center gap-5 lg:flex" aria-label="Primary navigation">
+        <nav className="hidden items-center gap-3 lg:flex" aria-label="Primary navigation">
           {PUBLIC_NAV_LINKS.map(link => (
             <NavLink key={link.to} to={link.to} className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>{link.label}</NavLink>
           ))}
         </nav>
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5"><button className="hidden min-h-9 items-center gap-2 rounded-lg border border-white/15 px-3 text-xs text-slate-300 xl:flex"><Search className="h-3.5 w-3.5" />Search Earnova</button>
           {cartCount > 0 && (
             <Link to="/cart" className="icon-button relative" aria-label={`Cart with ${cartCount} items`}>
               <ShoppingCart className="h-5 w-5" />
@@ -46,7 +46,7 @@ export default function Navbar() {
           )}
           {isAuthenticated ? (
             <>
-              <Link to="/app/overview" className="hidden min-h-10 items-center gap-2 rounded-xl px-3 text-sm font-bold text-slate-700 hover:bg-slate-100 sm:flex">
+              <Link to="/app/overview" className="hidden min-h-9 items-center gap-2 rounded-lg px-3 text-sm font-bold text-white hover:bg-white/10 sm:flex">
                 <LayoutDashboard className="h-4 w-4" /> Workspace
               </Link>
               {user?.role === 'admin' && (
@@ -54,14 +54,14 @@ export default function Navbar() {
                   <ShieldCheck className="h-4 w-4" /><span className="hidden sm:inline">Admin</span>
                 </Link>
               )}
-              <button type="button" onClick={logout} className="hidden min-h-10 items-center gap-2 rounded-xl px-3 text-sm font-semibold text-slate-600 hover:bg-red-50 hover:text-red-700 md:flex">
+              <button type="button" onClick={logout} className="hidden min-h-9 items-center gap-2 rounded-lg px-3 text-sm font-semibold text-slate-300 hover:bg-white/10 md:flex">
                 <LogOut className="h-4 w-4" /> Sign out
               </button>
             </>
           ) : (
             <div className="hidden items-center gap-1 sm:flex">
-              <Link to="/login" className="min-h-10 rounded-xl px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-100">Login</Link>
-              <Link to="/register" className="btn-primary !min-h-10 !px-4 !py-2 text-sm">Get Started</Link>
+              <Link to="/login" className="min-h-9 rounded-lg px-4 py-2 text-sm font-bold text-white hover:bg-white/10">Sign In</Link>
+              <Link to="/register" className="btn-primary !min-h-9 !rounded-lg !px-4 !py-2 text-sm">Sign Up</Link>
             </div>
           )}
           <button type="button" className="icon-button lg:hidden" onClick={() => setOpen(true)} aria-expanded={open} aria-controls="mobile-menu" aria-label="Open menu">

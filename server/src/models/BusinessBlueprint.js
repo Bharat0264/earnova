@@ -5,7 +5,7 @@ const businessBlueprintSchema = new mongoose.Schema({
   identity: { name: String, industry: String, description: String, location: String },
   businessModel: { audience: { type: String, trim: true, maxlength: 180 }, channel: { type: String, enum: ['online', 'offline', 'hybrid', 'unspecified'], default: 'unspecified' } },
   goals: { primary: { type: String, trim: true, maxlength: 300 }, items: { type: [String], default: [] } },
-  digitalPresence: { website: { type: String, default: '' }, domain: { type: String, default: '' } },
+  digitalPresence: { website: { type: String, default: '' }, domain: { type: String, default: '' }, status: { type: String, default: 'NOT_STARTED' } },
   payments: { status: { type: String, default: 'NOT_STARTED' } },
   products: { status: { type: String, default: 'NOT_STARTED' } },
   suppliers: { status: { type: String, default: 'NOT_STARTED' } },

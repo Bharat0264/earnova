@@ -55,12 +55,14 @@ const SupportPage = lazy(() => import('./pages/SupportPage'))
 const AdminDomainPage = lazy(() => import('./pages/AdminDomainPage'))
 const BusinessJourneyPage = lazy(() => import('./pages/BusinessJourneyPage'))
 const BusinessEntryPage = lazy(() => import('./pages/BusinessJourneyPage').then(module => ({ default: module.BusinessEntryPage })))
-const StageLandingPage = lazy(() => import('./pages/StageLandingPage'))
 const BuildSourcePage = lazy(() => import('./pages/BuildSourcePage'))
 const OperatePage = lazy(() => import('./pages/OperatePage'))
 const CapabilityStatusPage = lazy(() => import('./pages/CapabilityStatusPage'))
 const BuildProjectPage = lazy(() => import('./pages/BuildProjectPage'))
 const ActivityPage = lazy(() => import('./pages/ActivityPage'))
+const BusinessPassportPage = lazy(() => import('./pages/BusinessPassportPage'))
+const StorePage = lazy(() => import('./pages/StorePage'))
+const FulfilmentSettingsPage = lazy(() => import('./pages/FulfilmentSettingsPage'))
 
 const APP_MODULES = {
   sales: 'Record, search, filter and export authorized sales.',
@@ -87,11 +89,10 @@ function AppRoutes() {
         <Route element={<PublicLayout />}>
           <Route index element={<HomePage />} />
           <Route path="home" element={<HomePage />} />
-          <Route path="start" element={<StageLandingPage stage="start" />} />
-          <Route path="source" element={<StageLandingPage stage="source" />} />
           <Route path="shop" element={<ProductsPage />} />
+          <Route path="shop/product/:id" element={<ProductDetailPage />} />
+          <Route path="store/:slug" element={<StorePage />} />
           <Route path="hire" element={<FreelancePage />} />
-          <Route path="build" element={<StageLandingPage stage="build" />} />
           <Route path="business" element={<BusinessEntryPage />} />
           <Route path="business-ai" element={<PublicPage page="businessAi" />} />
           <Route path="services" element={<PublicPage page="services" />} />
@@ -144,13 +145,18 @@ function AppRoutes() {
         </Route>
 
         <Route element={<ProtectedRoute />}>
+          <Route path="start" element={<BusinessProvider><BusinessJourneyPage mode="start" /></BusinessProvider>} />
           <Route path="business/start" element={<BusinessProvider><BusinessJourneyPage mode="start" /></BusinessProvider>} />
+          <Route path="business/passport" element={<BusinessProvider><BusinessPassportPage /></BusinessProvider>} />
           <Route path="operate" element={<BusinessProvider><OperatePage /></BusinessProvider>} />
           <Route path="operate/status" element={<BusinessProvider><CapabilityStatusPage /></BusinessProvider>} />
           <Route path="build/start" element={<BusinessProvider><BuildSourcePage mode="build" /></BusinessProvider>} />
+          <Route path="build" element={<BusinessProvider><BuildSourcePage mode="build-dashboard" /></BusinessProvider>} />
           <Route path="build/project/:id" element={<BuildProjectPage />} />
           <Route path="source/request" element={<BusinessProvider><BuildSourcePage mode="source" /></BusinessProvider>} />
+          <Route path="source" element={<BusinessProvider><BuildSourcePage mode="source-dashboard" /></BusinessProvider>} />
           <Route path="activity" element={<BusinessProvider><ActivityPage /></BusinessProvider>} />
+          <Route path="operate/fulfilment" element={<BusinessProvider><FulfilmentSettingsPage /></BusinessProvider>} />
           <Route path="start/roadmap" element={<BusinessProvider><BusinessJourneyPage mode="roadmap" /></BusinessProvider>} />
           <Route path="business/dashboard" element={<BusinessProvider><BusinessJourneyPage mode="dashboard" /></BusinessProvider>} />
           <Route path="business/roadmap" element={<BusinessProvider><BusinessJourneyPage mode="roadmap" /></BusinessProvider>} />

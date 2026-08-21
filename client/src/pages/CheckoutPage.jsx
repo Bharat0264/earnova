@@ -8,6 +8,7 @@ import { useAuth } from '../context/AuthContext'
 import { useCart } from '../context/CartContext'
 import { api } from '../utils/api'
 import { formatPrice } from '../utils/formatters'
+import { analyticsSessionId, track } from '../utils/analytics'
 
 const STEPS = ['Address', 'Review', 'Payment']
 
@@ -54,6 +55,7 @@ export default function CheckoutPage() {
   const [paying,      setPaying]      = useState(false)
   const [payError,    setPayError]    = useState('')
   const [order,       setOrder]       = useState(null)
+  const [shippingQuote, setShippingQuote] = useState(null)
   const serviceOnly = cartItems.length > 0 && cartItems.every(item => item.itemType === 'service')
 
   /* Redirect to login if not authenticated */
@@ -72,6 +74,13 @@ export default function CheckoutPage() {
   useEffect(() => {
     if (serviceOnly && step === 1) setStep(2)
   }, [serviceOnly, step])
+
+  useEffect(() => {
+    if (!address || serviceOnly || !cartItems.length) return
+    api.post('/payment/shipping-quote', { cartItems, shippingAddress: address })
+      .then(data => { setShippingQuote(data.quote); setPayError('') })
+      .catch(error => { setShippingQuote(null); setPayError(error.message) })
+  }, [address, serviceOnly, cartItems])
 
   /* Empty cart guard */
   if (!authLoading && isAuthenticated && cartItems.length === 0 && !order) {
@@ -94,9 +103,11 @@ export default function CheckoutPage() {
     setPaying(true); setPayError('')
     try {
       if (method === 'cod') {
+        cartItems.forEach(item => track('CHECKOUT_STARTED', { productId: item._id }))
         const data = await api.post('/payment/cod-order', {
           shippingAddress: address,
           cartItems,
+          analyticsSessionId: analyticsSessionId(),
         })
         clearCart()
         setOrder(data.order)
@@ -108,7 +119,8 @@ export default function CheckoutPage() {
       if (!loaded) throw new Error('Razorpay failed to load. Check your internet connection.')
 
       const { orderId: rzpId, amount, currency, keyId } =
-        await api.post('/payment/create-order', { cartItems })
+        cartItems.forEach(item => track('CHECKOUT_STARTED', { productId: item._id }))
+        await api.post('/payment/create-order', { cartItems, shippingAddress: address, analyticsSessionId: analyticsSessionId() })
 
       await new Promise((resolve, reject) => {
         const options = {
@@ -181,7 +193,7 @@ export default function CheckoutPage() {
               <Row label={order.paymentMethod === 'cod' ? 'Amount Due' : 'Amount Paid'} value={formatPrice(order.total)} />
               <Row label="Payment"    value={order.paymentMethod === 'cod' ? 'Pay on Delivery' : 'Razorpay · Paid'} />
               <Row label="Status" value={completedServiceOrder ? 'Payment complete · Service processing' : 'Payment complete · Order processing'} />
-              {!completedServiceOrder && <Row label="Estimated Delivery" value="5–7 business days" />}
+              {!completedServiceOrder && <><Row label="Delivery" value={order.shippingCharge ? formatPrice(order.shippingCharge) : 'Free'} /><Row label="Estimated Delivery" value={order.estimatedDelivery ? new Date(order.estimatedDelivery).toLocaleDateString() : 'Not available'} /></>}
             </div>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <Link to="/account?tab=orders" className="btn-primary flex items-center justify-center gap-2">
@@ -239,6 +251,7 @@ export default function CheckoutPage() {
                 onPay={handlePay}
                 loading={paying}
                 error={payError}
+                shippingQuote={shippingQuote}
               />
             )}
           </div>

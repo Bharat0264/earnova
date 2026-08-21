@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 import { Heart, ShoppingCart, Zap, CheckCircle2, Wallet } from 'lucide-react'
 import StarRating from './StarRating'
-import { formatPrice, discountPercent, savedAmount, CATEGORY_PLACEHOLDER_BG } from '../../utils/formatters'
+import { formatPrice, discountPercent, CATEGORY_PLACEHOLDER_BG } from '../../utils/formatters'
 import { useCart } from '../../context/CartContext'
 import { useAuth } from '../../context/AuthContext'
 
@@ -40,13 +40,12 @@ export default function ProductCard({ product, compact = false }) {
   } = product
 
   const discount = discountPercent(price, mrp)
-  const saved    = savedAmount(price, mrp)
   const memberEarnings = Number(referralIncome) || 0
   const inCart   = isInCart(_id)
   const wishlisted = isInWishlist(_id)
   const outOfStock = stock === 0
   const imgSrc   = thumbnail || images?.[0]
-  const href     = `/products/${slug || _id}`
+  const href     = `/shop/product/${slug || _id}`
 
   const handleAddToCart = (e) => {
     e.preventDefault()

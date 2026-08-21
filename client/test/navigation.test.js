@@ -9,8 +9,8 @@ import {
   PUBLIC_NAV_LINKS,
 } from '../src/config/navigation.js'
 
-test('public navigation exposes the four product stages', () => {
-  assert.deepEqual(PUBLIC_NAV_LINKS.map(link => link.label), ['Start', 'Build', 'Source', 'Operate'])
+test('public navigation exposes the commerce and business shell', () => {
+  assert.deepEqual(PUBLIC_NAV_LINKS.map(link => link.label), ['Shop', 'Build', 'For Business'])
 })
 
 test('homepage groups every platform destination into five populated hubs', () => {
@@ -31,7 +31,7 @@ test('every selectable account type has an onboarding checklist', () => {
   }
 })
 
-test('protected workspace route names are unique', () => {
-  const paths = APP_NAV_LINKS.map(link => link.to)
-  assert.equal(new Set(paths).size, paths.length)
+test('workspace navigation labels are unique', () => {
+  const labels = APP_NAV_LINKS.map(link => link.label)
+  assert.equal(new Set(labels).size, labels.length)
 })

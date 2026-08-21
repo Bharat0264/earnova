@@ -7,6 +7,8 @@ import BusinessInvoice from '../models/BusinessInvoice.js'
 import BusinessLead from '../models/BusinessLead.js'
 import BusinessProduct from '../models/BusinessProduct.js'
 import BusinessSale from '../models/BusinessSale.js'
+import BuildProject from '../models/BuildProject.js'
+import RFQ from '../models/RFQ.js'
 import { snapshot } from './capabilityController.js'
 import { isolateFault, verificationPlan } from '../services/capabilityEngine.js'
 import {
@@ -382,7 +384,11 @@ export const askBusinessAssistant = async (req, res) => {
     if (question.length < 3) {
       return res.status(400).json({ success: false, message: 'Ask a specific business question.' })
     }
-    const insight = await collectMetrics(req.business._id, req.body)
+    const [insight, buildProjects, openRfqs] = await Promise.all([
+      collectMetrics(req.business._id, req.body),
+      BuildProject.countDocuments({ business: req.business._id, status: { $nin: ['COMPLETED', 'CANCELLED'] } }),
+      RFQ.countDocuments({ business: req.business._id, status: { $in: ['DRAFT', 'OPEN', 'QUOTED'] } }),
+    ])
     const q = question.toLowerCase()
     const intent = /(sell online|store ready|business status|blocking my business|ready to sell)/.test(q) ? 'SELL_ONLINE' : /(payments? working|recheck payments?)/.test(q) ? 'PAYMENT_ACCEPTANCE' : /(website working|verify my website)/.test(q) ? 'PUBLIC_WEB_PRESENCE' : /(delivery unavailable|fulfil|fulfill)/.test(q) ? 'FULFILMENT' : null
     if (intent) {
@@ -396,7 +402,19 @@ export const askBusinessAssistant = async (req, res) => {
     let supportingMetrics
     let recommendedAction
 
-    if (/(stock|inventory|reorder)/.test(q)) {
+    if (/(source|supplier|procure|rfq|replenish)/.test(q)) {
+      summary = `${openRfqs} sourcing request(s) are currently awaiting completion.`
+      supportingMetrics = { openRfqs, lowStockCount: metrics.lowStockCount }
+      recommendedAction = openRfqs ? 'Review open requests and quotes before creating another sourcing request.' : metrics.lowStockCount ? 'Create an RFQ for items at or below their reorder level.' : 'No sourcing need is visible in current inventory records.'
+    } else if (/(build|website|online presence)/.test(q)) {
+      summary = `${buildProjects} active build project(s) are linked to this business.`
+      supportingMetrics = { buildProjects }
+      recommendedAction = buildProjects ? 'Open the current build project to review its recorded status.' : 'Create a build project when you are ready to launch your digital presence.'
+    } else if (/(sales down|sales|revenue|performance)/.test(q)) {
+      summary = `Recorded revenue is ₹${(metrics.revenuePaise / 100).toLocaleString('en-IN')} from ${metrics.orderCount} sale(s) in the selected period.`
+      supportingMetrics = { revenuePaise: metrics.revenuePaise, orderCount: metrics.orderCount, topProducts: insight.topProducts }
+      recommendedAction = 'Earnova can report recorded sales, but it cannot determine a decline without a comparable prior period.'
+    } else if (/(stock|inventory|reorder)/.test(q)) {
       summary = `${metrics.lowStockCount} active inventory item(s) are at or below their reorder level.`
       supportingMetrics = { lowStockCount: metrics.lowStockCount, topProducts: insight.topProducts }
       recommendedAction = 'Review low-stock items against recent product sales before replenishing.'

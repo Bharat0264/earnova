@@ -50,9 +50,9 @@ export default function AppLayout() {
 
       <div className="mx-auto flex max-w-[1600px]">
         {open && <button type="button" aria-label="Close navigation" className="fixed inset-0 z-40 bg-slate-950/30 lg:hidden" onClick={() => setOpen(false)} />}
-        <aside className={`fixed inset-y-0 left-0 z-50 w-72 border-r border-slate-200 bg-white p-4 transition-transform lg:sticky lg:top-16 lg:z-0 lg:h-[calc(100vh-4rem)] lg:translate-x-0 ${open ? 'translate-x-0' : '-translate-x-full'}`}>
+        <aside className={`fixed inset-y-0 left-0 z-50 w-64 border-r border-slate-800 bg-[#071832] p-3 text-white transition-transform lg:sticky lg:top-16 lg:z-0 lg:h-[calc(100vh-4rem)] lg:translate-x-0 ${open ? 'translate-x-0' : '-translate-x-full'}`}>
           <div className="mb-4 flex items-center justify-between lg:hidden">
-            <span className="font-bold text-slate-900">Workspace</span>
+            <span className="font-bold text-white">Workspace</span>
             <button type="button" className="icon-button" onClick={() => setOpen(false)} aria-label="Close workspace navigation"><X className="h-5 w-5" /></button>
           </div>
           <nav className="space-y-1" aria-label="Workspace">
@@ -62,10 +62,10 @@ export default function AppLayout() {
               </NavLink>
             ))}
           </nav>
-          <div className="mt-6 rounded-2xl bg-brand-50 p-4">
+          <div className="mt-6 rounded-xl bg-white/10 p-4">
             <PanelLeftClose className="h-5 w-5 text-brand-700" />
-            <p className="mt-3 text-sm font-bold text-slate-900">Phase 2 operations</p>
-            <p className="mt-1 text-xs leading-relaxed text-slate-600">Customers, sales, stock, expenses, invoices and data-grounded insights share one secure business workspace.</p>
+            <p className="mt-3 text-sm font-bold text-white">Earnova workspace</p>
+            <p className="mt-1 text-xs leading-relaxed text-slate-300">Your connected operations, sourcing and business status in one place.</p>
           </div>
         </aside>
         <main id="workspace-content" className="min-w-0 flex-1 p-4 sm:p-6 lg:p-8">

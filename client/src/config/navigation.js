@@ -26,10 +26,9 @@ export const PRODUCT_PILLARS = [
 ]
 
 export const PUBLIC_NAV_LINKS = [
-  { label: 'Start', to: '/start' },
+  { label: 'Shop', to: '/shop' },
   { label: 'Build', to: '/build' },
-  { label: 'Source', to: '/source' },
-  { label: 'Operate', to: '/operate' },
+  { label: 'For Business', to: '/start' },
 ]
 
 export const PLATFORM_HUBS = [
@@ -132,19 +131,9 @@ export const ONBOARDING_CHECKLISTS = {
 
 export const APP_NAV_LINKS = [
   { label: 'Overview', to: '/app/overview' },
-  { label: 'Sales', to: '/app/sales' },
-  { label: 'Customers', to: '/app/customers' },
-  { label: 'Leads', to: '/app/leads' },
-  { label: 'Inventory', to: '/app/inventory' },
-  { label: 'Invoices', to: '/app/invoices' },
-  { label: 'Expenses', to: '/app/expenses' },
-  { label: 'Analytics', to: '/app/analytics' },
-  { label: 'Business AI', to: '/app/ai' },
-  { label: 'Orders', to: '/app/orders' },
-  { label: 'Services', to: '/app/services' },
-  { label: 'CA Office', to: '/app/ca' },
-  { label: 'Support', to: '/app/support' },
-  { label: 'Referrals', to: '/app/referrals' },
-  { label: 'Notifications', to: '/app/notifications' },
+  { label: 'Sell', to: '/app/sales' }, { label: 'Products', to: '/app/inventory' }, { label: 'Orders', to: '/app/orders' }, { label: 'Customers', to: '/app/customers' },
+  { label: 'Build', to: '/build' }, { label: 'Website', to: '/build' }, { label: 'Source', to: '/source' }, { label: 'RFQs', to: '/source/request' }, { label: 'Suppliers', to: '/source' },
+  { label: 'Operate', to: '/operate' }, { label: 'Payments', to: '/app/invoices' }, { label: 'Inventory', to: '/app/inventory' }, { label: 'Analytics', to: '/app/analytics' },
+  { label: 'Business Status', to: '/operate/status' }, { label: 'Activity', to: '/activity' }, { label: 'Ask Earnova', to: '/app/ai' },
   { label: 'Settings', to: '/app/settings' },
 ]

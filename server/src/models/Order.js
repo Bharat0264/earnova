@@ -28,6 +28,8 @@ const addressSnapshot = new mongoose.Schema({
 const statusEventSchema = new mongoose.Schema({
   status:    String,
   note:      String,
+  changedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  changedAt: { type: Date, default: Date.now },
   timestamp: { type: Date, default: Date.now },
 }, { _id: false })
 
@@ -74,6 +76,9 @@ const orderSchema = new mongoose.Schema({
   /* Logistics */
   trackingId: String,
   courier:    String,
+  fulfilmentMode: String,
+  fulfilmentStatus: { type: String, enum: ['PENDING', 'PROCESSING', 'READY_TO_SHIP', 'SHIPPED', 'OUT_FOR_DELIVERY', 'DELIVERED', 'CANCELLED', 'RETURN_REQUESTED', 'RETURNED'], default: 'PENDING', index: true },
+  estimatedDelivery: Date,
 
   /* Referral commission */
   referredBy:       { type: mongoose.Schema.Types.ObjectId, ref: 'User' },

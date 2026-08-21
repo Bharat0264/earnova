@@ -1,14 +1,15 @@
-import { useState } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { useParams, Link, useNavigate } from 'react-router-dom'
 import { ShoppingCart, Heart, Zap, Minus, Plus, CheckCircle2, ArrowLeft, Share2, Wallet } from 'lucide-react'
 import ImageGallery from '../components/products/ImageGallery'
 import StarRating from '../components/products/StarRating'
 import { SpecsTable, ProductFAQ } from '../components/products/SpecsTable'
-import ProductCard, { ProductCardSkeleton } from '../components/products/ProductCard'
+import ProductCard from '../components/products/ProductCard'
 import { useProduct } from '../hooks/useProducts'
 import { useCart } from '../context/CartContext'
-import { formatPrice, discountPercent, savedAmount, CATEGORY_LABELS } from '../utils/formatters'
+import { formatPrice, discountPercent, CATEGORY_LABELS } from '../utils/formatters'
 import { useAuth } from '../context/AuthContext'
+import { track } from '../utils/analytics'
 
 const TABS = ['Specifications', 'Reviews', 'FAQ']
 
@@ -17,33 +18,37 @@ export default function ProductDetailPage() {
   const { product, related, loading, notFound } = useProduct(id)
   const { addToCart, isInCart, toggleWishlist, isInWishlist } = useCart()
   const { hasFeature } = useAuth()
+  const navigate = useNavigate()
 
   const [qty,       setQty]       = useState(1)
   const [activeTab, setActiveTab] = useState('Specifications')
   const [addedMsg,  setAddedMsg]  = useState(false)
 
+  useEffect(() => { if (product?._id) track('PRODUCT_VIEW', { productId: product._id }) }, [product?._id])
   if (loading) return <DetailSkeleton />
   if (notFound || !product) return <NotFound />
 
   const {
-    _id, name, brand, category, price, mrp, gstRate = 18,
+    _id, name, brand, category, price, mrp,
     images, rating, reviewCount, stock, energySaving,
     description, highlights, specs, referralIncome,
   } = product
 
   const discount    = discountPercent(price, mrp)
-  const saved       = savedAmount(price, mrp)
   const memberEarnings = Number(referralIncome) || 0
   const inCart      = isInCart(_id)
   const wishlisted  = isInWishlist(_id)
   const outOfStock  = stock === 0
-  const gstOnItem   = Math.round((price * qty * gstRate) / 100)
-  const lineTotal   = price * qty + gstOnItem
 
   const handleAddToCart = () => {
     addToCart(product, qty)
     setAddedMsg(true)
     setTimeout(() => setAddedMsg(false), 2000)
+  }
+
+  const handleBuyNow = () => {
+    addToCart(product, qty)
+    navigate('/checkout')
   }
 
   return (
@@ -53,10 +58,10 @@ export default function ProductDetailPage() {
         <div className="flex items-center gap-2 text-sm text-gray-400 mb-6">
           <Link to="/" className="hover:text-primary-600 transition-colors">Home</Link>
           <span>/</span>
-          <Link to="/products" className="hover:text-primary-600 transition-colors">Products</Link>
+          <Link to="/shop" className="hover:text-primary-600 transition-colors">Shop</Link>
           <span>/</span>
           {category && (
-            <><Link to={`/products?category=${category}`} className="hover:text-primary-600 transition-colors">
+            <><Link to={`/shop?category=${category}`} className="hover:text-primary-600 transition-colors">
               {CATEGORY_LABELS[category]}
             </Link><span>/</span></>
           )}
@@ -89,6 +94,7 @@ export default function ProductDetailPage() {
             <h1 className="font-display font-bold text-2xl lg:text-3xl text-gray-900 leading-snug">
               {name}
             </h1>
+            {product.business?.slug && <Link to={`/store/${product.business.slug}`} className="text-sm font-semibold text-primary-700 hover:underline">Visit Store →</Link>}
 
             {/* Rating */}
             {rating > 0 && <StarRating rating={rating} count={reviewCount} size="md" />}
@@ -176,6 +182,14 @@ export default function ProductDetailPage() {
               </button>
 
               <button
+                onClick={handleBuyNow}
+                disabled={outOfStock}
+                className="flex-1 rounded-xl border border-primary-700 px-4 py-3.5 text-sm font-semibold text-primary-700 transition-colors hover:bg-primary-50 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Buy now
+              </button>
+
+              <button
                 onClick={() => toggleWishlist(product)}
                 className={`w-12 h-12 rounded-xl border flex items-center justify-center transition-all
                             ${wishlisted
@@ -215,7 +229,7 @@ export default function ProductDetailPage() {
           </div>
           <div className="p-6">
             {activeTab === 'Specifications' && <SpecsTable specs={specs} highlights={highlights} />}
-            {activeTab === 'Reviews' && <ReviewsPlaceholder />}
+            {activeTab === 'Reviews' && <Reviews reviews={product.reviews || []} />}
             {activeTab === 'FAQ' && <ProductFAQ category={category} />}
           </div>
         </div>
@@ -225,7 +239,7 @@ export default function ProductDetailPage() {
           <div className="mt-10">
             <div className="flex items-center justify-between mb-5">
               <h2 className="font-display font-bold text-xl text-gray-900">Related Products</h2>
-              <Link to={`/products?category=${category}`}
+              <Link to={`/shop?category=${category}`}
                     className="text-sm font-semibold text-primary-600 hover:underline">
                 View all
               </Link>
@@ -240,14 +254,28 @@ export default function ProductDetailPage() {
   )
 }
 
-function ReviewsPlaceholder() {
-  return (
-    <div className="text-center py-10">
-      <div className="w-14 h-14 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-        <CheckCircle2 className="w-7 h-7 text-gray-300" />
+function Reviews({ reviews }) {
+  if (!reviews.length) {
+    return (
+      <div className="py-8 text-center">
+        <h3 className="font-display font-bold text-gray-700">No customer reviews yet</h3>
+        <p className="mt-2 text-sm text-gray-400">Reviews will appear here once customers submit them.</p>
       </div>
-      <h3 className="font-display font-bold text-gray-700 mb-2">Reviews coming in Phase 3</h3>
-      <p className="text-gray-400 text-sm">Login to verify your purchase and leave a review.</p>
+    )
+  }
+
+  return (
+    <div className="space-y-4">
+      {reviews.map(review => (
+        <article key={review._id} className="border-b border-gray-100 pb-4 last:border-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-sm font-semibold text-gray-800">{review.name || 'Verified customer'}</span>
+            <StarRating rating={review.rating} size="sm" />
+            {review.createdAt && <time className="text-xs text-gray-400">{new Date(review.createdAt).toLocaleDateString()}</time>}
+          </div>
+          {review.comment && <p className="mt-2 text-sm leading-relaxed text-gray-600">{review.comment}</p>}
+        </article>
+      ))}
     </div>
   )
 }
@@ -275,8 +303,8 @@ function NotFound() {
         <div className="font-display font-bold text-6xl text-gray-100 mb-4">404</div>
         <h1 className="font-display font-bold text-xl text-gray-800 mb-3">Product Not Found</h1>
         <p className="text-gray-500 text-sm mb-6">This product doesn't exist or has been removed.</p>
-        <Link to="/products" className="btn-primary inline-flex items-center gap-2">
-          <ArrowLeft className="w-4 h-4" /> Browse Products
+        <Link to="/shop" className="btn-primary inline-flex items-center gap-2">
+          <ArrowLeft className="w-4 h-4" /> Browse products
         </Link>
       </div>
     </div>

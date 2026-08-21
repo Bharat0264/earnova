@@ -1,5 +1,6 @@
 import BusinessRoadmapItem from '../models/BusinessRoadmapItem.js'
 import BusinessEvent from '../models/BusinessEvent.js'
+import BusinessActivity from '../models/BusinessActivity.js'
 import BusinessProduct from '../models/BusinessProduct.js'
 import BusinessSale from '../models/BusinessSale.js'
 import BusinessBlueprint from '../models/BusinessBlueprint.js'
@@ -80,6 +81,13 @@ export const upsertBlueprint = async (req, res) => {
 }
 
 export const listBusinessEvents = async (req, res) => {
-  const events = await BusinessEvent.find({ business: req.business._id }).sort('-createdAt').limit(50).lean()
-  res.json({ success: true, events })
+  const [events, activities] = await Promise.all([
+    BusinessEvent.find({ business: req.business._id }).sort('-createdAt').limit(50).lean(),
+    BusinessActivity.find({ business: req.business._id }).sort('-createdAt').limit(50).lean(),
+  ])
+  const merged = [
+    ...events.map(event => ({ ...event, kind: 'event', summary: event.eventType.replaceAll('_', ' ') })),
+    ...activities.map(activity => ({ ...activity, kind: 'activity', eventType: activity.type, summary: activity.summary })),
+  ].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0, 50)
+  res.json({ success: true, events: merged })
 }

@@ -52,6 +52,8 @@
 @layer components {
   .skip-link { @apply fixed left-4 top-3 z-[100] -translate-y-20 rounded-lg bg-slate-950 px-4 py-2 text-sm font-bold text-white transition-transform focus:translate-y-0; }
   .nav-link { @apply rounded-lg px-2 py-2 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-50 hover:text-brand-800; }
+  header .nav-link { @apply text-slate-200 hover:bg-white/10 hover:text-white; }
+  header .nav-link.active { @apply bg-white/10 text-white; }
   .nav-link.active { @apply bg-brand-50 text-brand-800; }
 
   .btn-base { @apply inline-flex min-h-11 items-center justify-center gap-2 select-none rounded-xl px-5 py-2.5 font-bold transition-colors duration-200 disabled:cursor-not-allowed disabled:opacity-50; }
@@ -86,8 +88,8 @@
   .status-error { @apply bg-red-50 text-red-700; }
   .status-info { @apply bg-sky-50 text-sky-700; }
 
-  .app-nav-link { @apply block rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-950; }
-  .app-nav-link-active { @apply bg-brand-50 text-brand-800; }
+  .app-nav-link { @apply block rounded-lg px-3 py-2 text-sm font-semibold text-slate-300 transition-colors hover:bg-white/10 hover:text-white; }
+  .app-nav-link-active { @apply bg-brand-700 text-white; }
   .table-shell { @apply overflow-x-auto rounded-2xl border border-slate-200 bg-white; }
   .data-table { @apply min-w-full divide-y divide-slate-200 text-left text-sm; }
   .data-table th { @apply bg-slate-50 px-4 py-3 font-bold text-slate-600; }
@@ -103,6 +105,20 @@
   .mobile-bottom a { @apply flex min-h-14 flex-col items-center justify-center gap-1 text-[10px] font-semibold text-slate-500; }
   .mobile-bottom a.active { @apply text-brand-700; }
   .mobile-bottom .mobile-create { @apply mx-auto -mt-5 h-12 min-h-12 w-12 rounded-full bg-brand-700 text-white shadow-lg; }
+  .home-shell { @apply bg-[#f7f9fc]; }
+  .home-hero { @apply border-b border-slate-200 bg-[radial-gradient(circle_at_77%_40%,#eef1ff_0,transparent_24rem),#fff]; }
+  .home-title { @apply font-display text-4xl font-extrabold leading-[1.05] tracking-[-.055em] text-[#08162f] sm:text-6xl; }
+  .home-title span { @apply text-brand-700; }
+  .module-orbit { @apply relative mx-auto h-[330px] w-full max-w-[510px] rounded-[2rem] border border-slate-200 bg-[radial-gradient(circle,#f5f6ff_0,#fff_62%)] shadow-sm; }
+  .orbit-core { @apply absolute left-1/2 top-1/2 flex h-24 w-24 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-[#0a1c3c] text-4xl font-black text-white shadow-lg; }
+  .orbit-module { @apply absolute flex w-36 items-center gap-2 rounded-xl border border-slate-200 bg-white p-2.5 shadow-sm; }
+  .orbit-module > span { @apply flex h-9 w-9 shrink-0 items-center justify-center rounded-lg; }
+  .orbit-module b { @apply block text-xs font-black text-slate-900; }.orbit-module small { @apply block text-[10px] leading-3 text-slate-500; }
+  .orbit-0 { @apply left-5 top-6; }.orbit-1 { @apply right-5 top-12; }.orbit-2 { @apply left-3 bottom-16; }.orbit-3 { @apply right-3 bottom-16; }.orbit-4 { @apply bottom-3 left-1/2 -translate-x-1/2; }
+  .orange > span, .module-card.orange { @apply bg-orange-50 text-orange-600; }.blue > span, .module-card.blue { @apply bg-sky-50 text-sky-700; }.violet > span, .module-card.violet { @apply bg-violet-50 text-violet-700; }.green > span, .module-card.green { @apply bg-emerald-50 text-emerald-700; }.purple > span, .module-card.purple { @apply bg-brand-50 text-brand-700; }
+  .trust-strip { @apply border-b border-slate-200 bg-white; }
+  .module-card { @apply rounded-xl border border-slate-200 p-4 transition hover:-translate-y-0.5 hover:shadow-md; }.module-card h2 { @apply mt-5 text-base font-extrabold text-slate-950; }.module-card p { @apply mt-1 min-h-10 text-xs leading-5 text-slate-600; }.module-card span { @apply mt-4 flex items-center gap-1 text-xs font-bold; }
+  .final-cta { @apply flex flex-col justify-between gap-5 rounded-2xl bg-[#081a3a] p-6 text-white sm:flex-row sm:items-center; }.final-cta h2 { @apply mt-1 text-2xl font-bold; }
 }
 
 @layer utilities {

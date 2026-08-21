@@ -82,7 +82,7 @@ function OrderCard({ order }) {
           </div>
         </div>
         <div className="flex items-center gap-3 shrink-0">
-          <StatusChip status={order.status} />
+          <StatusChip status={order.fulfilmentStatus?.toLowerCase() || order.status} />
           <span className="font-bold text-gray-900 text-sm">{formatPrice(order.total)}</span>
           {expanded ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
         </div>
@@ -149,6 +149,7 @@ function OrderCard({ order }) {
               Tracking: <strong>{order.trackingId}</strong> via {order.courier}
             </div>
           )}
+          {order.estimatedDelivery && <p className="text-xs text-gray-500">Estimated delivery: {new Date(order.estimatedDelivery).toLocaleDateString()}</p>}
         </div>
       )}
     </div>
